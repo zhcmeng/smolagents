@@ -1,0 +1,25 @@
+# Logging
+logs
+tmp
+wandb
+
+# Data
+data
+outputs
+
+# Apple
+.DS_Store
+
+# VS Code
+.vscode
+
+# Environments
+.env
+.venv
+env/
+venv/
+env.bak/
+venv.bak/
+
+# Jupyter Notebook
+.ipynb_checkpoints

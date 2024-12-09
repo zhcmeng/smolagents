@@ -185,3 +185,13 @@ class FinalAnswerTool(Tool):
 
     def forward(self, answer):
         return answer
+
+class UserInputTool(Tool):
+    name = "user_input"
+    description = "Asks for user's input on a specific question"
+    inputs = {"question": {"type": "string", "description": "The question to ask the user"}}
+    output_type = "string"
+
+    def forward(self, question):
+        user_input = input(f"{question} => ")
+        return user_input

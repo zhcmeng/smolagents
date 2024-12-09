@@ -92,6 +92,7 @@ class ActionStep:
     final_answer: Any = None
     error: AgentError | None = None
     step_duration: float | None = None
+    llm_output: str | None = None
 
 @dataclass
 class PlanningStep:
@@ -440,23 +441,20 @@ class ReactAgent(BaseAgent):
         else:
             self.logs.append(TaskStep(task=task))
 
-        with console.status(
-            "Agent is running...", spinner="aesthetic"
-        ):
-            if oneshot:
-                step_start_time = time.time()
-                step_log = ActionStep(start_time=step_start_time)
-                step_log.step_end_time = time.time()
-                step_log.step_duration = step_log.step_end_time - step_start_time
+        if oneshot:
+            step_start_time = time.time()
+            step_log = ActionStep(start_time=step_start_time)
+            step_log.step_end_time = time.time()
+            step_log.step_duration = step_log.step_end_time - step_start_time
 
-                # Run the agent's step
-                result = self.step(step_log)
-                return result
+            # Run the agent's step
+            result = self.step(step_log)
+            return result
 
-            if stream:
-                return self.stream_run(task)
-            else:
-                return self.direct_run(task)
+        if stream:
+            return self.stream_run(task)
+        else:
+            return self.direct_run(task)
 
     def stream_run(self, task: str):
         """
@@ -468,6 +466,9 @@ class ReactAgent(BaseAgent):
             step_start_time = time.time()
             step_log = ActionStep(iteration=iteration, start_time=step_start_time)
             try:
+                if self.planning_interval is not None and iteration % self.planning_interval == 0:
+                    self.planning_step(task, is_first_step=(iteration == 0), iteration=iteration)
+                console.rule("[bold]New step")
                 self.step(step_log)
                 if step_log.final_answer is not None:
                     final_answer = step_log.final_answer
@@ -484,7 +485,6 @@ class ReactAgent(BaseAgent):
 
         if final_answer is None and iteration == self.max_iterations:
             error_message = "Reached max iterations."
-            console.print(f"[bold red]{error_message}")
             final_step_log = ActionStep(error=AgentMaxIterationsError(error_message))
             self.logs.append(final_step_log)
             final_answer = self.provide_final_answer(task)
@@ -509,6 +509,7 @@ class ReactAgent(BaseAgent):
             try:
                 if self.planning_interval is not None and iteration % self.planning_interval == 0:
                     self.planning_step(task, is_first_step=(iteration == 0), iteration=iteration)
+                console.rule("[bold]New step")
                 self.step(step_log)
                 if step_log.final_answer is not None:
                     final_answer = step_log.final_answer
@@ -527,7 +528,6 @@ class ReactAgent(BaseAgent):
             error_message = "Reached max iterations."
             final_step_log = ActionStep(error=AgentMaxIterationsError(error_message))
             self.logs.append(final_step_log)
-            console.print(f"[bold red]{error_message}")
             final_answer = self.provide_final_answer(task)
             final_step_log.final_answer = final_answer
             final_step_log.step_duration = 0
@@ -677,7 +677,6 @@ class JsonAgent(ReactAgent):
         agent_memory = self.write_inner_memory_from_logs()
 
         self.prompt = agent_memory
-        console.rule("New step")
 
         # Add new step in logs
         log_entry.agent_memory = agent_memory.copy()
@@ -692,12 +691,14 @@ class JsonAgent(ReactAgent):
             llm_output = self.llm_engine(
                 self.prompt, stop_sequences=["<end_action>", "Observation:"], **additional_args
             )
+            log_entry.llm_output = llm_output
         except Exception as e:
             raise AgentGenerationError(f"Error in generating llm output: {e}.")
-        console.rule("Output message of the LLM")
-        console.print(llm_output)
-        log_entry.llm_output = llm_output
 
+        if self.verbose:
+            console.rule("[italic]Output message of the LLM:")
+            console.print(llm_output)
+        
         # Parse
         rationale, action = self.extract_action(llm_output=llm_output, split_token="Action:")
 
@@ -796,7 +797,6 @@ class CodeAgent(ReactAgent):
         agent_memory = self.write_inner_memory_from_logs()
 
         self.prompt = agent_memory.copy()
-        console.rule("New step")
 
         # Add new step in logs
         log_entry.agent_memory = agent_memory.copy()
@@ -811,13 +811,13 @@ class CodeAgent(ReactAgent):
             llm_output = self.llm_engine(
                 self.prompt, stop_sequences=["<end_action>", "Observation:"], **additional_args
             )
+            log_entry.llm_output = llm_output
         except Exception as e:
             raise AgentGenerationError(f"Error in generating llm output: {e}.")
 
         if self.verbose:
             console.rule("[italic]Output message of the LLM:")
             console.print(Syntax(llm_output, lexer='markdown', background_color='default'))
-        log_entry.llm_output = llm_output
 
         # Parse
         try:

@@ -156,7 +156,7 @@ class AgentImage(AgentType, ImageType):
             directory = tempfile.mkdtemp()
             self._path = os.path.join(directory, str(uuid.uuid4()) + ".png")
 
-            img.save(self._path)
+            img.save(self._path, format="png")
 
             return self._path
 

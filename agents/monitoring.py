@@ -102,7 +102,7 @@ class Monitor:
             self.total_output_token_count = 0
 
     def update_metrics(self, step_log):
-        step_duration = step_log["step_duration"]
+        step_duration = step_log.step_duration
         self.step_durations.append(step_duration)
         console.print(f"Step {len(self.step_durations)}:")
         console.print(f"- Time taken: {step_duration:.2f} seconds")
@@ -110,6 +110,6 @@ class Monitor:
         if getattr(self.tracked_llm_engine, "last_input_token_count", None) is not None:
             self.total_input_token_count += self.tracked_llm_engine.last_input_token_count
             self.total_output_token_count += self.tracked_llm_engine.last_output_token_count
-            console.print(f"- Input tokens: {self.total_input_token_count}")
-            console.print(f"- Output tokens: {self.total_output_token_count}")
+            console.print(f"- Input tokens: {self.total_input_token_count:,}")
+            console.print(f"- Output tokens: {self.total_output_token_count:,}")
 

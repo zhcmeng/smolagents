@@ -1,10 +1,8 @@
 from agents import load_tool, ReactCodeAgent, HfApiEngine
+from agents.search import DuckDuckGoSearchTool
 
 # Import tool from Hub
 image_generation_tool = load_tool("m-ric/text-to-image", cache=False)
-
-# Import tool from LangChain
-from agents.search import DuckDuckGoSearchTool
 
 search_tool = DuckDuckGoSearchTool()
 

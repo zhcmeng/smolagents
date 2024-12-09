@@ -1000,3 +1000,106 @@ def tool(tool_function: Callable) -> Tool:
 
     SpecificTool.__name__ = class_name
     return SpecificTool()
+
+
+class Toolbox:
+    """
+    The toolbox contains all tools that the agent can perform operations with, as well as a few methods to
+    manage them.
+
+    Args:
+        tools (`List[Tool]`):
+            The list of tools to instantiate the toolbox with
+        add_base_tools (`bool`, defaults to `False`, *optional*, defaults to `False`):
+            Whether to add the tools available within `transformers` to the toolbox.
+    """
+
+    def __init__(self, tools: List[Tool], add_base_tools: bool = False):
+        self._tools = {tool.name: tool for tool in tools}
+        if add_base_tools:
+            self.add_base_tools()
+        # self._load_tools_if_needed()
+
+    def add_base_tools(self, add_python_interpreter: bool = False):
+        global _tools_are_initialized
+        global HUGGINGFACE_DEFAULT_TOOLS
+        if not _tools_are_initialized:
+            HUGGINGFACE_DEFAULT_TOOLS = setup_default_tools()
+            _tools_are_initialized = True
+        for tool in HUGGINGFACE_DEFAULT_TOOLS.values():
+            if tool.name != "python_interpreter" or add_python_interpreter:
+                self.add_tool(tool)
+        # self._load_tools_if_needed()
+
+    @property
+    def tools(self) -> Dict[str, Tool]:
+        """Get all tools currently in the toolbox"""
+        return self._tools
+
+    def show_tool_descriptions(self, tool_description_template: str = None) -> str:
+        """
+        Returns the description of all tools in the toolbox
+
+        Args:
+            tool_description_template (`str`, *optional*):
+                The template to use to describe the tools. If not provided, the default template will be used.
+        """
+        return "\n".join(
+            [get_tool_description_with_args(tool, tool_description_template) for tool in self._tools.values()]
+        )
+
+    def add_tool(self, tool: Tool):
+        """
+        Adds a tool to the toolbox
+
+        Args:
+            tool (`Tool`):
+                The tool to add to the toolbox.
+        """
+        if tool.name in self._tools:
+            raise KeyError(f"Error: tool '{tool.name}' already exists in the toolbox.")
+        self._tools[tool.name] = tool
+
+    def remove_tool(self, tool_name: str):
+        """
+        Removes a tool from the toolbox
+
+        Args:
+            tool_name (`str`):
+                The tool to remove from the toolbox.
+        """
+        if tool_name not in self._tools:
+            raise KeyError(
+                f"Error: tool {tool_name} not found in toolbox for removal, should be instead one of {list(self._tools.keys())}."
+            )
+        del self._tools[tool_name]
+
+    def update_tool(self, tool: Tool):
+        """
+        Updates a tool in the toolbox according to its name.
+
+        Args:
+            tool (`Tool`):
+                The tool to update to the toolbox.
+        """
+        if tool.name not in self._tools:
+            raise KeyError(
+                f"Error: tool {tool.name} not found in toolbox for update, should be instead one of {list(self._tools.keys())}."
+            )
+        self._tools[tool.name] = tool
+
+    def clear_toolbox(self):
+        """Clears the toolbox"""
+        self._tools = {}
+
+    # def _load_tools_if_needed(self):
+    #     for name, tool in self._tools.items():
+    #         if not isinstance(tool, Tool):
+    #             task_or_repo_id = tool.task if tool.repo_id is None else tool.repo_id
+    #             self._tools[name] = load_tool(task_or_repo_id)
+
+    def __repr__(self):
+        toolbox_description = "Toolbox contents:\n"
+        for tool in self._tools.values():
+            toolbox_description += f"\t{tool.name}: {tool.description}\n"
+        return toolbox_description

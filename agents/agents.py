@@ -15,16 +15,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import json
-import logging
 import re
 import time
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
-import rich
-from rich import markdown as rich_markdown
+from dataclasses import dataclass
 
 from transformers.utils import is_torch_available
 import logging
-from .utils import console
+from .utils import console, parse_code_blob, parse_json_tool_call
 from .agent_types import AgentAudio, AgentImage
 from .default_tools import BASE_PYTHON_TOOLS, FinalAnswerTool, setup_default_tools
 from .llm_engine import HfApiEngine, MessageRole
@@ -47,199 +45,14 @@ from .tools import (
     Tool,
     get_tool_description_with_args,
     load_tool,
+    Toolbox,
 )
 
-
-def parse_json_blob(json_blob: str) -> Dict[str, str]:
-    try:
-        first_accolade_index = json_blob.find("{")
-        last_accolade_index = [a.start() for a in list(re.finditer("}", json_blob))][-1]
-        json_blob = json_blob[first_accolade_index : last_accolade_index + 1].replace('\\"', "'")
-        json_data = json.loads(json_blob, strict=False)
-        return json_data
-    except json.JSONDecodeError as e:
-        place = e.pos
-        if json_blob[place - 1 : place + 2] == "},\n":
-            raise ValueError(
-                "JSON is invalid: you probably tried to provide multiple tool calls in one action. PROVIDE ONLY ONE TOOL CALL."
-            )
-        raise ValueError(
-            f"The JSON blob you used is invalid due to the following error: {e}.\n"
-            f"JSON blob was: {json_blob}, decoding failed on that specific part of the blob:\n"
-            f"'{json_blob[place-4:place+5]}'."
-        )
-    except Exception as e:
-        raise ValueError(f"Error in parsing the JSON blob: {e}")
-
-
-def parse_code_blob(code_blob: str) -> str:
-    try:
-        pattern = r"```(?:py|python)?\n(.*?)\n```"
-        match = re.search(pattern, code_blob, re.DOTALL)
-        return match.group(1).strip()
-    except Exception as e:
-        raise ValueError(
-            f"""
-The code blob you used is invalid: due to the following error: {e}
-This means that the regex pattern {pattern} was not respected: make sure to include code with the correct pattern, for instance:
-Thoughts: Your thoughts
-Code:
-```py
-# Your python code here
-```<end_action>"""
-        )
-
-
-def parse_json_tool_call(json_blob: str) -> Tuple[str, Dict[str, str]]:
-    json_blob = json_blob.replace("```json", "").replace("```", "")
-    tool_call = parse_json_blob(json_blob)
-    if "action" in tool_call and "action_input" in tool_call:
-        return tool_call["action"], tool_call["action_input"]
-    elif "action" in tool_call:
-        return tool_call["action"], None
-    else:
-        missing_keys = [key for key in ['action', 'action_input'] if key not in tool_call]
-        error_msg = f"Missing keys: {missing_keys} in blob {tool_call}"
-        console.print(f"[bold red]{error_msg}[/bold red]")
-        raise ValueError(error_msg)
-
-
-def parse_text_tool_call(text: str) -> Tuple[str, Union[str, Dict[str, str]]]:
-    """
-    Expects a text in the format: 'Action:', 'Action input:', 'Observation:'. 'Action input:' contains a json string with input arguments.
-    """
-    try:
-        if "Observation:" in text:
-            text = text.split("Observation:")[0]
-        if "Action:" in text:
-            text = text.split("Action:")[1]
-        tool_name, tool_input = text.split("Action input:")
-        if "{" in tool_input:
-            tool_input = parse_json_blob(tool_input)
-        else:
-            tool_input = tool_input.strip().replace('"', "")
-        return tool_name.strip().replace('"', "").replace("\\", ""), tool_input
-    except Exception as e:
-        raise ValueError(
-            f"Error in parsing the text tool call: {e}. Be sure to provide the correct format. DO NOT repeat your previous incorrect tool call."
-        )
-
-
-def to_text(input: Union[List[Dict[str, str]], Dict[str, str], str]) -> str:
-    if isinstance(input, list):
-        return "\n".join([m["content"] for m in input])
-    elif isinstance(input, dict):
-        return input["content"]
-    else:
-        return input
+LENGTH_TRUNCATE_REPORTS = 10000
 
 
 HUGGINGFACE_DEFAULT_TOOLS = {}
 _tools_are_initialized = False
-
-
-class Toolbox:
-    """
-    The toolbox contains all tools that the agent can perform operations with, as well as a few methods to
-    manage them.
-
-    Args:
-        tools (`List[Tool]`):
-            The list of tools to instantiate the toolbox with
-        add_base_tools (`bool`, defaults to `False`, *optional*, defaults to `False`):
-            Whether to add the tools available within `transformers` to the toolbox.
-    """
-
-    def __init__(self, tools: List[Tool], add_base_tools: bool = False):
-        self._tools = {tool.name: tool for tool in tools}
-        if add_base_tools:
-            self.add_base_tools()
-        # self._load_tools_if_needed()
-
-    def add_base_tools(self, add_python_interpreter: bool = False):
-        global _tools_are_initialized
-        global HUGGINGFACE_DEFAULT_TOOLS
-        if not _tools_are_initialized:
-            HUGGINGFACE_DEFAULT_TOOLS = setup_default_tools()
-            _tools_are_initialized = True
-        for tool in HUGGINGFACE_DEFAULT_TOOLS.values():
-            if tool.name != "python_interpreter" or add_python_interpreter:
-                self.add_tool(tool)
-        # self._load_tools_if_needed()
-
-    @property
-    def tools(self) -> Dict[str, Tool]:
-        """Get all tools currently in the toolbox"""
-        return self._tools
-
-    def show_tool_descriptions(self, tool_description_template: str = None) -> str:
-        """
-        Returns the description of all tools in the toolbox
-
-        Args:
-            tool_description_template (`str`, *optional*):
-                The template to use to describe the tools. If not provided, the default template will be used.
-        """
-        return "\n".join(
-            [get_tool_description_with_args(tool, tool_description_template) for tool in self._tools.values()]
-        )
-
-    def add_tool(self, tool: Tool):
-        """
-        Adds a tool to the toolbox
-
-        Args:
-            tool (`Tool`):
-                The tool to add to the toolbox.
-        """
-        if tool.name in self._tools:
-            raise KeyError(f"Error: tool '{tool.name}' already exists in the toolbox.")
-        self._tools[tool.name] = tool
-
-    def remove_tool(self, tool_name: str):
-        """
-        Removes a tool from the toolbox
-
-        Args:
-            tool_name (`str`):
-                The tool to remove from the toolbox.
-        """
-        if tool_name not in self._tools:
-            raise KeyError(
-                f"Error: tool {tool_name} not found in toolbox for removal, should be instead one of {list(self._tools.keys())}."
-            )
-        del self._tools[tool_name]
-
-    def update_tool(self, tool: Tool):
-        """
-        Updates a tool in the toolbox according to its name.
-
-        Args:
-            tool (`Tool`):
-                The tool to update to the toolbox.
-        """
-        if tool.name not in self._tools:
-            raise KeyError(
-                f"Error: tool {tool.name} not found in toolbox for update, should be instead one of {list(self._tools.keys())}."
-            )
-        self._tools[tool.name] = tool
-
-    def clear_toolbox(self):
-        """Clears the toolbox"""
-        self._tools = {}
-
-    # def _load_tools_if_needed(self):
-    #     for name, tool in self._tools.items():
-    #         if not isinstance(tool, Tool):
-    #             task_or_repo_id = tool.task if tool.repo_id is None else tool.repo_id
-    #             self._tools[name] = load_tool(task_or_repo_id)
-
-    def __repr__(self):
-        toolbox_description = "Toolbox contents:\n"
-        for tool in self._tools.values():
-            toolbox_description += f"\t{tool.name}: {tool.description}\n"
-        return toolbox_description
-
 
 class AgentError(Exception):
     """Base class for other agent-related exceptions"""
@@ -274,6 +87,25 @@ class AgentGenerationError(AgentError):
 
     pass
 
+@dataclass
+class ActionStep:
+    tool_call: str | None = None
+    start_time: float | None = None
+    end_time: float | None = None
+    iteration: int | None = None
+    final_answer: Any = None
+    error: AgentError | None = None
+    step_duration: float | None = None
+
+@dataclass
+class PlanningStep:
+    plan: str
+    facts: str
+
+@dataclass
+class TaskStep:
+    system_prompt: str
+    task: str
 
 def format_prompt_with_tools(toolbox: Toolbox, prompt_template: str, tool_description_template: str) -> str:
     tool_descriptions = toolbox.show_tool_descriptions(tool_description_template)
@@ -392,7 +224,7 @@ class Agent:
             self.system_prompt = format_prompt_with_imports(
                 self.system_prompt, list(set(LIST_SAFE_MODULES) | set(self.authorized_imports))
             )
-        self.logs = [{"system_prompt": self.system_prompt, "task": self.task}]
+        self.logs = [TaskStep(system_prompt=self.system_prompt, task=self.task)]
         console.rule("New task", characters='=')
         console.print(self.task)
 
@@ -401,55 +233,58 @@ class Agent:
         Reads past llm_outputs, actions, and observations or errors from the logs into a series of messages
         that can be used as input to the LLM.
         """
-        prompt_message = {"role": MessageRole.SYSTEM, "content": self.logs[0]["system_prompt"]}
+        prompt_message = {"role": MessageRole.SYSTEM, "content": self.logs[0].system_prompt}
         task_message = {
             "role": MessageRole.USER,
-            "content": "Task: " + self.logs[0]["task"],
+            "content": "Task: " + self.logs[0].task,
         }
         if summary_mode:
             memory = [task_message]
         else:
             memory = [prompt_message, task_message]
         for i, step_log in enumerate(self.logs[1:]):
-            if "llm_output" in step_log and not summary_mode:
-                thought_message = {"role": MessageRole.ASSISTANT, "content": step_log["llm_output"].strip()}
-                memory.append(thought_message)
-            if "facts" in step_log:
+
+            if isinstance(step_log, PlanningStep):
                 thought_message = {
                     "role": MessageRole.ASSISTANT,
-                    "content": "[FACTS LIST]:\n" + step_log["facts"].strip(),
+                    "content": "[FACTS LIST]:\n" + step_log.facts.strip(),
                 }
                 memory.append(thought_message)
 
-            if "plan" in step_log and not summary_mode:
-                thought_message = {"role": MessageRole.ASSISTANT, "content": "[PLAN]:\n" + step_log["plan"].strip()}
-                memory.append(thought_message)
+                if not summary_mode:
+                    thought_message = {"role": MessageRole.ASSISTANT, "content": "[PLAN]:\n" + step_log.plan.strip()}
+                    memory.append(thought_message)
 
-            if "tool_call" in step_log and summary_mode:
-                tool_call_message = {
-                    "role": MessageRole.ASSISTANT,
-                    "content": f"[STEP {i} TOOL CALL]: " + str(step_log["tool_call"]).strip(),
-                }
-                memory.append(tool_call_message)
-
-            if "task" in step_log:
-                tool_call_message = {
+            elif isinstance(step_log, TaskStep):
+                task_message = {
                     "role": MessageRole.USER,
-                    "content": "New task:\n" + step_log["task"],
+                    "content": "New task:\n" + step_log.task,
                 }
-                memory.append(tool_call_message)
+                memory.append(task_message)
 
-            if "error" in step_log or "observation" in step_log:
-                if "error" in step_log:
-                    message_content = (
-                        f"[OUTPUT OF STEP {i}] -> Error:\n"
-                        + str(step_log["error"])
-                        + "\nNow let's retry: take care not to repeat previous errors! If you have retried several times, try a completely different approach.\n"
-                    )
-                elif "observation" in step_log:
-                    message_content = f"[OUTPUT OF STEP {i}] -> Observation:\n{step_log['observation']}"
-                tool_response_message = {"role": MessageRole.TOOL_RESPONSE, "content": message_content}
-                memory.append(tool_response_message)
+            elif isinstance(step_log, ActionStep):
+                if step_log.llm_output is not None and not summary_mode:
+                    thought_message = {"role": MessageRole.ASSISTANT, "content": step_log.llm_output.strip()}
+                    memory.append(thought_message)
+
+                if step_log.tool_call is not None and summary_mode:
+                    tool_call_message = {
+                        "role": MessageRole.ASSISTANT,
+                        "content": f"[STEP {i} TOOL CALL]: " + str(step_log.tool_call).strip(),
+                    }
+                    memory.append(tool_call_message)
+
+                if step_log.error is not None or step_log.observation is not None:
+                    if step_log.error is not None:
+                        message_content = (
+                            f"[OUTPUT OF STEP {i}] -> Error:\n"
+                            + str(step_log.error)
+                            + "\nNow let's retry: take care not to repeat previous errors! If you have retried several times, try a completely different approach.\n"
+                        )
+                    elif step_log.observation is not None:
+                        message_content = f"[OUTPUT OF STEP {i}] -> Observation:\n{step_log.observation}"
+                    tool_response_message = {"role": MessageRole.TOOL_RESPONSE, "content": message_content}
+                    memory.append(tool_response_message)
 
         return memory
 
@@ -742,7 +577,7 @@ class ReactAgent(Agent):
         if reset:
             self.initialize_for_run()
         else:
-            self.logs.append({"task": task})
+            self.logs.append(TaskStep(task=task))
         if stream:
             return self.stream_run(task)
         else:
@@ -756,31 +591,31 @@ class ReactAgent(Agent):
         iteration = 0
         while final_answer is None and iteration < self.max_iterations:
             step_start_time = time.time()
-            step_log_entry = {"iteration": iteration, "start_time": step_start_time}
+            step_log = ActionStep(iteration=iteration, start_time=step_start_time)
             try:
-                self.step(step_log_entry)
-                if "final_answer" in step_log_entry:
-                    final_answer = step_log_entry["final_answer"]
+                self.step(step_log)
+                if step_log.final_answer is not None:
+                    final_answer = step_log.final_answer
             except AgentError as e:
-                step_log_entry["error"] = e
+                step_log.error = e
             finally:
-                step_end_time = time.time()
-                step_log_entry["step_end_time"] = step_end_time
-                step_log_entry["step_duration"] = step_end_time - step_start_time
-                self.logs.append(step_log_entry)
+                step_log.step_end_time = time.time()
+                step_log.step_duration = step_log.step_end_time - step_start_time
+                self.logs.append(step_log)
                 for callback in self.step_callbacks:
-                    callback(step_log_entry)
+                    callback(step_log)
                 iteration += 1
-                yield step_log_entry
+                yield step_log
 
         if final_answer is None and iteration == self.max_iterations:
             error_message = "Reached max iterations."
-            final_step_log = {"error": AgentMaxIterationsError(error_message)}
-            self.logs.append(final_step_log)
             console.print(f"[bold red]{error_message}")
+            final_step_log = ActionStep(error=AgentMaxIterationsError(error_message))
+            self.logs.append(final_step_log)
             final_answer = self.provide_final_answer(task)
-            final_step_log["final_answer"] = final_answer
-            final_step_log["step_duration"] = 0
+            final_step_log.final_answer = final_answer
+            final_step_log.step_end_time = time.time()
+            final_step_log.step_duration = step_log.step_end_time - step_start_time
             for callback in self.step_callbacks:
                 callback(final_step_log)
             yield final_step_log
@@ -795,32 +630,32 @@ class ReactAgent(Agent):
         iteration = 0
         while final_answer is None and iteration < self.max_iterations:
             step_start_time = time.time()
-            step_log_entry = {"iteration": iteration, "start_time": step_start_time}
+            step_log = ActionStep(iteration=iteration, start_time=step_start_time)
             try:
                 if self.planning_interval is not None and iteration % self.planning_interval == 0:
                     self.planning_step(task, is_first_step=(iteration == 0), iteration=iteration)
-                self.step(step_log_entry)
-                if "final_answer" in step_log_entry:
-                    final_answer = step_log_entry["final_answer"]
+                self.step(step_log)
+                if step_log.final_answer is not None:
+                    final_answer = step_log.final_answer
             except AgentError as e:
-                step_log_entry["error"] = e
+                step_log.error = e
             finally:
                 step_end_time = time.time()
-                step_log_entry["step_end_time"] = step_end_time
-                step_log_entry["step_duration"] = step_end_time - step_start_time
-                self.logs.append(step_log_entry)
+                step_log.step_end_time = step_end_time
+                step_log.step_duration = step_end_time - step_start_time
+                self.logs.append(step_log)
                 for callback in self.step_callbacks:
-                    callback(step_log_entry)
+                    callback(step_log)
                 iteration += 1
 
         if final_answer is None and iteration == self.max_iterations:
             error_message = "Reached max iterations."
-            final_step_log = {"error": AgentMaxIterationsError(error_message)}
+            final_step_log = ActionStep(error=AgentMaxIterationsError(error_message))
             self.logs.append(final_step_log)
             console.print(f"[bold red]{error_message}")
             final_answer = self.provide_final_answer(task)
-            final_step_log["final_answer"] = final_answer
-            final_step_log["step_duration"] = 0
+            final_step_log.final_answer = final_answer
+            final_step_log.step_duration = 0
             for callback in self.step_callbacks:
                 callback(final_step_log)
 
@@ -875,7 +710,7 @@ Now begin!""",
 ```
 {answer_facts}
 ```""".strip()
-            self.logs.append({"plan": final_plan_redaction, "facts": final_facts_redaction})
+            self.logs.append(PlanningStep(plan=final_plan_redaction, facts=final_facts_redaction))
             console.rule("[orange]Initial plan")
             console.print(final_plan_redaction)
         else:  # update plan
@@ -921,8 +756,8 @@ Now begin!""",
 ```
 {facts_update}
 ```"""
-            self.logs.append({"plan": final_plan_redaction, "facts": final_facts_redaction})
-            console.rule("Updated plan")
+            self.logs.append(PlanningStep(plan=final_plan_redaction, facts=final_facts_redaction))
+            console.rule("[orange]Updated plan")
             console.print(final_plan_redaction)
 
 
@@ -959,7 +794,7 @@ class ReactJsonAgent(ReactAgent):
             **kwargs,
         )
 
-    def step(self, log_entry: Dict[str, Any]):
+    def step(self, log_entry: ActionStep):
         """
         Perform one step in the ReAct framework: the agent thinks, acts, and observes the result.
         The errors are raised here, they are caught and logged in the run() method.
@@ -970,7 +805,7 @@ class ReactJsonAgent(ReactAgent):
         console.rule("New step")
 
         # Add new step in logs
-        log_entry["agent_memory"] = agent_memory.copy()
+        log_entry.agent_memory = agent_memory.copy()
 
         if self.verbose:
             console.rule("Calling LLM with this last message:")
@@ -985,7 +820,7 @@ class ReactJsonAgent(ReactAgent):
             raise AgentGenerationError(f"Error in generating llm output: {e}.")
         console.rule("===== Output message of the LLM: =====")
         console.print(llm_output)
-        log_entry["llm_output"] = llm_output
+        log_entry.llm_output = llm_output
 
         # Parse
         console.rule("===== Extracting action =====")
@@ -996,8 +831,8 @@ class ReactJsonAgent(ReactAgent):
         except Exception as e:
             raise AgentParsingError(f"Could not parse the given action: {e}.")
 
-        log_entry["rationale"] = rationale
-        log_entry["tool_call"] = {"tool_name": tool_name, "tool_arguments": arguments}
+        log_entry.rationale = rationale
+        log_entry.tool_call = {"tool_name": tool_name, "tool_arguments": arguments}
 
         # Execute
         console.print("=== Agent thoughts:")
@@ -1015,7 +850,7 @@ class ReactJsonAgent(ReactAgent):
                     answer = arguments
             else:
                 answer = arguments
-            log_entry["final_answer"] = answer
+            log_entry.final_answer = answer
             return answer
         else:
             if arguments is None:
@@ -1033,7 +868,7 @@ class ReactJsonAgent(ReactAgent):
                 updated_information = f"Stored '{observation_name}' in memory."
             else:
                 updated_information = str(observation).strip()
-            log_entry["observation"] = updated_information
+            log_entry.observation = updated_information
             return log_entry
 
 
@@ -1088,7 +923,7 @@ class ReactCodeAgent(ReactAgent):
         console.rule("New step")
 
         # Add new step in logs
-        log_entry["agent_memory"] = agent_memory.copy()
+        log_entry.agent_memory = agent_memory.copy()
 
         if self.verbose:
             console.print("===== Calling LLM with these last messages: =====")
@@ -1105,7 +940,7 @@ class ReactCodeAgent(ReactAgent):
         if self.verbose:
             console.rule("Output message of the LLM:")
             console.print(llm_output)
-        log_entry["llm_output"] = llm_output
+        log_entry.llm_output = llm_output
 
         # Parse
         try:
@@ -1120,8 +955,8 @@ class ReactCodeAgent(ReactAgent):
             error_msg = f"Error in code parsing: {e}. Make sure to provide correct code"
             raise AgentParsingError(error_msg)
 
-        log_entry["rationale"] = rationale
-        log_entry["tool_call"] = {"tool_name": "code interpreter", "tool_arguments": code_action}
+        log_entry.rationale = rationale
+        log_entry.tool_call = {"tool_name": "code interpreter", "tool_arguments": code_action}
 
         # Execute
         self.log_rationale_code_action(rationale, code_action)
@@ -1145,8 +980,8 @@ class ReactCodeAgent(ReactAgent):
             if result is not None:
                 console.print("Last output from code snippet:")
                 console.print(str(result))
-                observation += "Last output from code snippet:\n" + str(result)[:100000]
-            log_entry["observation"] = observation
+                observation += "Last output from code snippet:\n" + str(result)[:LENGTH_TRUNCATE_REPORTS]
+            log_entry.observation = observation
         except Exception as e:
             error_msg = f"Code execution failed due to the following error:\n{str(e)}"
             if "'dict' object has no attribute 'read'" in str(e):
@@ -1156,12 +991,8 @@ class ReactCodeAgent(ReactAgent):
             if line[: len("final_answer")] == "final_answer":
                 console.print("Final answer:")
                 console.print(f"[bold]{result}")
-                log_entry["final_answer"] = result
+                log_entry.final_answer = result
         return result
-
-
-LENGTH_TRUNCATE_REPORTS = 1000
-
 
 class ManagedAgent:
     def __init__(self, agent, name, description, additional_prompting=None, provide_run_summary=False):

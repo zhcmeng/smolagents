@@ -20,7 +20,7 @@ agent = CodeAgent(
 
 # Run it!
 result = agent.run(
-    "When was Llama 3 first released?", oneshot=True
+    "When was Llama 3 first released?"
 )
 
 print(result)

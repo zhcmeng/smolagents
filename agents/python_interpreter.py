@@ -24,6 +24,7 @@ from typing import Any, Callable, Dict, List, Optional
 import numpy as np
 import pandas as pd
 
+from .utils import truncate_content
 
 class InterpreterError(ValueError):
     """
@@ -895,9 +896,9 @@ def evaluate_python_code(
     try:
         for node in expression.body:
             result = evaluate_ast(node, state, static_tools, custom_tools, authorized_imports)
-        state["print_outputs"] = truncate_print_outputs(PRINT_OUTPUTS, max_len_outputs=MAX_LEN_OUTPUT)
+        state["print_outputs"] = truncate_content(PRINT_OUTPUTS, max_length=MAX_LEN_OUTPUT)
         return result
     except InterpreterError as e:
-        msg = truncate_print_outputs(PRINT_OUTPUTS, max_len_outputs=MAX_LEN_OUTPUT)
+        msg = truncate_content(PRINT_OUTPUTS, max_length=MAX_LEN_OUTPUT)
         msg += f"EXECUTION FAILED:\nEvaluation stopped at line '{ast.get_source_segment(code, node)}' because of the following error:\n{e}"
         raise InterpreterError(msg)

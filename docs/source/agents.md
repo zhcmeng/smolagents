@@ -220,7 +220,7 @@ An agent, or rather the LLM that drives the agent, generates an output based on 
 ```text
 You will be given a task to solve as best you can.
 You have access to the following tools:
-<<tool_descriptions>>
+{{tool_descriptions}}
 
 To solve the task, you must plan forward to proceed in a series of steps, in a cycle of 'Thought:', 'Code:', and 'Observation:' sequences.
 
@@ -236,7 +236,7 @@ Here are a few examples using notional tools:
 {examples}
 
 Above example were using notional tools that might not exist for you. You only have acces to those tools:
-<<tool_names>>
+{{tool_names}}
 You also can perform computations in the python code you generate.
 
 Always provide a 'Thought:' and a 'Code:\n```py' sequence ending with '```<end_code>' sequence. You MUST provide at least the 'Code:' sequence to move forward.
@@ -251,7 +251,7 @@ Now Begin!
 
 The system prompt includes:
 - An *introduction* that explains how the agent should behave and what tools are.
-- A description of all the tools that is defined by a `<<tool_descriptions>>` token that is dynamically replaced at runtime with the tools defined/chosen by the user.
+- A description of all the tools that is defined by a `{{tool_descriptions}}` token that is dynamically replaced at runtime with the tools defined/chosen by the user.
     - The tool description comes from the tool attributes, `name`, `description`, `inputs` and `output_type`,  and a simple `jinja2` template that you can refine.
 - The expected output format.
 
@@ -267,7 +267,7 @@ agent = ReactJsonAgent(tools=[PythonInterpreterTool()], system_prompt="{your_cus
 ```
 
 > [!WARNING]
-> Please make sure to define the `<<tool_descriptions>>` string somewhere in the `template` so the agent is aware 
+> Please make sure to define the `{{tool_descriptions}}` string somewhere in the `template` so the agent is aware 
 of the available tools.
 
 

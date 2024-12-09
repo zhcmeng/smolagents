@@ -1,5 +1,5 @@
 from agents.llm_engine import TransformersEngine
-from agents import CodeAgent, ReactJsonAgent
+from agents import CodeAgent, JsonAgent
 
 import requests
 from datetime import datetime
@@ -42,7 +42,7 @@ If none of the functions can be used, point it out and refuse to answer.
 If the given question lacks the parameters required by the function, also point it out.
 
 You have access to the following tools:
-<<tool_descriptions>>
+{{tool_descriptions}}
 
 <<managed_agents_descriptions>>
 
@@ -145,6 +145,6 @@ def process(self, text: str) -> Generator[str, None, None]:
         yield response
         return
 
-agent = ReactJsonAgent(llm_engine = llm_engine, tools=[get_current_time, open_webbrowser, get_random_number_between, get_weather])
+agent = JsonAgent(llm_engine = llm_engine, tools=[get_current_time, open_webbrowser, get_random_number_between, get_weather])
 print("Agent initialized!")
 agent.run("What's the weather like in London?")

@@ -28,6 +28,14 @@ def is_pygments_available():
 from rich.console import Console
 console = Console()
 
+LENGTH_TRUNCATE_REPORTS = 10000
+
+def truncate_content(content: str, max_length: int = LENGTH_TRUNCATE_REPORTS):
+    if len(content) < max_length:
+        return content
+    else:
+        return content[:max_length//2] + "\n..._(Content was truncated because too long)_...\n---" + content[-max_length//2:]
+
 
 def parse_json_blob(json_blob: str) -> Dict[str, str]:
     try:

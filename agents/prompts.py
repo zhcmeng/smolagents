@@ -48,7 +48,7 @@ def download_prompt(prompt_or_repo_id, agent_name, mode="run"):
         return f.read()
 
 
-DEFAULT_CODE_SYSTEM_PROMPT = """You will be given a task to solve, your job is to come up with a series of simple commands in Python that will perform the task.
+ONESHOT_CODE_SYSTEM_PROMPT = """You will be given a task to solve, your job is to come up with a series of simple commands in Python that will perform the task.
 To help you, I will give you access to a set of tools that you can use. Each tool is a Python function and has a description explaining the task it performs, the inputs it expects and the outputs it returns.
 You should first explain which tool you will use to perform the task and for what reason, then write the code in Python.
 Each instruction in Python should be a simple assignment. You can print intermediate results if it makes sense to do so.
@@ -57,7 +57,7 @@ You can use imports in your code, but only from the following list of modules: <
 Be sure to provide a 'Code:' token, else the run will fail.
 
 Tools:
-<<tool_descriptions>>
+{{tool_descriptions}}
 
 Examples:
 ---
@@ -129,10 +129,10 @@ final_answer(caption)
 ```<end_action>
 
 ---
-Above example were using tools that might not exist for you. You only have acces to those Tools:
-<<tool_names>>
+Above example were using tools that might not exist for you. You only have access to these tools:
+{{tool_names}}
 
-Remember to make sure that variables you use are all defined.
+Remember to make sure that variables you use are all defined. In particular don't import packages!
 Be sure to provide a 'Code:\n```' sequence before the code and '```<end_action>' after, else you will get an error.
 DO NOT pass the arguments as a dict as in 'answer = ask_search_agent({'query': "What is the place where James Bond lives?"})', but use the arguments directly as in 'answer = ask_search_agent(query="What is the place where James Bond lives?")'.
 
@@ -140,8 +140,8 @@ Now Begin! If you solve the task correctly, you will receive a reward of $1,000,
 """
 
 
-DEFAULT_REACT_JSON_SYSTEM_PROMPT = """You are an expert assistant who can solve any task using JSON tool calls. You will be given a task to solve as best you can.
-To do so, you have been given access to the following tools: <<tool_names>>
+JSON_SYSTEM_PROMPT = """You are an expert assistant who can solve any task using JSON tool calls. You will be given a task to solve as best you can.
+To do so, you have been given access to the following tools: {{tool_names}}
 The way you use the tools is by specifying a json blob, ending with '<end_action>'.
 Specifically, this json should have an `action` key (name of the tool to use) and an `action_input` key (input to the tool).
 
@@ -256,8 +256,8 @@ Action:
 }<end_action>
 
 
-Above example were using notional tools that might not exist for you. You only have acces to those tools:
-<<tool_descriptions>>
+Above example were using notional tools that might not exist for you. You only have access to these tools:
+{{tool_descriptions}}
 
 Here are the rules you should always follow to solve your task:
 1. ALWAYS provide a 'Thought:' sequence, and an 'Action:' sequence that ends with <end_action>, else you will fail.
@@ -269,7 +269,7 @@ Now Begin! If you solve the task correctly, you will receive a reward of $1,000,
 """
 
 
-DEFAULT_REACT_CODE_SYSTEM_PROMPT = """You are an expert assistant who can solve any task using code blobs. You will be given a task to solve as best you can.
+CODE_SYSTEM_PROMPT = """You are an expert assistant who can solve any task using code blobs. You will be given a task to solve as best you can.
 To do so, you have been given access to a list of tools: these tools are basically Python functions which you can call with code.
 To solve the task, you must plan forward to proceed in a series of steps, in a cycle of 'Thought:', 'Code:', and 'Observation:' sequences.
 
@@ -348,9 +348,9 @@ pope_current_age = 85 ** 0.36
 final_answer(pope_current_age)
 ```<end_action>
 
-Above example were using notional tools that might not exist for you. On top of performing computations in the Python code snippets that you create, you have acces to those tools (and no other tool):
+Above example were using notional tools that might not exist for you. On top of performing computations in the Python code snippets that you create, you only have access to these tools:
 
-<<tool_descriptions>>
+{{tool_descriptions}}
 
 <<managed_agents_descriptions>>
 
@@ -473,299 +473,6 @@ After writing the final step of the plan, write the '\n<end_plan>' tag and stop 
 
 Now write your new plan below."""
 
-SYSTEM_PROMPT_PLAN_STRUCTURED = """Output a step-by-step plan to solve the task using the given tools.
-This plan should involve individual tasks based on the avilable tools, that if executed correctly will yield the correct answer. Each step should be structured as follows:
-Step #n: {
-  "description": <description of what the step does and its output>
-  "tool": <tool to use>,
-  "params": {
-      <parameters to pass to the tool as a valid dict>
-  }
-  "output_var": <output variable name>
-}
-Each step must be necessary to reach the final answer. Steps should reuse outputs produced by earlier steps. The last step must be the final answer.
-
-Below are some examples:
-
-Example 1:
-------
-Inputs:
----
-Task:
-How many encoder blocks were in the first attention-only ML architecture published?
-
-[FACTS LIST]:
-### 1. Facts given in the task
-- The paper first introduced an attention-only ML architecture.
-- The specific information required is the page number where the number of encoder blocks is stated.
-- No local files are provided for access.
-
-### 2. Facts to look up
-- The title and authors of the paper that first introduced an attention-only ML architecture.
-  - Source: Online search (e.g., Google Scholar, arXiv, or other academic databases)
-- The full text of the identified paper.
-  - Source: Online academic repositories (e.g., arXiv, journal websites)
-- The specific page number in the paper where the number of encoder blocks is mentioned.
-  - Source: The content of the identified paper
-
-### 3. Facts to derive
-- By identifying the correct paper and locating the specific page, we will derive the page number where the number of encoder blocks is stated.
-  - Logical steps: Identify the correct paper, access its content, search for the term "encoder blocks," and note the page number where this information is found.
-```
-
-[STEP 1 TOOL CALL]: {'tool_name': 'code interpreter', 'tool_arguments': '# Step 1: Identify the title and authors of the paper that first introduced an attention-only ML architecture.\nanswer = ask_search_agent(query="Can you find the title and authors of the paper that first introduced an attention-only machine learning architecture? Please provide the full citation.")\nprint(answer)'}
-[OUTPUT OF STEP 1] Observation: **Title**: Attention Is All You Need
-**Authors**: Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan N. Gomez, Lukasz Kaiser, Illia Polosukhin
-[STEP 2 TOOL CALL]: {'tool_name': 'code interpreter', 'tool_arguments': '# Step 1: Find the full text of the identified paper on arXiv\\npaper_url = "https://arxiv.org/pdf/1706.03762.pdf"\\nprint(paper_url)'}
-[OUTPUT OF STEP 2] Observation: https://arxiv.org/pdf/1706.03762.pdf
----
-
-Output plan:
----
-Step #1: {
-  "description": "Open the PDF of the paper from the provided URL and search within the text of the paper for the  mention of "encoder blocks"",
-  "tool": "inspect_file_as_text",
-  "params": {
-    "file_path": "https://arxiv.org/pdf/1706.03762.pdf",
-    "question": "On which page is the number of encoder blocks mentioned?"
-  },
-  "output_var": "page_number"
-}
-
-Step #2: {
-  "description": "Provide the final answer",
-  "tool": "final_answer",
-  "params": {
-      "answer": "{page_number}"
-  },
-  "output_var": ""
-}
-------
-
-Example 2:
-------
-Inputs:
----
-Task:
-How many golf balls fits into a Boeing-747?
-
-[FACTS LIST]:
-### 1. Facts given in the task
-- The task requires calculating the number of golf balls that fir into a Boeing-747
-### 2. Facts to look up
-- The volume of a golf ball
-- The volume of a Boeing-747
-### 3. Facts to derive
-- Once the volumes are known the final answer can be calculated
----
-Output plan:
----
-Step #1: {
-  "description": "Find the volume of a Boeing-747",
-  "tool": "web_search",
-  "params": {
-      "query": "What is the internal volume of a Boeing-747 in cubic meters?"
-  },
-  "output_var": "boeing_volume"
-}
-
-Step #2: {
-  "description": "Find the volume of a standard golf ball",
-  "tool": "ask_search_agent",
-  "params": {
-      "query": "What is the volume of a standard golf ball in cubic centimeters?"
-  },
-  "output_var": "golf_ball_volume"
-}
-
-Step #3: {
-  "description": "Convert the volume of a golf ball from cubic centimeters to cubic meters. Calculate the number of golf balls that fit into the Boeing-747 by dividing the internal volume of the Boeing-747 by the volume of a golf ball.",
-  "tool": "python_code",
-  "params": {
-      "code": "golf_ball_volume_m3 = golf_ball_volume / 1e6\nnumber_of_golf_balls = boeing_volume / golf_ball_volume_m3"
-  },
-  "output_var": "number_of_golf_balls"
-}
-
-Step #4: {
-  "description": "Provide the final answer",
-  "tool": "final_answer",
-  "params": {
-      "answer": "{number_of_golf_balls}"
-  },
-  "output_var": ""
-}
-------
-Above example were using tools that might not exist for you.
-Your goal is to create a plan to solve the task."""
-
-USER_PROMPT_PLAN_STRUCTURED = """
-Here are your inputs:
-
-Task:
-```
-{task}
-```
-
-Your plan can leverage any of these tools:
-{tool_descriptions}
-These tools are Python functions which you can call with code. You also have access to a Python interpreter so you can run Python code.
-
-List of facts that you know:
-```
-{answer_facts}
-```
-
-Now for the given task, create a plan taking into account the list of facts.
-After writing the final step of the plan, write the '\n<end_plan>' tag and stop there. Output the plan only and nothing else."""
-
-SYSTEM_PROMPT_PLAN_UPDATE_STRUCTURED = """Output a step-by-step plan to solve the task using the given tools.
-This plan should involve individual tasks based on the avilable tools, that if executed correctly will yield the correct answer. Each step should be structured as follows:
-Step #n: {{
-  "description": <description of what the step does and its output>
-  "tool": <tool to use>,
-  "params": {{
-      <parameters to pass to the tool as a valid dict>
-  }}
-  "output_var": <output variable name>
-}}
-Each step must be necessary to reach the final answer. Steps should reuse outputs produced by earlier steps. The last step must be the final answer.
-
-Below are some examples:
-
-Example 1:
-------
-Inputs:
----
-Task:
-How many encoder blocks were in the first attention-only ML architecture published?
-
-[FACTS LIST]:
-### 1. Facts given in the task
-- The paper first introduced an attention-only ML architecture.
-- The specific information required is the page number where the number of encoder blocks is stated.
-- No local files are provided for access.
-
-### 2. Facts to look up
-- The title and authors of the paper that first introduced an attention-only ML architecture.
-  - Source: Online search (e.g., Google Scholar, arXiv, or other academic databases)
-- The full text of the identified paper.
-  - Source: Online academic repositories (e.g., arXiv, journal websites)
-- The specific page number in the paper where the number of encoder blocks is mentioned.
-  - Source: The content of the identified paper
-
-### 3. Facts to derive
-- By identifying the correct paper and locating the specific page, we will derive the page number where the number of encoder blocks is stated.
-  - Logical steps: Identify the correct paper, access its content, search for the term "encoder blocks," and note the page number where this information is found.
-```
-
-[STEP 1 TOOL CALL]: {{'tool_name': 'code interpreter', 'tool_arguments': '# Step 1: Identify the title and authors of the paper that first introduced an attention-only ML architecture.\nanswer = ask_search_agent(query="Can you find the title and authors of the paper that first introduced an attention-only machine learning architecture? Please provide the full citation.")\nprint(answer)'}}
-[OUTPUT OF STEP 1] Observation: **Title**: Attention Is All You Need
-**Authors**: Ashish Vaswani, Noam Shazeer, Niki Parmar, Jakob Uszkoreit, Llion Jones, Aidan N. Gomez, Lukasz Kaiser, Illia Polosukhin
-[STEP 2 TOOL CALL]: {{'tool_name': 'code interpreter', 'tool_arguments': '# Step 1: Find the full text of the identified paper on arXiv\\npaper_url = "https://arxiv.org/pdf/1706.03762.pdf"\\nprint(paper_url)'}}
-[OUTPUT OF STEP 2] Observation: https://arxiv.org/pdf/1706.03762.pdf
----
-
-Output plan:
----
-Step #1: {{
-  "description": "Open the PDF of the paper from the provided URL and search within the text of the paper for the  mention of "encoder blocks"",
-  "tool": "inspect_file_as_text",
-  "params": {{
-    "file_path": "https://arxiv.org/pdf/1706.03762.pdf",
-    "question": "On which page is the number of encoder blocks mentioned?"
-  }},
-  "output_var": "page_number"
-}}
-
-Step #2: {{
-  "description": "Provide the final answer",
-  "tool": "final_answer",
-  "params": {{
-      "answer": "{{page_number}}"
-  }},
-  "output_var": ""
-}}
-------
-
-Example 2:
-------
-Inputs:
----
-Task:
-How many golf balls fits into a Boeing-747?
-
-[FACTS LIST]:
-### 1. Facts given in the task
-- The task requires calculating the number of golf balls that fir into a Boeing-747
-### 2. Facts to look up
-- The volume of a golf ball
-- The volume of a Boeing-747
-### 3. Facts to derive
-- Once the volumes are known the final answer can be calculated
----
-Output plan:
----
-Step #1: {{
-  "description": "Find the volume of a Boeing-747",
-  "tool": "web_search",
-  "params": {{
-      "query": "What is the internal volume of a Boeing-747 in cubic meters?"
-  }},
-  "output_var": "boeing_volume"
-}}
-
-Step #2: {{
-  "description": "Find the volume of a standard golf ball",
-  "tool": "ask_search_agent",
-  "params": {{
-      "query": "What is the volume of a standard golf ball in cubic centimeters?"
-  }},
-  "output_var": "golf_ball_volume"
-}}
-
-Step #3: {{
-  "description": "Convert the volume of a golf ball from cubic centimeters to cubic meters. Calculate the number of golf balls that fit into the Boeing-747 by dividing the internal volume of the Boeing-747 by the volume of a golf ball.",
-  "tool": "python_code",
-  "params": {{
-      "code": "golf_ball_volume_m3 = golf_ball_volume / 1e6\nnumber_of_golf_balls = boeing_volume / golf_ball_volume_m3"
-  }},
-  "output_var": "number_of_golf_balls"
-}}
-
-Step #4: {{
-  "description": "Provide the final answer",
-  "tool": "final_answer",
-  "params": {{
-      "answer": "{{number_of_golf_balls}}"
-  }},
-  "output_var": ""
-}}
-------
-Above example were using tools that might not exist for you.
-Find below the record of what has been tried so far to solve it. Your goal is to create an updated plan to solve the task."""
-
-USER_PROMPT_PLAN_UPDATE_STRUCTURED = """
-Here are your inputs:
-
-Task:
-```
-{task}
-```
-
-Your plan can leverage any of these tools:
-{tool_descriptions}
-These tools are Python functions which you can call with code. You also have access to a Python interpreter so you can run Python code.
-
-List of facts that you know:
-```
-{facts_update}
-```
-
-Now for the given task, create a plan taking into account the above inputs and list of facts.
-Beware that you have {remaining_steps} steps remaining.
-After writing the final step of the plan, write the '\n<end_plan>' tag and stop there. Output the plan only and nothing else."""
-
 PLAN_UPDATE_FINAL_PLAN_REDACTION = """I still need to solve the task I was given:
 ```
 {task}
@@ -775,15 +482,3 @@ Here is my new/updated plan of action to solve the task:
 ```
 {plan_update}
 ```"""
-
-SUPPORTED_PLAN_TYPES = ["default", "structured"]
-
-PROMPTS_FOR_INITIAL_PLAN = {
-    "default": {"system": SYSTEM_PROMPT_PLAN, "user": USER_PROMPT_PLAN},
-    "structured": {"system": SYSTEM_PROMPT_PLAN_STRUCTURED, "user": USER_PROMPT_PLAN_STRUCTURED},
-}
-
-PROMPTS_FOR_PLAN_UPDATE = {
-    "default": {"system": SYSTEM_PROMPT_PLAN_UPDATE, "user": USER_PROMPT_PLAN_UPDATE},
-    "structured": {"system": SYSTEM_PROMPT_PLAN_UPDATE_STRUCTURED, "user": USER_PROMPT_PLAN_UPDATE_STRUCTURED},
-}

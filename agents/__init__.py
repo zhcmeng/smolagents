@@ -24,7 +24,7 @@ from transformers.utils import (
 
 
 _import_structure = {
-    "agents": ["Agent", "CodeAgent", "ManagedAgent", "ReactAgent", "ReactCodeAgent", "ReactJsonAgent", "Toolbox"],
+    "agents": ["Agent", "CodeAgent", "ManagedAgent", "ReactAgent", "CodeAgent", "JsonAgent", "Toolbox"],
     "llm_engine": ["HfApiEngine", "TransformersEngine"],
     "monitoring": ["stream_to_gradio"],
     "tools": ["PipelineTool", "Tool", "ToolCollection", "launch_gradio_demo", "load_tool", "tool"],
@@ -45,7 +45,7 @@ else:
     _import_structure["translation"] = ["TranslationTool"]
 
 if TYPE_CHECKING:
-    from .agents import Agent, CodeAgent, ManagedAgent, ReactAgent, ReactCodeAgent, ReactJsonAgent, Toolbox
+    from .agents import Agent, CodeAgent, ManagedAgent, ReactAgent, CodeAgent, JsonAgent, Toolbox
     from .llm_engine import HfApiEngine, TransformersEngine
     from .monitoring import stream_to_gradio
     from .tools import PipelineTool, Tool, ToolCollection, launch_gradio_demo, load_tool, tool
@@ -57,12 +57,12 @@ if TYPE_CHECKING:
         pass
     else:
         from .default_tools import FinalAnswerTool, PythonInterpreterTool
-        from .document_question_answering import DocumentQuestionAnsweringTool
-        from .image_question_answering import ImageQuestionAnsweringTool
-        from .search import DuckDuckGoSearchTool, VisitWebpageTool
-        from .speech_to_text import SpeechToTextTool
-        from .text_to_speech import TextToSpeechTool
-        from .translation import TranslationTool
+        from .tools.document_question_answering import DocumentQuestionAnsweringTool
+        from .tools.image_question_answering import ImageQuestionAnsweringTool
+        from .tools.search import DuckDuckGoSearchTool, VisitWebpageTool
+        from .tools.speech_to_text import SpeechToTextTool
+        from .tools.text_to_speech import TextToSpeechTool
+        from .tools.translation import TranslationTool
 else:
     import sys
 

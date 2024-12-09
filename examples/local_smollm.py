@@ -110,6 +110,40 @@ def open_webbrowser(url: str) -> str:
     webbrowser.open(url)
     return f"I opened {url.replace('https://', '').replace('www.', '')} in the browser."
 
+from typing import List, Dict, Generator, Any
+import re
+import json
+def _parse_response(self, text: str) -> List[Dict[str, Any]]:
+    pattern = r"<tool_call>(.*?)</tool_call>"
+    matches = re.findall(pattern, text, re.DOTALL)
+    if matches:
+        return json.loads(matches[0])
+    return text
+
+def _call_tools(self, tool_calls: List[Dict[str, Any]]) -> List[str]:
+    tool_responses = []
+    for tool_call in tool_calls:
+        if tool_call["name"] in self.toolbox:
+            tool_responses.append(
+                self.toolbox[tool_call["name"]](**tool_call["arguments"])
+            )
+        else:
+            tool_responses.append(f"Tool {tool_call['name']} not found.")
+    return tool_responses
+
+def process(self, text: str) -> Generator[str, None, None]:
+    response = self.json_code_agent.run(text, return_generated_code=True)
+    # Parse and execute the tool calls
+    try:
+        tool_calls = self._parse_response(response)
+        if tool_calls in [response, [], ""]:
+            yield response
+            return
+        tool_responses = self._call_tools(tool_calls)
+    except Exception as e:
+        print("error", e)
+        yield response
+        return
 
 agent = ReactJsonAgent(llm_engine = llm_engine, tools=[get_current_time, open_webbrowser, get_random_number_between, get_weather])
 print("Agent initialized!")

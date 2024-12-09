@@ -62,6 +62,7 @@ python = ">=3.10,<3.13"
 transformers = ">=4.0.0"
 pytest = {version = ">=8.1.0", optional = true}
 requests = "^2.32.3"
+rich = "^13.9.4"
 
 
 [build-system]

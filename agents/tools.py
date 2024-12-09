@@ -30,13 +30,13 @@ from huggingface_hub import create_repo, get_collection, hf_hub_download, metada
 from huggingface_hub.utils import RepositoryNotFoundError, build_hf_headers, get_session
 from packaging import version
 
-from ..dynamic_module_utils import (
+from transformers.dynamic_module_utils import (
     custom_object_save,
     get_class_from_dynamic_module,
     get_imports,
 )
-from ..models.auto import AutoProcessor
-from ..utils import (
+from transformers import AutoProcessor
+from transformers.utils import (
     CONFIG_NAME,
     TypeHintParsingException,
     cached_file,
@@ -44,12 +44,11 @@ from ..utils import (
     is_accelerate_available,
     is_torch_available,
     is_vision_available,
-    logging,
 )
 from .agent_types import ImageType, handle_agent_inputs, handle_agent_outputs
+import logging
 
-
-logger = logging.get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 
 if is_torch_available():

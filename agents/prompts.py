@@ -16,7 +16,7 @@
 # limitations under the License.
 import re
 
-from ..utils import cached_file
+from transformers.utils import cached_file
 
 
 # docstyle-ignore

@@ -23,7 +23,7 @@ from typing import Dict
 
 from huggingface_hub import hf_hub_download, list_spaces
 
-from ..utils import is_offline_mode
+from transformers.utils import is_offline_mode
 from .python_interpreter import LIST_SAFE_MODULES, evaluate_python_code
 from .tools import TOOL_CONFIG_FILE, TOOL_MAPPING, Tool
 
@@ -128,7 +128,7 @@ def get_remote_tools(logger, organization="huggingface-tools"):
     return tools
 
 
-def setup_default_tools(logger):
+def setup_default_tools():
     default_tools = {}
     main_module = importlib.import_module("transformers")
     tools_module = main_module.agents

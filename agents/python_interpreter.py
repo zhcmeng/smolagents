@@ -22,12 +22,7 @@ from importlib import import_module
 from typing import Any, Callable, Dict, List, Optional
 
 import numpy as np
-
-from ..utils import is_pandas_available
-
-
-if is_pandas_available():
-    import pandas as pd
+import pandas as pd
 
 
 class InterpreterError(ValueError):

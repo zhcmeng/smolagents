@@ -3,3 +3,4 @@ evaluate
 datasets==2.3.2
 schedulefree
 huggingface_hub>=0.20.0
+duckduckgo-search

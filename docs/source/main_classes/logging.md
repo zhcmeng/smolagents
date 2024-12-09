@@ -47,10 +47,10 @@ TRANSFORMERS_NO_ADVISORY_WARNINGS=1 ./myprogram.py
 Here is an example of how to use the same logger as the library in your own module or script:
 
 ```python
-from transformers.utils import logging
+import logging
 
 logging.set_verbosity_info()
-logger = logging.get_logger("transformers")
+logger = logging.getLogger(__name__)("transformers")
 logger.info("INFO")
 logger.warning("WARN")
 ```
@@ -104,7 +104,7 @@ See reference of the `captureWarnings` method below.
 
 [[autodoc]] logging.set_verbosity
 
-[[autodoc]] logging.get_logger
+[[autodoc]] logging.getLogger(__name__)
 
 [[autodoc]] logging.enable_default_handler
 

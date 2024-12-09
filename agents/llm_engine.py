@@ -20,12 +20,11 @@ from typing import Dict, List, Optional
 
 from huggingface_hub import InferenceClient
 
-from .. import AutoTokenizer
-from ..pipelines.base import Pipeline
-from ..utils import logging
+from transformers import AutoTokenizer, Pipeline
+import logging
 
 
-logger = logging.get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 
 class MessageRole(str, Enum):

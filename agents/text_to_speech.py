@@ -17,8 +17,8 @@
 
 import torch
 
-from ..models.speecht5 import SpeechT5ForTextToSpeech, SpeechT5HifiGan, SpeechT5Processor
-from ..utils import is_datasets_available
+from transformers import SpeechT5ForTextToSpeech, SpeechT5HifiGan, SpeechT5Processor
+from transformers.utils import is_datasets_available
 from .tools import PipelineTool
 
 

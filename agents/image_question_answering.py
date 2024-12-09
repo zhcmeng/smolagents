@@ -18,8 +18,8 @@
 import torch
 from PIL import Image
 
-from ..models.auto import AutoModelForVisualQuestionAnswering, AutoProcessor
-from ..utils import requires_backends
+from transformers import AutoModelForVisualQuestionAnswering, AutoProcessor
+from transformers.utils import requires_backends
 from .tools import PipelineTool
 
 

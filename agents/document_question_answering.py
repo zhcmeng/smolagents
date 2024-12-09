@@ -19,9 +19,8 @@ import re
 import numpy as np
 import torch
 
-from ..models.auto import AutoProcessor
-from ..models.vision_encoder_decoder import VisionEncoderDecoderModel
-from ..utils import is_vision_available
+from transformers import AutoProcessor, VisionEncoderDecoderModel
+from transformers.utils import is_vision_available
 from .tools import PipelineTool
 
 

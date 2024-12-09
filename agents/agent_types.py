@@ -19,10 +19,11 @@ import uuid
 
 import numpy as np
 
-from ..utils import is_soundfile_availble, is_torch_available, is_vision_available, logging
+from transformers.utils import is_soundfile_availble, is_torch_available, is_vision_available
+import logging
 
 
-logger = logging.get_logger(__name__)
+logger = logging.getLogger(__name__)
 
 if is_vision_available():
     from PIL import Image
@@ -159,7 +160,7 @@ class AgentImage(AgentType, ImageType):
 
             return self._path
 
-    def save(self, output_bytes, format, **params):
+    def save(self, output_bytes, format = None, **params):
         """
         Saves the image to a file.
         Args:
@@ -168,7 +169,7 @@ class AgentImage(AgentType, ImageType):
             **params: Additional parameters to pass to PIL.Image.save.
         """
         img = self.to_raw()
-        img.save(output_bytes, format, **params)
+        img.save(output_bytes, format=format, **params)
 
 
 class AgentAudio(AgentType, str):

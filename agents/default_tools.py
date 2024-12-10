@@ -14,7 +14,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import importlib.util
 import json
 import math
 from dataclasses import dataclass
@@ -25,7 +24,7 @@ from huggingface_hub import hf_hub_download, list_spaces
 
 from transformers.utils import is_offline_mode
 from .python_interpreter import LIST_SAFE_MODULES, evaluate_python_code
-from .tools import TOOL_CONFIG_FILE, TOOL_MAPPING, Tool
+from .tools import TOOL_CONFIG_FILE, Tool
 
 
 def custom_print(*args):
@@ -97,12 +96,6 @@ class PreTool:
     repo_id: str
 
 
-HUGGINGFACE_DEFAULT_TOOLS_FROM_HUB = [
-    "image-transformation",
-    "text-to-image",
-]
-
-
 def get_remote_tools(logger, organization="huggingface-tools"):
     if is_offline_mode():
         logger.info("You are in offline mode, so remote tools are not available.")
@@ -126,26 +119,6 @@ def get_remote_tools(logger, organization="huggingface-tools"):
         )
 
     return tools
-
-
-def setup_default_tools():
-    default_tools = {}
-    main_module = importlib.import_module("transformers")
-    tools_module = main_module.agents
-
-    for task_name, tool_class_name in TOOL_MAPPING.items():
-        tool_class = getattr(tools_module, tool_class_name)
-        tool_instance = tool_class()
-        default_tools[tool_class.name] = PreTool(
-            name=tool_instance.name,
-            inputs=tool_instance.inputs,
-            output_type=tool_instance.output_type,
-            task=task_name,
-            description=tool_instance.description,
-            repo_id=None,
-        )
-
-    return default_tools
 
 
 class PythonInterpreterTool(Tool):

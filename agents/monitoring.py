@@ -17,20 +17,8 @@
 from .agent_types import AgentAudio, AgentImage, AgentText
 from .utils import console
 
-
 def pull_message(step_log: dict, test_mode: bool = True):
-    try:
-        from gradio import ChatMessage
-    except ImportError:
-        if test_mode:
-
-            class ChatMessage:
-                def __init__(self, role, content, metadata=None):
-                    self.role = role
-                    self.content = content
-                    self.metadata = metadata
-        else:
-            raise ImportError("Gradio should be installed in order to launch a gradio demo.")
+    from gradio import ChatMessage
 
     if step_log.get("rationale"):
         yield ChatMessage(role="assistant", content=step_log["rationale"])
@@ -54,23 +42,11 @@ def pull_message(step_log: dict, test_mode: bool = True):
         )
 
 
-def stream_to_gradio(agent, task: str, test_mode: bool = False, **kwargs):
+def stream_to_gradio(agent, task: str, test_mode: bool = False, reset_agent_memory: bool=False, **kwargs):
     """Runs an agent with the given task and streams the messages from the agent as gradio ChatMessages."""
+    from gradio import ChatMessage
 
-    try:
-        from gradio import ChatMessage
-    except ImportError:
-        if test_mode:
-
-            class ChatMessage:
-                def __init__(self, role, content, metadata=None):
-                    self.role = role
-                    self.content = content
-                    self.metadata = metadata
-        else:
-            raise ImportError("Gradio should be installed in order to launch a gradio demo.")
-
-    for step_log in agent.run(task, stream=True, **kwargs):
+    for step_log in agent.run(task, stream=True, reset=reset_agent_memory, **kwargs):
         if isinstance(step_log, dict):
             for message in pull_message(step_log, test_mode=test_mode):
                 yield message

@@ -22,7 +22,7 @@ from rich.syntax import Syntax
 from transformers.utils import is_torch_available
 from .utils import console, parse_code_blob, parse_json_tool_call, truncate_content
 from .agent_types import AgentAudio, AgentImage
-from .default_tools import BASE_PYTHON_TOOLS, FinalAnswerTool, setup_default_tools
+from .default_tools import BASE_PYTHON_TOOLS, FinalAnswerTool
 from .llm_engine import HfApiEngine, MessageRole
 from .monitoring import Monitor
 from .prompts import (
@@ -42,13 +42,11 @@ from .tools import (
     DEFAULT_TOOL_DESCRIPTION_TEMPLATE,
     Tool,
     get_tool_description_with_args,
-    load_tool,
     Toolbox,
 )
 
 
 HUGGINGFACE_DEFAULT_TOOLS = {}
-_tools_are_initialized = False
 
 class AgentError(Exception):
     """Base class for other agent-related exceptions"""
@@ -101,8 +99,11 @@ class PlanningStep:
 
 @dataclass
 class TaskStep:
-    system_prompt: str
     task: str
+
+@dataclass
+class SystemPromptStep:
+    system_prompt: str
 
 def format_prompt_with_tools(toolbox: Toolbox, prompt_template: str, tool_description_template: str) -> str:
     tool_descriptions = toolbox.show_tool_descriptions(tool_description_template)
@@ -189,7 +190,7 @@ class BaseAgent:
             self._toolbox, self.system_prompt_template, self.tool_description_template
         )
         self.system_prompt = format_prompt_with_managed_agents_descriptions(self.system_prompt, self.managed_agents)
-        self.prompt = None
+        self.prompt_messages = None
         self.logs = []
         self.task = None
         self.verbose = verbose
@@ -208,8 +209,7 @@ class BaseAgent:
         """Get the toolbox currently available to the agent"""
         return self._toolbox
 
-    def initialize_for_run(self):
-        self.token_count = 0
+    def initialize_system_prompt(self):
         self.system_prompt = format_prompt_with_tools(
             self._toolbox,
             self.system_prompt_template,
@@ -220,27 +220,25 @@ class BaseAgent:
             self.system_prompt = format_prompt_with_imports(
                 self.system_prompt, list(set(LIST_SAFE_MODULES) | set(self.authorized_imports))
             )
-        self.logs = [TaskStep(system_prompt=self.system_prompt, task=self.task)]
-        console.rule("[bold]New task", characters='=')
-        console.print(self.task)
+
+        return self.system_prompt
 
     def write_inner_memory_from_logs(self, summary_mode: Optional[bool] = False) -> List[Dict[str, str]]:
         """
         Reads past llm_outputs, actions, and observations or errors from the logs into a series of messages
         that can be used as input to the LLM.
         """
-        prompt_message = {"role": MessageRole.SYSTEM, "content": self.logs[0].system_prompt}
-        task_message = {
-            "role": MessageRole.USER,
-            "content": "Task: " + self.logs[0].task,
-        }
-        if summary_mode:
-            memory = [task_message]
-        else:
-            memory = [prompt_message, task_message]
-        for i, step_log in enumerate(self.logs[1:]):
+        memory = []
+        for i, step_log in enumerate(self.logs):
+            if isinstance(step_log, SystemPromptStep):
+                if not summary_mode:
+                    thought_message = {
+                        "role": MessageRole.SYSTEM,
+                        "content": step_log.system_prompt.strip(),
+                    }
+                    memory.append(thought_message)
 
-            if isinstance(step_log, PlanningStep):
+            elif isinstance(step_log, PlanningStep):
                 thought_message = {
                     "role": MessageRole.ASSISTANT,
                     "content": "[FACTS LIST]:\n" + step_log.facts.strip(),
@@ -398,21 +396,21 @@ class ReactAgent(BaseAgent):
         """
         This method provides a final answer to the task, based on the logs of the agent's interactions.
         """
-        self.prompt = [
+        self.prompt_messages = [
             {
                 "role": MessageRole.SYSTEM,
                 "content": "An agent tried to answer a user query but it got stuck and failed to do so. You are tasked with providing an answer instead. Here is the agent's memory:",
             }
         ]
-        self.prompt += self.write_inner_memory_from_logs()[1:]
-        self.prompt += [
+        self.prompt_messages += self.write_inner_memory_from_logs()[1:]
+        self.prompt_messages += [
             {
                 "role": MessageRole.USER,
                 "content": f"Based on the above, please provide an answer to the following user request:\n{task}",
             }
         ]
         try:
-            return self.llm_engine(self.prompt)
+            return self.llm_engine(self.prompt_messages)
         except Exception as e:
             error_msg = f"Error in generating final LLM output: {e}."
             console.print(f"[bold red]{error_msg}[/bold red]")
@@ -423,7 +421,10 @@ class ReactAgent(BaseAgent):
         Runs the agent for the given task.
 
         Args:
-            task (`str`): The task to perform
+            task (`str`): The task to perform.
+            stream (`bool`): Wether to run in a streaming way.
+            reset (`bool`): Wether to reset the conversation or keep it going from previous run.
+            oneshot (`bool`): Should the agent run in one shot or multi-step fashion?
 
         Example:
         ```py
@@ -436,10 +437,23 @@ class ReactAgent(BaseAgent):
         if len(kwargs) > 0:
             self.task += f"\nYou have been provided with these initial arguments: {str(kwargs)}."
         self.state = kwargs.copy()
+
+        self.initialize_system_prompt()
+        system_prompt_step = SystemPromptStep(system_prompt=self.system_prompt)
+
         if reset:
-            self.initialize_for_run()
+            self.token_count = 0
+            self.logs = []
+            self.logs.append(system_prompt_step)
         else:
-            self.logs.append(TaskStep(task=task))
+            if len(self.logs) > 0:
+                self.logs[0] = system_prompt_step
+            else:
+                self.logs.append(system_prompt_step)
+
+        console.rule("[bold]New task", characters='=')
+        console.print(self.task)
+        self.logs.append(TaskStep(task=task))
 
         if oneshot:
             step_start_time = time.time()
@@ -676,20 +690,20 @@ class JsonAgent(ReactAgent):
         """
         agent_memory = self.write_inner_memory_from_logs()
 
-        self.prompt = agent_memory
+        self.prompt_messages = agent_memory
 
         # Add new step in logs
         log_entry.agent_memory = agent_memory.copy()
 
         if self.verbose:
             console.rule("[italic]Calling LLM engine with this last message:", align="left")
-            console.print(self.prompt[-1])
+            console.print(self.prompt_messages[-1])
             console.rule()
 
         try:
             additional_args = {"grammar": self.grammar} if self.grammar is not None else {}
             llm_output = self.llm_engine(
-                self.prompt, stop_sequences=["<end_action>", "Observation:"], **additional_args
+                self.prompt_messages, stop_sequences=["<end_action>", "Observation:"], **additional_args
             )
             log_entry.llm_output = llm_output
         except Exception as e:
@@ -796,20 +810,20 @@ class CodeAgent(ReactAgent):
         """
         agent_memory = self.write_inner_memory_from_logs()
 
-        self.prompt = agent_memory.copy()
+        self.prompt_messages = agent_memory.copy()
 
         # Add new step in logs
         log_entry.agent_memory = agent_memory.copy()
 
         if self.verbose:
             console.rule("[italic]Calling LLM engine with these last messages:", align="left")
-            console.print(self.prompt[-2:])
+            console.print(self.prompt_messages[-2:])
             console.rule()
 
         try:
             additional_args = {"grammar": self.grammar} if self.grammar is not None else {}
             llm_output = self.llm_engine(
-                self.prompt, stop_sequences=["<end_action>", "Observation:"], **additional_args
+                self.prompt_messages, stop_sequences=["<end_action>", "Observation:"], **additional_args
             )
             log_entry.llm_output = llm_output
         except Exception as e:
@@ -893,7 +907,7 @@ You have been submitted this task by your manager.
 Task:
 {task}
 ---
-You're helping your manager solve a wider task: so make sure to not provide a one-line answer, but give as much information as possible so that they have a clear understanding of the answer.
+You're helping your manager solve a wider task: so make sure to not provide a one-line answer, but give as much information as possible to give them a clear understanding of the answer.
 
 Your final_answer WILL HAVE to contain these parts:
 ### 1. Task outcome (short version):

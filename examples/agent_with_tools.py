@@ -1,4 +1,4 @@
-from agents import load_tool, ReactCodeAgent, HfApiEngine
+from agents import load_tool, CodeAgent, HfApiEngine
 
 # Import tool from Hub
 image_generation_tool = load_tool("m-ric/text-to-image", cache=False)
@@ -10,7 +10,7 @@ search_tool = DuckDuckGoSearchTool()
 
 llm_engine = HfApiEngine("Qwen/Qwen2.5-72B-Instruct")
 # Initialize the agent with both tools
-agent = ReactCodeAgent(tools=[image_generation_tool, search_tool], llm_engine=llm_engine)
+agent = CodeAgent(tools=[image_generation_tool, search_tool], llm_engine=llm_engine)
 
 # Run it!
 result = agent.run(

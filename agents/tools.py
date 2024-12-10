@@ -80,6 +80,19 @@ def get_repo_type(repo_id, repo_type=None, **hub_kwargs):
         return "space"
 
 
+def setup_default_tools():
+    default_tools = {}
+    main_module = importlib.import_module("transformers")
+    tools_module = main_module.agents
+
+    for task_name, tool_class_name in TOOL_MAPPING.items():
+        tool_class = getattr(tools_module, tool_class_name)
+        tool_instance = tool_class()
+        default_tools[tool_class.name] = tool_instance
+
+    return default_tools
+
+
 # docstyle-ignore
 APP_FILE_TEMPLATE = """from transformers import launch_gradio_demo
 from {module_name} import {class_name}
@@ -811,11 +824,6 @@ def launch_gradio_demo(tool_class: Tool):
 
 
 TOOL_MAPPING = {
-    "document_question_answering": "DocumentQuestionAnsweringTool",
-    "image_question_answering": "ImageQuestionAnsweringTool",
-    "speech_to_text": "SpeechToTextTool",
-    "text_to_speech": "TextToSpeechTool",
-    "translation": "TranslationTool",
     "python_interpreter": "PythonInterpreterTool",
     "web_search": "DuckDuckGoSearchTool",
 }
@@ -1018,18 +1026,14 @@ class Toolbox:
         self._tools = {tool.name: tool for tool in tools}
         if add_base_tools:
             self.add_base_tools()
-        # self._load_tools_if_needed()
 
     def add_base_tools(self, add_python_interpreter: bool = False):
-        global _tools_are_initialized
         global HUGGINGFACE_DEFAULT_TOOLS
-        if not _tools_are_initialized:
+        if len(HUGGINGFACE_DEFAULT_TOOLS.keys()) == 0:
             HUGGINGFACE_DEFAULT_TOOLS = setup_default_tools()
-            _tools_are_initialized = True
         for tool in HUGGINGFACE_DEFAULT_TOOLS.values():
             if tool.name != "python_interpreter" or add_python_interpreter:
                 self.add_tool(tool)
-        # self._load_tools_if_needed()
 
     @property
     def tools(self) -> Dict[str, Tool]:

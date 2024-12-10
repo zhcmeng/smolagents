@@ -144,7 +144,7 @@ class AgentImage(AgentType, ImageType):
         if self._raw is not None:
             directory = tempfile.mkdtemp()
             self._path = os.path.join(directory, str(uuid.uuid4()) + ".png")
-            self._raw.save(self._path)
+            self._raw.save(self._path, format="png")
             return self._path
 
         if self._tensor is not None:
@@ -155,12 +155,11 @@ class AgentImage(AgentType, ImageType):
 
             directory = tempfile.mkdtemp()
             self._path = os.path.join(directory, str(uuid.uuid4()) + ".png")
-
             img.save(self._path, format="png")
 
             return self._path
 
-    def save(self, output_bytes, format = None, **params):
+    def save(self, output_bytes, format : str = None, **params):
         """
         Saves the image to a file.
         Args:

@@ -81,8 +81,11 @@ class AgentGenerationError(AgentError):
 
     pass
 
+class AgentStep:
+    pass
+
 @dataclass
-class ActionStep:
+class ActionStep(AgentStep):
     tool_call: str | None = None
     start_time: float | None = None
     step_end_time: float | None = None
@@ -93,17 +96,18 @@ class ActionStep:
     llm_output: str | None = None
 
 @dataclass
-class PlanningStep:
+class PlanningStep(AgentStep):
     plan: str
     facts: str
 
 @dataclass
-class TaskStep:
+class TaskStep(AgentStep):
     task: str
 
 @dataclass
-class SystemPromptStep:
+class SystemPromptStep(AgentStep):
     system_prompt: str
+
 
 def format_prompt_with_tools(toolbox: Toolbox, prompt_template: str, tool_description_template: str) -> str:
     tool_descriptions = toolbox.show_tool_descriptions(tool_description_template)

@@ -14,59 +14,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from .agent_types import AgentAudio, AgentImage, AgentText
 from .utils import console
 
-def pull_message(step_log: dict, test_mode: bool = True):
-    from gradio import ChatMessage
-
-    if step_log.get("rationale"):
-        yield ChatMessage(role="assistant", content=step_log["rationale"])
-    if step_log.get("tool_call"):
-        used_code = step_log["tool_call"]["tool_name"] == "code interpreter"
-        content = step_log["tool_call"]["tool_arguments"]
-        if used_code:
-            content = f"```py\n{content}\n```"
-        yield ChatMessage(
-            role="assistant",
-            metadata={"title": f"🛠️ Used tool {step_log['tool_call']['tool_name']}"},
-            content=str(content),
-        )
-    if step_log.get("observation"):
-        yield ChatMessage(role="assistant", content=f"```\n{step_log['observation']}\n```")
-    if step_log.get("error"):
-        yield ChatMessage(
-            role="assistant",
-            content=str(step_log["error"]),
-            metadata={"title": "💥 Error"},
-        )
-
-
-def stream_to_gradio(agent, task: str, test_mode: bool = False, reset_agent_memory: bool=False, **kwargs):
-    """Runs an agent with the given task and streams the messages from the agent as gradio ChatMessages."""
-    from gradio import ChatMessage
-
-    for step_log in agent.run(task, stream=True, reset=reset_agent_memory, **kwargs):
-        if isinstance(step_log, dict):
-            for message in pull_message(step_log, test_mode=test_mode):
-                yield message
-
-    final_answer = step_log  # Last log is the run's final_answer
-
-    if isinstance(final_answer, AgentText):
-        yield ChatMessage(role="assistant", content=f"**Final answer:**\n```\n{final_answer.to_string()}\n```")
-    elif isinstance(final_answer, AgentImage):
-        yield ChatMessage(
-            role="assistant",
-            content={"path": final_answer.to_string(), "mime_type": "image/png"},
-        )
-    elif isinstance(final_answer, AgentAudio):
-        yield ChatMessage(
-            role="assistant",
-            content={"path": final_answer.to_string(), "mime_type": "audio/wav"},
-        )
-    else:
-        yield ChatMessage(role="assistant", content=str(final_answer))
 
 
 class Monitor:

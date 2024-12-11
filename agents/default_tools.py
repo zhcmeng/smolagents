@@ -126,7 +126,9 @@ def get_remote_tools(logger, organization="huggingface-tools"):
 class PythonInterpreterTool(Tool):
     name = "python_interpreter"
     description = "This is a tool that evaluates python code. It can be used to perform calculations."
-
+    inputs = {
+        "code": {"type": "string", "description": "The python code to run in interpreter"}
+    }
     output_type = "string"
 
     def __init__(self, *args, authorized_imports=None, **kwargs):
@@ -147,7 +149,7 @@ class PythonInterpreterTool(Tool):
         }
         super().__init__(*args, **kwargs)
 
-    def forward(self, code):
+    def forward(self, code: str) -> str:
         output = str(
             evaluate_python_code(
                 code,

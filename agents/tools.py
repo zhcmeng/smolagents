@@ -150,7 +150,7 @@ class Tool:
     name: str
     description: str
     inputs: Dict[str, Dict[str, Union[str, type]]]
-    output_type: type
+    output_type: str
 
     def __init__(self, *args, **kwargs):
         self.is_initialized = False

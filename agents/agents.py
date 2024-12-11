@@ -79,6 +79,11 @@ class AgentGenerationError(AgentError):
 
     pass
 
+@dataclass
+class ToolCall():
+    tool_name: str
+    tool_arguments: Any
+
 
 class AgentStep:
     pass
@@ -86,17 +91,16 @@ class AgentStep:
 
 @dataclass
 class ActionStep(AgentStep):
-    tool_call: Dict[str, str] | None = None
-    start_time: float | None = None
-    step_end_time: float | None = None
-    iteration: int | None = None
-    final_answer: Any = None
-    error: AgentError | None = None
-    step_duration: float | None = None
-    llm_output: str | None = None
-    observation: str | None = None
     agent_memory: List[Dict[str, str]] | None = None
-    rationale: str | None = None
+    tool_call: ToolCall | None = None
+    start_time: float | None = None
+    end_time: float | None = None
+    iteration: int | None = None
+    error: AgentError | None = None
+    duration: float | None = None
+    llm_output: str | None = None
+    observations: str | None = None
+    action_output: Any = None
 
 
 @dataclass
@@ -222,7 +226,6 @@ class BaseAgent:
         self._toolbox.add_tool(FinalAnswerTool())
 
         self.system_prompt = self.initialize_system_prompt()
-        print("SYS0:", self.system_prompt)
         self.prompt_messages = None
         self.logs = []
         self.task = None
@@ -313,15 +316,15 @@ class BaseAgent:
                     }
                     memory.append(tool_call_message)
 
-                if step_log.error is not None or step_log.observation is not None:
+                if step_log.error is not None or step_log.observations is not None:
                     if step_log.error is not None:
                         message_content = (
                             f"[OUTPUT OF STEP {i}] -> Error:\n"
                             + str(step_log.error)
                             + "\nNow let's retry: take care not to repeat previous errors! If you have retried several times, try a completely different approach.\n"
                         )
-                    elif step_log.observation is not None:
-                        message_content = f"[OUTPUT OF STEP {i}] -> Observation:\n{step_log.observation}"
+                    elif step_log.observations is not None:
+                        message_content = f"[OUTPUT OF STEP {i}] -> Observation:\n{step_log.observations}"
                     tool_response_message = {
                         "role": MessageRole.TOOL_RESPONSE,
                         "content": message_content,
@@ -466,8 +469,8 @@ class ReactAgent(BaseAgent):
                 console.print(f"[bold red]{error_msg}")
                 raise AgentExecutionError(error_msg)
 
-    def step(self, log_entry: ActionStep):
-        """To be implemented in children classes"""
+    def step(self, log_entry: ActionStep) -> Union[None, Any]:
+        """To be implemented in children classes. Should return either None if the step is not final."""
         pass
 
     def run(
@@ -521,8 +524,8 @@ class ReactAgent(BaseAgent):
         if oneshot:
             step_start_time = time.time()
             step_log = ActionStep(start_time=step_start_time)
-            step_log.step_end_time = time.time()
-            step_log.step_duration = step_log.step_end_time - step_start_time
+            step_log.end_time = time.time()
+            step_log.duration = step_log.end_time - step_start_time
 
             # Run the agent's step
             result = self.step(step_log)
@@ -551,14 +554,14 @@ class ReactAgent(BaseAgent):
                         task, is_first_step=(iteration == 0), iteration=iteration
                     )
                 console.rule("[bold]New step")
-                self.step(step_log)
-                if step_log.final_answer is not None:
-                    final_answer = step_log.final_answer
+
+                # Run one step!
+                final_answer = self.step(step_log)
             except AgentError as e:
                 step_log.error = e
             finally:
-                step_log.step_end_time = time.time()
-                step_log.step_duration = step_log.step_end_time - step_start_time
+                step_log.end_time = time.time()
+                step_log.duration = step_log.end_time - step_start_time
                 self.logs.append(step_log)
                 for callback in self.step_callbacks:
                     callback(step_log)
@@ -570,9 +573,9 @@ class ReactAgent(BaseAgent):
             final_step_log = ActionStep(error=AgentMaxIterationsError(error_message))
             self.logs.append(final_step_log)
             final_answer = self.provide_final_answer(task)
-            final_step_log.final_answer = final_answer
-            final_step_log.step_end_time = time.time()
-            final_step_log.step_duration = step_log.step_end_time - step_start_time
+            final_step_log.action_output = final_answer
+            final_step_log.end_time = time.time()
+            final_step_log.duration = step_log.end_time - step_start_time
             for callback in self.step_callbacks:
                 callback(final_step_log)
             yield final_step_log
@@ -597,15 +600,16 @@ class ReactAgent(BaseAgent):
                         task, is_first_step=(iteration == 0), iteration=iteration
                     )
                 console.rule("[bold]New step")
-                self.step(step_log)
-                if step_log.final_answer is not None:
-                    final_answer = step_log.final_answer
+
+                # Run one step!
+                final_answer = self.step(step_log)
+
             except AgentError as e:
                 step_log.error = e
             finally:
                 step_end_time = time.time()
-                step_log.step_end_time = step_end_time
-                step_log.step_duration = step_end_time - step_start_time
+                step_log.end_time = step_end_time
+                step_log.duration = step_end_time - step_start_time
                 self.logs.append(step_log)
                 for callback in self.step_callbacks:
                     callback(step_log)
@@ -616,8 +620,8 @@ class ReactAgent(BaseAgent):
             final_step_log = ActionStep(error=AgentMaxIterationsError(error_message))
             self.logs.append(final_step_log)
             final_answer = self.provide_final_answer(task)
-            final_step_log.final_answer = final_answer
-            final_step_log.step_duration = 0
+            final_step_log.action_output = final_answer
+            final_step_log.duration = 0
             for callback in self.step_callbacks:
                 callback(final_step_log)
 
@@ -777,10 +781,10 @@ class JsonAgent(ReactAgent):
             **kwargs,
         )
 
-    def step(self, log_entry: ActionStep):
+    def step(self, log_entry: ActionStep) -> Union[None, Any]:
         """
         Perform one step in the ReAct framework: the agent thinks, acts, and observes the result.
-        The errors are raised here, they are caught and logged in the run() method.
+        Returns None if the step is not final.
         """
         agent_memory = self.write_inner_memory_from_logs()
 
@@ -823,8 +827,7 @@ class JsonAgent(ReactAgent):
         except Exception as e:
             raise AgentParsingError(f"Could not parse the given action: {e}.")
 
-        log_entry.rationale = rationale
-        log_entry.tool_call = {"tool_name": tool_name, "tool_arguments": arguments}
+        log_entry.tool_call = ToolCall(tool_name=tool_name, tool_arguments=arguments)
 
         # Execute
         console.rule("Agent thoughts:")
@@ -835,15 +838,15 @@ class JsonAgent(ReactAgent):
             if isinstance(arguments, dict):
                 if "answer" in arguments:
                     answer = arguments["answer"]
-                    if (
-                        isinstance(answer, str) and answer in self.state.keys()
-                    ):  # if the answer is a state variable, return the value
-                        answer = self.state[answer]
                 else:
                     answer = arguments
             else:
                 answer = arguments
-            log_entry.final_answer = answer
+            if (
+                isinstance(answer, str) and answer in self.state.keys()
+            ):  # if the answer is a state variable, return the value
+                answer = self.state[answer]
+            log_entry.action_output = answer
             return answer
         else:
             if arguments is None:
@@ -861,8 +864,8 @@ class JsonAgent(ReactAgent):
                 updated_information = f"Stored '{observation_name}' in memory."
             else:
                 updated_information = str(observation).strip()
-            log_entry.observation = updated_information
-            return log_entry
+            log_entry.observations = updated_information
+            return None
 
 
 class CodeAgent(ReactAgent):
@@ -906,16 +909,15 @@ class CodeAgent(ReactAgent):
         self.authorized_imports = list(
             set(LIST_SAFE_MODULES) | set(self.additional_authorized_imports)
         )
-        print("SYSS:", self.system_prompt)
         self.system_prompt = self.system_prompt.replace(
             "{{authorized_imports}}", str(self.authorized_imports)
         )
         self.custom_tools = {}
 
-    def step(self, log_entry: ActionStep):
+    def step(self, log_entry: ActionStep) -> Union[None, Any]:
         """
         Perform one step in the ReAct framework: the agent thinks, acts, and observes the result.
-        The errors are raised here, they are caught and logged in the run() method.
+        Returns None if the step is not final.
         """
         agent_memory = self.write_inner_memory_from_logs()
 
@@ -967,11 +969,7 @@ class CodeAgent(ReactAgent):
             error_msg = f"Error in code parsing: {e}. Make sure to provide correct code"
             raise AgentParsingError(error_msg)
 
-        log_entry.rationale = rationale
-        log_entry.tool_call = {
-            "tool_name": "code interpreter",
-            "tool_arguments": code_action,
-        }
+        log_entry.tool_call = ToolCall(tool_name="python_interpreter", tool_arguments=code_action)
 
         # Execute
         if self.verbose:
@@ -988,7 +986,7 @@ class CodeAgent(ReactAgent):
             }
             if self.managed_agents is not None:
                 static_tools = {**static_tools, **self.managed_agents}
-            result = self.python_evaluator(
+            output = self.python_evaluator(
                 code_action,
                 static_tools=static_tools,
                 custom_tools=self.custom_tools,
@@ -998,13 +996,13 @@ class CodeAgent(ReactAgent):
             console.print("Print outputs:")
             console.print(self.state["print_outputs"])
             observation = "Print outputs:\n" + self.state["print_outputs"]
-            if result is not None:
+            if output is not None:
                 console.rule("Last output from code snippet:", align="left")
-                console.print(str(result))
+                console.print(str(output))
                 observation += "Last output from code snippet:\n" + truncate_content(
-                    str(result)
+                    str(output)
                 )
-            log_entry.observation = observation
+            log_entry.observations = observation
         except Exception as e:
             error_msg = f"Code execution failed due to the following error:\n{str(e)}"
             if "'dict' object has no attribute 'read'" in str(e):
@@ -1013,9 +1011,10 @@ class CodeAgent(ReactAgent):
         for line in code_action.split("\n"):
             if line[: len("final_answer")] == "final_answer":
                 console.print("Final answer:")
-                console.print(f"[bold]{result}")
-                log_entry.final_answer = result
-        return result
+                console.print(f"[bold]{output}")
+                log_entry.action_output = output
+                return output
+        return None
 
 
 class ManagedAgent:

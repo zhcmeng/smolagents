@@ -22,20 +22,20 @@ import gradio as gr
 def pull_messages_from_step(step_log: AgentStep, test_mode: bool = True):
     """Extract ChatMessage objects from agent steps"""
     if isinstance(step_log, ActionStep):
-        yield gr.ChatMessage(role="assistant", content=step_log.rationale)
+        yield gr.ChatMessage(role="assistant", content=step_log.llm_output)
         if step_log.tool_call is not None:
-            used_code = step_log.tool_call["tool_name"] == "code interpreter"
-            content = step_log.tool_call["tool_arguments"]
+            used_code = step_log.tool_call.tool_name == "code interpreter"
+            content = step_log.tool_call.tool_arguments
             if used_code:
                 content = f"```py\n{content}\n```"
             yield gr.ChatMessage(
                 role="assistant",
-                metadata={"title": f"🛠️ Used tool {step_log.tool_call['tool_name']}"},
+                metadata={"title": f"🛠️ Used tool {step_log.tool_call.tool_name}"},
                 content=str(content),
             )
-        if step_log.observation is not None:
+        if step_log.observations is not None:
             yield gr.ChatMessage(
-                role="assistant", content=f"```\n{step_log.observation}\n```"
+                role="assistant", content=f"```\n{step_log.observations}\n```"
             )
         if step_log.error is not None:
             yield gr.ChatMessage(

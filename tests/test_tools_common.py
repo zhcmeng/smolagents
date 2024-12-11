@@ -50,7 +50,7 @@ def create_inputs(tool_inputs: Dict[str, Dict[Union[str, type], str]]):
             inputs[input_name] = "Text input"
         elif input_type == "image":
             inputs[input_name] = Image.open(
-                Path(get_tests_dir("fixtures/tests_samples/COCO")) / "000000039769.png"
+                Path(get_tests_dir("fixtures")) / "000000039769.png"
             ).resize((512, 512))
         elif input_type == "audio":
             inputs[input_name] = np.ones(3000)

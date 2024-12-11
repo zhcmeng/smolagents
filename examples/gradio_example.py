@@ -1,13 +1,11 @@
 from agents import stream_to_gradio, HfApiEngine, load_tool, CodeAgent
+import gradio as gr
 
 image_generation_tool = load_tool("m-ric/text-to-image")
 
 llm_engine = HfApiEngine("Qwen/Qwen2.5-72B-Instruct")
 
 agent = CodeAgent(tools=[image_generation_tool], llm_engine=llm_engine)
-
-import gradio as gr
-
 
 def interact_with_agent(prompt, messages):
     messages.append(gr.ChatMessage(role="user", content=prompt))

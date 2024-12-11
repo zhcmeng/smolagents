@@ -643,8 +643,10 @@ DEFAULT_TOOL_DESCRIPTION_TEMPLATE = """
 
 
 def get_tool_description_with_args(
-    tool: Tool, description_template: str = DEFAULT_TOOL_DESCRIPTION_TEMPLATE
+    tool: Tool, description_template: Optional[str] = None
 ) -> str:
+    if description_template is None:
+        description_template = DEFAULT_TOOL_DESCRIPTION_TEMPLATE
     compiled_template = compile_jinja_template(description_template)
     rendered = compiled_template.render(
         tool=tool,
@@ -1080,6 +1082,9 @@ def tool(tool_function: Callable) -> Tool:
     return SpecificTool()
 
 
+HUGGINGFACE_DEFAULT_TOOLS = {}
+
+
 class Toolbox:
     """
     The toolbox contains all tools that the agent can perform operations with, as well as a few methods to
@@ -1110,7 +1115,7 @@ class Toolbox:
         """Get all tools currently in the toolbox"""
         return self._tools
 
-    def show_tool_descriptions(self, tool_description_template: str = None) -> str:
+    def show_tool_descriptions(self, tool_description_template: Optional[str] = None) -> str:
         """
         Returns the description of all tools in the toolbox
 

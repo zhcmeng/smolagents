@@ -62,7 +62,6 @@ else:
 if TYPE_CHECKING:
     from .agents import (
         Agent,
-        CodeAgent,
         ManagedAgent,
         ReactAgent,
         CodeAgent,

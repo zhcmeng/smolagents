@@ -22,7 +22,6 @@ import pytest
 from agents.agent_types import AgentText
 from agents.agents import (
     AgentMaxIterationsError,
-    CodeAgent,
     ManagedAgent,
     CodeAgent,
     JsonAgent,
@@ -162,14 +161,14 @@ class AgentTests(unittest.TestCase):
         output = agent.run("What is 2 multiplied by 3.6452?")
         assert isinstance(output, str)
         assert output == "7.2904"
-        assert agent.logs[0]["task"] == "What is 2 multiplied by 3.6452?"
-        assert agent.logs[1]["observation"] == "7.2904"
+        assert agent.logs[1].task == "What is 2 multiplied by 3.6452?"
+        assert agent.logs[2].observation == "7.2904"
         assert (
-            agent.logs[1]["rationale"].strip()
+            agent.logs[2].rationale.strip()
             == "Thought: I should multiply 2 by 3.6452. special_marker"
         )
         assert (
-            agent.logs[2]["llm_output"]
+            agent.logs[3].llm_output
             == """
 Thought: I can now answer the initial question
 Action:
@@ -187,8 +186,8 @@ Action:
         output = agent.run("What is 2 multiplied by 3.6452?")
         assert isinstance(output, float)
         assert output == 7.2904
-        assert agent.logs[0]["task"] == "What is 2 multiplied by 3.6452?"
-        assert agent.logs[2]["tool_call"] == {
+        assert agent.logs[1].task == "What is 2 multiplied by 3.6452?"
+        assert agent.logs[3].tool_call == {
             "tool_arguments": "final_answer(7.2904)",
             "tool_name": "code interpreter",
         }
@@ -212,10 +211,9 @@ Action:
             max_iterations=5,
         )
         agent.run("What is 2 multiplied by 3.6452?")
-        assert len(agent.logs) == 7
-        assert type(agent.logs[-1]["error"]) is AgentMaxIterationsError
+        assert len(agent.logs) == 8
+        assert type(agent.logs[-1].error) is AgentMaxIterationsError
 
-    @require_torch
     def test_init_agent_with_different_toolsets(self):
         toolset_1 = []
         agent = CodeAgent(tools=toolset_1, llm_engine=fake_react_code_llm)
@@ -245,8 +243,8 @@ Action:
         # check that python_interpreter base tool does not get added to code agents
         agent = CodeAgent(tools=[], llm_engine=fake_react_code_llm, add_base_tools=True)
         assert (
-            len(agent.toolbox.tools) == 7
-        )  # added final_answer tool + 6 base tools (excluding interpreter)
+            len(agent.toolbox.tools) == 2
+        )  # added final_answer tool + search
 
     def test_function_persistence_across_steps(self):
         agent = CodeAgent(
@@ -273,7 +271,8 @@ Action:
             managed_agents=[managed_agent],
         )
         assert "You can also give requests to team members." not in agent.system_prompt
-        assert "<<managed_agents_descriptions>>" not in agent.system_prompt
+        print("ok1")
+        assert "{{managed_agents_descriptions}}" not in agent.system_prompt
         assert (
             "You can also give requests to team members." in manager_agent.system_prompt
         )

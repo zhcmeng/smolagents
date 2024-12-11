@@ -135,6 +135,8 @@ final_answer(caption)
 Above example were using tools that might not exist for you. You only have access to these tools:
 {{tool_names}}
 
+{{managed_agents_descriptions}}
+
 Remember to make sure that variables you use are all defined. In particular don't import packages!
 Be sure to provide a 'Code:\n```' sequence before the code and '```<end_action>' after, else you will get an error.
 DO NOT pass the arguments as a dict as in 'answer = ask_search_agent({'query': "What is the place where James Bond lives?"})', but use the arguments directly as in 'answer = ask_search_agent(query="What is the place where James Bond lives?")'.
@@ -260,7 +262,10 @@ Action:
 
 
 Above example were using notional tools that might not exist for you. You only have access to these tools:
+
 {{tool_descriptions}}
+
+{{managed_agents_descriptions}}
 
 Here are the rules you should always follow to solve your task:
 1. ALWAYS provide a 'Thought:' sequence, and an 'Action:' sequence that ends with <end_action>, else you will fail.
@@ -355,7 +360,7 @@ Above example were using notional tools that might not exist for you. On top of 
 
 {{tool_descriptions}}
 
-<<managed_agents_descriptions>>
+{{managed_agents_descriptions}}
 
 Here are the rules you should always follow to solve your task:
 1. Always provide a 'Thought:' sequence, and a 'Code:\n```py' sequence ending with '```<end_action>' sequence, else you will fail.

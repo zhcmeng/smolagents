@@ -47,9 +47,6 @@ from .tools import (
 )
 
 
-HUGGINGFACE_DEFAULT_TOOLS = {}
-
-
 class AgentError(Exception):
     """Base class for other agent-related exceptions"""
 
@@ -145,14 +142,18 @@ Here is a list of the team members that you can call:"""
 
 
 def format_prompt_with_managed_agents_descriptions(
-    prompt_template, managed_agents=None
+    prompt_template, managed_agents, agent_descriptions_placeholder: Optional[str] = None
 ) -> str:
-    if managed_agents is not None:
+    if agent_descriptions_placeholder is None:
+        agent_descriptions_placeholder = "{{managed_agents_descriptions}}"
+    if agent_descriptions_placeholder not in prompt_template:
+        raise ValueError(f"Provided prompt template does not contain the managed agents descriptions placeholder '{agent_descriptions_placeholder}'")
+    if len(managed_agents.keys()) > 0:
         return prompt_template.replace(
-            "<<managed_agents_descriptions>>", show_agents_descriptions(managed_agents)
+            agent_descriptions_placeholder, show_agents_descriptions(managed_agents)
         )
     else:
-        return prompt_template.replace("<<managed_agents_descriptions>>", "")
+        return prompt_template.replace(agent_descriptions_placeholder, "")
 
 
 def format_prompt_with_imports(
@@ -220,12 +221,8 @@ class BaseAgent:
             self._toolbox = Toolbox(tools, add_base_tools=add_base_tools)
         self._toolbox.add_tool(FinalAnswerTool())
 
-        self.system_prompt = format_prompt_with_tools(
-            self._toolbox, self.system_prompt_template, self.tool_description_template
-        )
-        self.system_prompt = format_prompt_with_managed_agents_descriptions(
-            self.system_prompt, self.managed_agents
-        )
+        self.system_prompt = self.initialize_system_prompt()
+        print("SYS0:", self.system_prompt)
         self.prompt_messages = None
         self.logs = []
         self.task = None
@@ -353,7 +350,7 @@ class BaseAgent:
                 split[-2],
                 split[-1],
             )  # NOTE: using indexes starting from the end solves for when you have more than one split_token in the output
-        except Exception as e:
+        except Exception:
             raise AgentParsingError(
                 f"Error: No '{split_token}' token provided in your output.\nYour output:\n{llm_output}\n. Be sure to include an action, prefaced with '{split_token}'!"
             )
@@ -909,8 +906,9 @@ class CodeAgent(ReactAgent):
         self.authorized_imports = list(
             set(LIST_SAFE_MODULES) | set(self.additional_authorized_imports)
         )
+        print("SYSS:", self.system_prompt)
         self.system_prompt = self.system_prompt.replace(
-            "<<authorized_imports>>", str(self.authorized_imports)
+            "{{authorized_imports}}", str(self.authorized_imports)
         )
         self.custom_tools = {}
 

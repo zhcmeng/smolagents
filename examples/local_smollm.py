@@ -1,14 +1,19 @@
-from agents.llm_engine import TransformersEngine
-from agents import CodeAgent, JsonAgent
-
+from agents import JsonAgent
+from agents import tool
+import webbrowser
 import requests
 from datetime import datetime
+import random
+from llama_cpp import Llama
+from agents import tool
+import webbrowser
+from typing import List, Generator, Dict, Any
+import json
+import re
 
 model_repo="andito/SmolLM2-1.7B-Instruct-F16-GGUF"
 model_filename="smollm2-1.7b-8k-dpo-f16.gguf"
 
-import random
-from llama_cpp import Llama
 
 model = Llama.from_pretrained(
     repo_id=model_repo,
@@ -54,10 +59,6 @@ The example format is as follows. Please make sure the parameter type is correct
 {"name": "func_name1", "arguments": {"argument1": "value1", "argument2": "value2"}},
 ... (more tool calls as required)
 ]</tool_call>"""
-
-
-from agents import tool
-import webbrowser
 
 @tool
 def get_random_number_between(min: int, max: int) -> int:
@@ -110,9 +111,7 @@ def open_webbrowser(url: str) -> str:
     webbrowser.open(url)
     return f"I opened {url.replace('https://', '').replace('www.', '')} in the browser."
 
-from typing import List, Dict, Generator, Any
-import re
-import json
+‹
 def _parse_response(self, text: str) -> List[Dict[str, Any]]:
     pattern = r"<tool_call>(.*?)</tool_call>"
     matches = re.findall(pattern, text, re.DOTALL)

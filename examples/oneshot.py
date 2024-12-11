@@ -1,4 +1,4 @@
-from agents import load_tool, CodeAgent, JsonAgent, HfApiEngine
+from agents import load_tool, CodeAgent, HfApiEngine
 from agents.prompts import ONESHOT_CODE_SYSTEM_PROMPT
 
 # Import tool from Hub

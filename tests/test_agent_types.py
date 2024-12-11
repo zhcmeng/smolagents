@@ -27,8 +27,6 @@ from transformers.testing_utils import (
 )
 from transformers.utils import (
     is_soundfile_availble,
-    is_torch_available,
-    is_vision_available,
 )
 
 import torch
@@ -93,7 +91,7 @@ class AgentImageTests(unittest.TestCase):
         self.assertTrue(os.path.exists(path))
 
     def test_from_string(self):
-        path = Path(get_tests_dir("fixtures/tests_samples/COCO")) / "000000039769.png"
+        path = Path(get_tests_dir("fixtures/")) / "000000039769.png"
         image = Image.open(path)
         agent_type = AgentImage(path)
 
@@ -105,7 +103,7 @@ class AgentImageTests(unittest.TestCase):
         self.assertTrue(os.path.exists(path))
 
     def test_from_image(self):
-        path = Path(get_tests_dir("fixtures/tests_samples/COCO")) / "000000039769.png"
+        path = Path(get_tests_dir("fixtures/")) / "000000039769.png"
         image = Image.open(path)
         agent_type = AgentImage(image)
 

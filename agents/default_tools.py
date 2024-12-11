@@ -105,7 +105,9 @@ def get_remote_tools(logger, organization="huggingface-tools"):
     tools = {}
     for space_info in spaces:
         repo_id = space_info.id
-        resolved_config_file = hf_hub_download(repo_id, TOOL_CONFIG_FILE, repo_type="space")
+        resolved_config_file = hf_hub_download(
+            repo_id, TOOL_CONFIG_FILE, repo_type="space"
+        )
         with open(resolved_config_file, encoding="utf-8") as reader:
             config = json.load(reader)
         task = repo_id.split("/")[-1]
@@ -131,7 +133,9 @@ class PythonInterpreterTool(Tool):
         if authorized_imports is None:
             self.authorized_imports = list(set(LIST_SAFE_MODULES))
         else:
-            self.authorized_imports = list(set(LIST_SAFE_MODULES) | set(authorized_imports))
+            self.authorized_imports = list(
+                set(LIST_SAFE_MODULES) | set(authorized_imports)
+            )
         self.inputs = {
             "code": {
                 "type": "string",
@@ -145,7 +149,11 @@ class PythonInterpreterTool(Tool):
 
     def forward(self, code):
         output = str(
-            evaluate_python_code(code, static_tools=BASE_PYTHON_TOOLS, authorized_imports=self.authorized_imports)
+            evaluate_python_code(
+                code,
+                static_tools=BASE_PYTHON_TOOLS,
+                authorized_imports=self.authorized_imports,
+            )
         )
         return output
 
@@ -153,16 +161,21 @@ class PythonInterpreterTool(Tool):
 class FinalAnswerTool(Tool):
     name = "final_answer"
     description = "Provides a final answer to the given problem."
-    inputs = {"answer": {"type": "any", "description": "The final answer to the problem"}}
+    inputs = {
+        "answer": {"type": "any", "description": "The final answer to the problem"}
+    }
     output_type = "any"
 
     def forward(self, answer):
         return answer
 
+
 class UserInputTool(Tool):
     name = "user_input"
     description = "Asks for user's input on a specific question"
-    inputs = {"question": {"type": "string", "description": "The question to ask the user"}}
+    inputs = {
+        "question": {"type": "string", "description": "The question to ask the user"}
+    }
     output_type = "string"
 
     def forward(self, question):

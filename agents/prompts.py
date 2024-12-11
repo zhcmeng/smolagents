@@ -42,7 +42,10 @@ def download_prompt(prompt_or_repo_id, agent_name, mode="run"):
         return prompt_or_repo_id
 
     prompt_file = cached_file(
-        prompt_or_repo_id, PROMPT_FILES[mode], repo_type="dataset", user_agent={"agent": agent_name}
+        prompt_or_repo_id,
+        PROMPT_FILES[mode],
+        repo_type="dataset",
+        user_agent={"agent": agent_name},
     )
     with open(prompt_file, "r", encoding="utf-8") as f:
         return f.read()

@@ -19,18 +19,24 @@ import uuid
 from pathlib import Path
 
 from transformers.agents.agent_types import AgentAudio, AgentImage, AgentText
-from transformers.testing_utils import get_tests_dir, require_soundfile, require_torch, require_vision
-from transformers.utils import is_soundfile_availble, is_torch_available, is_vision_available
+from transformers.testing_utils import (
+    get_tests_dir,
+    require_soundfile,
+    require_torch,
+    require_vision,
+)
+from transformers.utils import (
+    is_soundfile_availble,
+    is_torch_available,
+    is_vision_available,
+)
 
+import torch
+from PIL import Image
 
-if is_torch_available():
-    import torch
 
 if is_soundfile_availble():
     import soundfile as sf
-
-if is_vision_available():
-    from PIL import Image
 
 
 def get_new_path(suffix="") -> str:

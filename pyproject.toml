@@ -69,6 +69,8 @@ pillow = "^11.0.0"
 llama-cpp-python = "^0.3.4"
 markdownify = "^0.14.1"
 gradio = "^5.8.0"
+duckduckgo-search = "^6.3.7"
+python-dotenv = "^1.0.1"
 
 
 [tool.poetry.group.dev.dependencies]

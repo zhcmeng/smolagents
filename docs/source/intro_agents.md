@@ -62,16 +62,26 @@ See? With these two examples, we already found the need for a few items to help 
 - a parser that extracts tool calls from the LLM output
 - system prompt synced with the parser
 - memory
+But wait, since we give room to LLMs in decisions, surely they will make mistakes, so for better performance we need error logging and retry mechanism?
+
+These will not be that straightforward to implement correctly, especially not together. That's why we decided that we needed to build a few abstractions to help people use these.
 
 ### Most important feature: Code agent
 
-[Multiple](https://huggingface.co/papers/2402.01030) [research](https://huggingface.co/papers/2411.01747) papers have shown that having the LLM write its actions (the tool calls) in code is much better than the current standard format JSON.
+[Multiple](https://huggingface.co/papers/2402.01030) [research](https://huggingface.co/papers/2411.01747) [papers](https://huggingface.co/papers/2401.00812) have shown that having the LLM write its actions (the tool calls) in code is much better than the current standard format JSON.
 
 Why is that? Well, because we crafted our code languages specifically to be great at expressing actions performed by a computer. If JSON snippets was a better way, this package would have been written in JSON snippets and the devil would be having a great time laughing at us.
 
 Code is just a better way to express actions on a computer. It has better:
-- Composability: could you nest JSON actions within each other, or define a set of JSON actions to re-use later, the same way you could just define a python function?
-- Object management: how do you store the output of an action like `generate_image` in JSON?
-- Generality: code is made to express simply anything you can do have a computer do.
+- **Composability:** could you nest JSON actions within each other, or define a set of JSON actions to re-use later, the same way you could just define a python function?
+- **Object management:** how do you store the output of an action like `generate_image` in JSON?
+- **Generality:** code is built to express simply anything you can do have a computer do.
+- **Representation in LLM training corpuses:** why not leverage this benediction of the sky that plenty of quality actions have already been included in LLM training corpuses?
 
-So we decided to give you the best Code agents out there!
+So we shoul use code as the main expression type for agent actions.
+
+Few existing framework build on this idea to make code agents first-class citizens. We focused on it!
+
+Especially, since code execution can be a security concern (arbitrary code execution!), we provide options at runtime:
+- a secure python interpreter to run code more safely in your environment
+- a sandbox `uv` environment.

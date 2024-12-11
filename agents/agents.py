@@ -19,7 +19,10 @@ from typing import Any, Callable, Dict, List, Optional, Union
 from dataclasses import dataclass
 from rich.syntax import Syntax
 
+from langfuse.decorators import langfuse_context, observe
+
 from transformers.utils import is_torch_available
+
 from .utils import console, parse_code_blob, parse_json_tool_call, truncate_content
 from .agent_types import AgentAudio, AgentImage
 from .default_tools import BASE_PYTHON_TOOLS, FinalAnswerTool
@@ -420,6 +423,7 @@ class ReactAgent(BaseAgent):
             console.print(f"[bold red]{error_msg}[/bold red]")
             return error_msg
 
+    @observe
     def run(self, task: str, stream: bool = False, reset: bool = True, oneshot: bool = False, **kwargs):
         """
         Runs the agent for the given task.
@@ -437,6 +441,7 @@ class ReactAgent(BaseAgent):
         agent.run("What is the result of 2 power 3.7384?")
         ```
         """
+        print("LANGFUSE REF:", langfuse_context.get_current_trace_url())
         self.task = task
         if len(kwargs) > 0:
             self.task += f"\nYou have been provided with these initial arguments: {str(kwargs)}."

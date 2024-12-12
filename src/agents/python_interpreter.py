@@ -1001,3 +1001,5 @@ def evaluate_python_code(
         msg = truncate_content(PRINT_OUTPUTS, max_length=MAX_LEN_OUTPUT)
         msg += f"EXECUTION FAILED:\nEvaluation stopped at line '{ast.get_source_segment(code, node)}' because of the following error:\n{e}"
         raise InterpreterError(msg)
+
+__all__ = ["evaluate_python_code"]

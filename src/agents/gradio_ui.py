@@ -110,3 +110,5 @@ class GradioUI:
             ).then(self.interact_with_agent, [stored_message, chatbot], [chatbot])
 
         demo.launch()
+
+__all__ = ["stream_to_gradio", "GradioUI"]

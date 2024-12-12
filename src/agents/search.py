@@ -77,3 +77,5 @@ class VisitWebpageTool(Tool):
             return f"Error fetching the webpage: {str(e)}"
         except Exception as e:
             return f"An unexpected error occurred: {str(e)}"
+
+__all__ = ["DuckDuckGoSearchTool", "VisitWebpageTool"]

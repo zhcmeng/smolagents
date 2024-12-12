@@ -1029,10 +1029,10 @@ class ToolCollection:
     Example:
 
     ```py
-    >>> from transformers import ToolCollection, ReactCodeAgent
+    >>> from transformers import ToolCollection, CodeAgent
 
     >>> image_tool_collection = ToolCollection(collection_slug="huggingface-tools/diffusion-tools-6630bb19a942c2306a2cdb6f")
-    >>> agent = ReactCodeAgent(tools=[*image_tool_collection.tools], add_base_tools=True)
+    >>> agent = CodeAgent(tools=[*image_tool_collection.tools], add_base_tools=True)
 
     >>> agent.run("Please draw me a picture of rivers and lakes.")
     ```

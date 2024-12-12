@@ -492,8 +492,8 @@ class ReactAgent(BaseAgent):
 
         Example:
         ```py
-        from transformers.agents import ReactCodeAgent
-        agent = ReactCodeAgent(tools=[])
+        from transformers.agents import CodeAgent
+        agent = CodeAgent(tools=[])
         agent.run("What is the result of 2 power 3.7384?")
         ```
         """

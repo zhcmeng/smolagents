@@ -16,7 +16,7 @@
 import unittest
 
 from transformers.agents.agent_types import AgentImage
-from transformers.agents.agents import AgentError, ReactCodeAgent, ReactJsonAgent
+from transformers.agents.agents import AgentError, CodeAgent, JsonAgent
 from transformers.agents.monitoring import stream_to_gradio
 
 
@@ -34,7 +34,7 @@ Code:
 final_answer('This is the final answer.')
 ```"""
 
-        agent = ReactCodeAgent(
+        agent = CodeAgent(
             tools=[],
             llm_engine=FakeLLMEngine(),
             max_iterations=1,
@@ -54,7 +54,7 @@ final_answer('This is the final answer.')
             def __call__(self, prompt, **kwargs):
                 return 'Action:{"action": "final_answer", "action_input": {"answer": "image"}}'
 
-        agent = ReactJsonAgent(
+        agent = JsonAgent(
             tools=[],
             llm_engine=FakeLLMEngine(),
             max_iterations=1,
@@ -74,7 +74,7 @@ final_answer('This is the final answer.')
             def __call__(self, prompt, **kwargs):
                 return "Malformed answer"
 
-        agent = ReactCodeAgent(
+        agent = CodeAgent(
             tools=[],
             llm_engine=FakeLLMEngine(),
             max_iterations=1,
@@ -94,7 +94,7 @@ final_answer('This is the final answer.')
             def __call__(self, prompt, **kwargs):
                 raise AgentError
 
-        agent = ReactCodeAgent(
+        agent = CodeAgent(
             tools=[],
             llm_engine=FakeLLMEngine(),
             max_iterations=1,
@@ -113,7 +113,7 @@ Code:
 final_answer('This is the final answer.')
 ```"""
 
-        agent = ReactCodeAgent(
+        agent = CodeAgent(
             tools=[],
             llm_engine=dummy_llm_engine,
             max_iterations=1,
@@ -133,7 +133,7 @@ final_answer('This is the final answer.')
                 'Action:{"action": "final_answer", "action_input": {"answer": "image"}}'
             )
 
-        agent = ReactJsonAgent(
+        agent = JsonAgent(
             tools=[],
             llm_engine=dummy_llm_engine,
             max_iterations=1,
@@ -160,7 +160,7 @@ final_answer('This is the final answer.')
         def dummy_llm_engine(prompt, **kwargs):
             raise AgentError("Simulated agent error")
 
-        agent = ReactCodeAgent(
+        agent = CodeAgent(
             tools=[],
             llm_engine=dummy_llm_engine,
             max_iterations=1,

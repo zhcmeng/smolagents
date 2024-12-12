@@ -233,6 +233,22 @@ Action:
             tool_arguments="final_answer(7.2904)",
         )
 
+    def test_reset_conversations(self):
+        agent = CodeAgent(
+            tools=[PythonInterpreterTool()], llm_engine=fake_code_llm
+        )
+        output = agent.run("What is 2 multiplied by 3.6452?", reset=True)
+        assert output == 7.2904
+        assert len(agent.logs) == 4
+
+        output = agent.run("What is 2 multiplied by 3.6452?", reset=False)
+        assert output == 7.2904
+        assert len(agent.logs) == 6
+
+        output = agent.run("What is 2 multiplied by 3.6452?", reset=True)
+        assert output == 7.2904
+        assert len(agent.logs) == 4
+
     def test_code_agent_code_errors_show_offending_lines(self):
         agent = CodeAgent(
             tools=[PythonInterpreterTool()], llm_engine=fake_code_llm_error

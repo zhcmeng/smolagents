@@ -29,7 +29,7 @@ These *tools* are functions for performing a task, and they contain all necessar
 
 The agent can be programmed to:
 - devise a series of actions/tools and run them all at once,  like the [`CodeAgent`]
-- plan and execute actions/tools one by one and wait for the outcome of each action before launching the next one, like the [`ReactJsonAgent`]
+- plan and execute actions/tools one by one and wait for the outcome of each action before launching the next one, like the [`JsonAgent`]
 
 ### Types of agents
 
@@ -41,9 +41,9 @@ This agent has a planning step, then generates python code to execute all its ac
 
 This is the go-to agent to solve reasoning tasks, since the ReAct framework ([Yao et al., 2022](https://huggingface.co/papers/2210.03629)) makes it really efficient to think on the basis of its previous observations.
 
-We implement two versions of ReactJsonAgent: 
-- [`ReactJsonAgent`] generates tool calls as a JSON in its output.
-- [`ReactCodeAgent`] is a new type of ReactJsonAgent that generates its tool calls as blobs of code, which works really well for LLMs that have strong coding performance.
+We implement two versions of JsonAgent: 
+- [`JsonAgent`] generates tool calls as a JSON in its output.
+- [`CodeAgent`] is a new type of JsonAgent that generates its tool calls as blobs of code, which works really well for LLMs that have strong coding performance.
 
 > [!TIP]
 > Read [Open-source LLMs as LangChain Agents](https://huggingface.co/blog/open-source-llms-as-agents) blog post to learn more about ReAct agents.
@@ -171,9 +171,9 @@ Note that we used an additional `sentence` argument: you can pass text as additi
 You can also use this to indicate the path to local or remote files for the model to use:
 
 ```py
-from transformers import ReactCodeAgent
+from transformers import CodeAgent
 
-agent = ReactCodeAgent(tools=[], llm_engine=llm_engine, add_base_tools=True)
+agent = CodeAgent(tools=[], llm_engine=llm_engine, add_base_tools=True)
 
 agent.run("Why does Mike not know many people in New York?", audio="https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/transformers/recording.mp3")
 ```
@@ -196,12 +196,12 @@ A Python interpreter executes the code on a set of inputs passed along with your
 This should be safe because the only functions that can be called are the tools you provided (especially if it's only tools by Hugging Face) and the print function, so you're already limited in what can be executed.
 
 The Python interpreter also doesn't allow imports by default outside of a safe list, so all the most obvious attacks shouldn't be an issue.
-You can still authorize additional imports by passing the authorized modules as a list of strings in argument `additional_authorized_imports` upon initialization of your [`ReactCodeAgent`] or [`CodeAgent`]:
+You can still authorize additional imports by passing the authorized modules as a list of strings in argument `additional_authorized_imports` upon initialization of your [`CodeAgent`] or [`CodeAgent`]:
 
 ```py
->>> from transformers import ReactCodeAgent
+>>> from transformers import CodeAgent
 
->>> agent = ReactCodeAgent(tools=[], additional_authorized_imports=['requests', 'bs4'])
+>>> agent = CodeAgent(tools=[], additional_authorized_imports=['requests', 'bs4'])
 >>> agent.run("Could you get me the title of the page at url 'https://huggingface.co/blog'?")
 
 (...)
@@ -215,7 +215,7 @@ The execution will stop at any code trying to perform an illegal operation or if
 
 ### The system prompt
 
-An agent, or rather the LLM that drives the agent, generates an output based on the system prompt. The system prompt can be customized and tailored to the intended task. For example, check the system prompt for the [`ReactCodeAgent`] (below version is slightly simplified).
+An agent, or rather the LLM that drives the agent, generates an output based on the system prompt. The system prompt can be customized and tailored to the intended task. For example, check the system prompt for the [`CodeAgent`] (below version is slightly simplified).
 
 ```text
 You will be given a task to solve as best you can.
@@ -260,10 +260,10 @@ You could improve the system prompt, for example, by adding an explanation of th
 For maximum flexibility, you can overwrite the whole system prompt template by passing your custom prompt as an argument to the `system_prompt` parameter.
 
 ```python
-from transformers import ReactJsonAgent
+from transformers import JsonAgent
 from transformers.agents import PythonInterpreterTool
 
-agent = ReactJsonAgent(tools=[PythonInterpreterTool()], system_prompt="{your_custom_prompt}")
+agent = JsonAgent(tools=[PythonInterpreterTool()], system_prompt="{your_custom_prompt}")
 ```
 
 > [!WARNING]
@@ -295,7 +295,7 @@ Transformers comes with a default toolbox for empowering agents, that you can ad
 - **Text to speech**: convert text to speech ([SpeechT5](./model_doc/speecht5))
 - **Translation**: translates a given sentence from source language to target language.
 - **DuckDuckGo search***: performs a web search using DuckDuckGo browser.
-- **Python code interpreter**: runs your the LLM generated Python code in a secure environment. This tool will only be added to [`ReactJsonAgent`] if you initialize it with `add_base_tools=True`, since code-based agent can already natively execute Python code
+- **Python code interpreter**: runs your the LLM generated Python code in a secure environment. This tool will only be added to [`JsonAgent`] if you initialize it with `add_base_tools=True`, since code-based agent can already natively execute Python code
 
 
 You can manually use a tool by calling the [`load_tool`] function and a task to perform.
@@ -375,57 +375,89 @@ print(f"The most downloaded model for the 'text-to-video' task is {most_download
 And the output:
 `"The most downloaded model for the 'text-to-video' task is ByteDance/AnimateDiff-Lightning."`
 
-### Manage your agent's toolbox
+## Multi-agents
 
-If you have already initialized an agent, it is inconvenient to reinitialize it from scratch with a tool you want to use. With Transformers, you can manage an agent's toolbox by adding or replacing a tool.
+Multi-agent has been introduced in Microsoft's framework [Autogen](https://huggingface.co/papers/2308.08155).
+It simply means having several agents working together to solve your task instead of only one.
+It empirically yields better performance on most benchmarks. The reason for this better performance is conceptually simple: for many tasks, rather than using a do-it-all system, you would prefer to specialize units on sub-tasks. Here, having agents with separate tool sets and memories allows to achieve efficient specialization.
 
-Let's add the `model_download_tool` to an existing agent initialized with only the default toolbox.
+You can easily build hierarchical multi-agent systems with `transformers.agents`.
 
-```python
-from transformers import CodeAgent
+To do so, encapsulate the agent in a [`ManagedAgent`] object. This object needs arguments `agent`, `name`, and a `description`, which will then be embedded in the manager agent's system prompt to let it know how to call this managed agent, as we also do for tools.
 
-agent = CodeAgent(tools=[], llm_engine=llm_engine, add_base_tools=True)
-agent.toolbox.add_tool(model_download_tool)
-```
-Now we can leverage both the new tool and the previous text-to-speech tool:
-
-```python
-agent.run(
-    "Can you read out loud the name of the model that has the most downloads in the 'text-to-video' task on the Hugging Face Hub and return the audio?"
-)
-```
-
-
-| **Audio**                                                                                                                                            |
-|------------------------------------------------------------------------------------------------------------------------------------------------------|
-| <audio controls><source src="https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/transformers/damo.wav" type="audio/wav"/> |
-
-
-> [!WARNING]
-> Beware when adding tools to an agent that already works well because it can bias selection towards your tool or select another tool other than the one already defined.
-
-
-Use the `agent.toolbox.update_tool()` method to replace an existing tool in the agent's toolbox.
-This is useful if your new tool is a one-to-one replacement of the existing tool because the agent already knows how to perform that specific task.
-Just make sure the new tool follows the same API as the replaced tool or adapt the system prompt template to ensure all examples using the replaced tool are updated.
-
-
-### Use a collection of tools
-
-You can leverage tool collections by using the ToolCollection object, with the slug of the collection you want to use.
-Then pass them as a list to initialize you agent, and start using them!
+Here's an example of making an agent that managed a specific web search agent using our [`DuckDuckGoSearchTool`]:
 
 ```py
-from transformers import ToolCollection, ReactCodeAgent
+from transformers.agents import CodeAgent, HfApiEngine, DuckDuckGoSearchTool, ManagedAgent
 
-image_tool_collection = ToolCollection(collection_slug="huggingface-tools/diffusion-tools-6630bb19a942c2306a2cdb6f")
-agent = ReactCodeAgent(tools=[*image_tool_collection.tools], add_base_tools=True)
+llm_engine = HfApiEngine()
 
-agent.run("Please draw me a picture of rivers and lakes.")
+web_agent = CodeAgent(tools=[DuckDuckGoSearchTool()], llm_engine=llm_engine)
+
+managed_web_agent = ManagedAgent(
+    agent=web_agent,
+    name="web_search",
+    description="Runs web searches for you. Give it your query as an argument."
+)
+
+manager_agent = CodeAgent(
+    tools=[], llm_engine=llm_engine, managed_agents=[managed_web_agent]
+)
+
+manager_agent.run("Who is the CEO of Hugging Face?")
 ```
 
-To speed up the start, tools are loaded only if called by the agent.
+> [!TIP]
+> For an in-depth example of an efficient multi-agent implementation, see [how we pushed our multi-agent system to the top of the GAIA leaderboard](https://huggingface.co/blog/beating-gaia).
 
-This gets you this image:
 
-<img src="https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/transformers/rivers_and_lakes.png">
+## Display your agent run in a cool Gradio interface
+
+You can leverage `gradio.Chatbot` to display your agent's thoughts using `stream_to_gradio`, here is an example:
+
+```py
+import gradio as gr
+from transformers import (
+    load_tool,
+    CodeAgent,
+    HfApiEngine,
+    stream_to_gradio,
+)
+
+# Import tool from Hub
+image_generation_tool = load_tool("m-ric/text-to-image")
+
+llm_engine = HfApiEngine("meta-llama/Meta-Llama-3-70B-Instruct")
+
+# Initialize the agent with the image generation tool
+agent = CodeAgent(tools=[image_generation_tool], llm_engine=llm_engine)
+
+
+def interact_with_agent(task):
+    messages = []
+    messages.append(gr.ChatMessage(role="user", content=task))
+    yield messages
+    for msg in stream_to_gradio(agent, task):
+        messages.append(msg)
+        yield messages + [
+            gr.ChatMessage(role="assistant", content="⏳ Task not finished yet!")
+        ]
+    yield messages
+
+
+with gr.Blocks() as demo:
+    text_input = gr.Textbox(lines=1, label="Chat Message", value="Make me a picture of the Statue of Liberty.")
+    submit = gr.Button("Run illustrator agent!")
+    chatbot = gr.Chatbot(
+        label="Agent",
+        type="messages",
+        avatar_images=(
+            None,
+            "https://em-content.zobj.net/source/twitter/53/robot-face_1f916.png",
+        ),
+    )
+    submit.click(interact_with_agent, [text_input], [chatbot])
+
+if __name__ == "__main__":
+    demo.launch()
+```

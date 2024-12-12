@@ -31,8 +31,8 @@ contains the API docs for the underlying classes.
 We provide two types of agents, based on the main [`Agent`] class:
 - [`CodeAgent`] acts in one shot, generating code to solve the task, then executes it at once.
 - [`ReactAgent`] acts step by step, each step consisting of one thought, then one tool call and execution. It has two classes:
-  - [`ReactJsonAgent`] writes its tool calls in JSON.
-  - [`ReactCodeAgent`] writes its tool calls in Python code.
+  - [`JsonAgent`] writes its tool calls in JSON.
+  - [`CodeAgent`] writes its tool calls in Python code.
 
 ### Agent
 
@@ -46,9 +46,9 @@ We provide two types of agents, based on the main [`Agent`] class:
 
 [[autodoc]] ReactAgent
 
-[[autodoc]] ReactJsonAgent
+[[autodoc]] JsonAgent
 
-[[autodoc]] ReactCodeAgent
+[[autodoc]] CodeAgent
 
 ### ManagedAgent
 

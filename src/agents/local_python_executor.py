@@ -963,7 +963,7 @@ def evaluate_python_code(
         code (`str`):
             The code to evaluate.
         static_tools (`Dict[str, Callable]`):
-            The functions that may be called during the evaluation.
+            The functions that may be called during the evaluation. These can also be agents in a multiagent setting.
             These tools cannot be overwritten in the code: any assignment to their name will raise an error.
         custom_tools (`Dict[str, Callable]`):
             The functions that may be called during the evaluation.

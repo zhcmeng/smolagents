@@ -15,33 +15,32 @@ rendered properly in your Markdown viewer.
 -->
 # Introduction to Agents
 
-### Why do we need agentic systems?
+### What is an agent?
 
-Current LLMs are like basic reasoning robots, that are trapped into a room.
-They can be sometimes impressively smart – and often impressively dumb – but they can only take as input what we decide to provide to them. We pass notes under the door – be it text, or text with images for vision models, or even audio –, and they reply to each note by passing another note under the door, but they cannot do anything else.
+Current LLMs are like basic reasoning robots that are trapped into a room.
+They take as input what we decide to provide to them. We pass notes under the door – be it text, or text with images for vision models, or even audio –, and they reply to each note by passing another note under the door, but they cannot do anything else.
 
-Wouldn't it be much more efficient to let them have some kind of access to the real world, either as a way to do their own research in order to better answer a question, or a way to accomplish a complex task for us?
+Any efficient system using AI will need to provide LLMs some kind of access to the real world: for instance the possibility to call a search tool to get external information, or to act on certain programs in order to solve a task.
 
-In other words, give them some agency.
+In other words, give them some agency. Agentic programs are the gateway to the outside world for LLMs.
 
-The whole idea of agentic systems is to embed LLMs into a program where their input and outputs are optimized to better leverage real-world interactions.
+Our definition of AI Agents is : “programs in which the workflow is determined by LLM outputs”. Any system leveraging LLMs will embed them into code. The influence of the LLM's input on the code workflow is the level of agency of LLMs in the system.
+
+Note that with this definition, "agent" is not a discrete, 0 or 1 definition: instead, "agency" evolves on a continuous spectrum, as you give more or less influence to the LLM on your workflow.
 
 
-### What is an agentic system ?
+If the output of the LLM has no impact on the workflow, as in a program that just postprocesses a LLM's output and returns it, this system is not agentic at all.
 
-Being "agentic" is not a discrete, 0 or 1 definition: instead, we should talk about "agency" being a continuous spectrum.
-
-Any system leveraging LLMs will embed them into code. The influence of the LLM's input on the code workflow is the level of agency of LLMs in the system.
-
-If the output of the LLM has no further impact on the workflow, as in a program that just postprocesses a LLM's output and returns it, this system is not agentic at all.
-
-Once an LLM output is used to determine which branch of an `if/else` switch is ran, the system starts to have some level of agency: it's a router.
+If an LLM output is used to determine which branch of an `if/else` switch is ran, the system starts to have some level of agency: it's a router.
 
 Then it can get more agentic.
 - If you use an LLM output to determine which function is run and with which arguments, that's tool calling.
 - If you use an LLM output to determine if you should keep iterating in a while loop, you get a multi-step agent.
 
-And the workflow can become even more complex. That's up to you to decide.
+Since the system’s versatility goes in lockstep with the level of agency that you give to the LLM, agentic systems can perform much broader tasks than any classic program.
+
+Programs are not just tools anymore, confined to an ultra-specialized task : they are agents.
+
 
 ### When to use an agentic system ?
 

@@ -22,3 +22,8 @@ dependencies = [
     "duckduckgo-search>=6.3.7",
     "python-dotenv>=1.0.1"
 ]
+
+[project.optional-dependencies]
+dev = [
+    "anthropic",
+]

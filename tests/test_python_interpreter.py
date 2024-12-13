@@ -18,10 +18,10 @@ import unittest
 import numpy as np
 import pytest
 
-from transformers import load_tool
-from transformers.agents.agent_types import AGENT_TYPE_MAPPING
-from transformers.agents.default_tools import BASE_PYTHON_TOOLS
-from transformers.agents.python_interpreter import (
+from agents import load_tool
+from agents.types import AGENT_TYPE_MAPPING
+from agents.default_tools import BASE_PYTHON_TOOLS
+from agents.local_python_executor import (
     InterpreterError,
     evaluate_python_code,
 )
@@ -51,6 +51,7 @@ class PythonInterpreterToolTester(unittest.TestCase, ToolTesterMixin):
         inputs = ["2 * 2"]
         output = self.tool(*inputs)
         output_type = AGENT_TYPE_MAPPING[self.tool.output_type]
+        print("OKK", type(output), output_type, AGENT_TYPE_MAPPING)
         self.assertTrue(isinstance(output, output_type))
 
     def test_agent_types_inputs(self):

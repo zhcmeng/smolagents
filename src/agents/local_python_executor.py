@@ -231,7 +231,6 @@ def evaluate_class_def(class_def, state, static_tools, custom_tools):
 
 
 def evaluate_augassign(expression, state, static_tools, custom_tools):
-    # Helper function to get current value and set new value based on the target type
     def get_current_value(target):
         if isinstance(target, ast.Name):
             return state.get(target.id, 0)
@@ -254,7 +253,6 @@ def evaluate_augassign(expression, state, static_tools, custom_tools):
     current_value = get_current_value(expression.target)
     value_to_add = evaluate_ast(expression.value, state, static_tools, custom_tools)
 
-    # Determine the operation and apply it
     if isinstance(expression.op, ast.Add):
         if isinstance(current_value, list):
             if not isinstance(value_to_add, list):

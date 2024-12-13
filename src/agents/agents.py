@@ -22,9 +22,9 @@ from rich.syntax import Syntax
 from transformers.utils import is_torch_available
 
 from .utils import console, parse_code_blob, parse_json_tool_call, truncate_content
-from .agent_types import AgentAudio, AgentImage
+from .types import AgentAudio, AgentImage
 from .default_tools import BASE_PYTHON_TOOLS, FinalAnswerTool
-from .llm_engine import HfApiEngine, MessageRole
+from .llm_engines import HfApiEngine, MessageRole
 from .monitoring import Monitor
 from .prompts import (
     CODE_SYSTEM_PROMPT,
@@ -492,7 +492,7 @@ class ReactAgent(BaseAgent):
 
         Example:
         ```py
-        from transformers.agents import CodeAgent
+        from agents import CodeAgent
         agent = CodeAgent(tools=[])
         agent.run("What is the result of 2 power 3.7384?")
         ```
@@ -811,7 +811,7 @@ class JsonAgent(ReactAgent):
             )
             log_entry.llm_output = llm_output
         except Exception as e:
-            raise AgentGenerationError(f"Error in generating llm output: {e}.")
+            raise AgentGenerationError(f"Error in generating llm_engine output: {e}.")
 
         if self.verbose:
             console.rule("[italic]Output message of the LLM:")
@@ -944,7 +944,7 @@ class CodeAgent(ReactAgent):
             )
             log_entry.llm_output = llm_output
         except Exception as e:
-            raise AgentGenerationError(f"Error in generating llm output: {e}.")
+            raise AgentGenerationError(f"Error in generating llm_engine output: {e}.")
 
         if self.verbose:
             console.rule("[italic]Output message of the LLM:")
@@ -1074,4 +1074,4 @@ And even if your task resolution is not successful, please return as much contex
         else:
             return output
 
-__all__ = ["BaseAgent", "ManagedAgent", "ReactAgent", "CodeAgent", "JsonAgent", "Toolbox"]
+__all__ = ["AgentError", "BaseAgent", "ManagedAgent", "ReactAgent", "CodeAgent", "JsonAgent", "Toolbox"]

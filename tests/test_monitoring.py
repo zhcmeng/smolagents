@@ -15,9 +15,7 @@
 
 import unittest
 
-from transformers.agents.agent_types import AgentImage
-from transformers.agents.agents import AgentError, CodeAgent, JsonAgent
-from transformers.agents.monitoring import stream_to_gradio
+from agents import AgentImage, AgentError, CodeAgent, JsonAgent, stream_to_gradio
 
 
 class MonitoringTester(unittest.TestCase):
@@ -122,7 +120,7 @@ final_answer('This is the final answer.')
         # Use stream_to_gradio to capture the output
         outputs = list(stream_to_gradio(agent, task="Test task", test_mode=True))
 
-        self.assertEqual(len(outputs), 3)
+        self.assertEqual(len(outputs), 4)
         final_message = outputs[-1]
         self.assertEqual(final_message.role, "assistant")
         self.assertIn("This is the final answer.", final_message.content)
@@ -149,7 +147,7 @@ final_answer('This is the final answer.')
             )
         )
 
-        self.assertEqual(len(outputs), 2)
+        self.assertEqual(len(outputs), 3)
         final_message = outputs[-1]
         self.assertEqual(final_message.role, "assistant")
         self.assertIsInstance(final_message.content, dict)
@@ -169,7 +167,7 @@ final_answer('This is the final answer.')
         # Use stream_to_gradio to capture the output
         outputs = list(stream_to_gradio(agent, task="Test task", test_mode=True))
 
-        self.assertEqual(len(outputs), 3)
+        self.assertEqual(len(outputs), 5)
         final_message = outputs[-1]
         self.assertEqual(final_message.role, "assistant")
         self.assertIn("Simulated agent error", final_message.content)

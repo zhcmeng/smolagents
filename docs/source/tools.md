@@ -20,7 +20,7 @@ rendered properly in your Markdown viewer.
 Here, we're going to see advanced tool usage.
 
 > [!TIP]
-> If you're new to `transformers.agents`, make sure to first read the main [agents documentation](./agents).
+> If you're new to `agents`, make sure to first read the main [agents documentation](./agents).
 
 
 ### Directly define a tool by subclassing Tool, and share it to the Hub

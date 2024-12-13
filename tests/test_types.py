@@ -18,7 +18,7 @@ import unittest
 import uuid
 from pathlib import Path
 
-from transformers.agents.agent_types import AgentAudio, AgentImage, AgentText
+from agents.types import AgentAudio, AgentImage, AgentText
 from transformers.testing_utils import (
     get_tests_dir,
     require_soundfile,

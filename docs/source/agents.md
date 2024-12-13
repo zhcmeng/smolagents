@@ -261,7 +261,7 @@ For maximum flexibility, you can overwrite the whole system prompt template by p
 
 ```python
 from transformers import JsonAgent
-from transformers.agents import PythonInterpreterTool
+from agents import PythonInterpreterTool
 
 agent = JsonAgent(tools=[PythonInterpreterTool()], system_prompt="{your_custom_prompt}")
 ```
@@ -381,14 +381,14 @@ Multi-agent has been introduced in Microsoft's framework [Autogen](https://huggi
 It simply means having several agents working together to solve your task instead of only one.
 It empirically yields better performance on most benchmarks. The reason for this better performance is conceptually simple: for many tasks, rather than using a do-it-all system, you would prefer to specialize units on sub-tasks. Here, having agents with separate tool sets and memories allows to achieve efficient specialization.
 
-You can easily build hierarchical multi-agent systems with `transformers.agents`.
+You can easily build hierarchical multi-agent systems with `agents`.
 
 To do so, encapsulate the agent in a [`ManagedAgent`] object. This object needs arguments `agent`, `name`, and a `description`, which will then be embedded in the manager agent's system prompt to let it know how to call this managed agent, as we also do for tools.
 
 Here's an example of making an agent that managed a specific web search agent using our [`DuckDuckGoSearchTool`]:
 
 ```py
-from transformers.agents import CodeAgent, HfApiEngine, DuckDuckGoSearchTool, ManagedAgent
+from agents import CodeAgent, HfApiEngine, DuckDuckGoSearchTool, ManagedAgent
 
 llm_engine = HfApiEngine()
 

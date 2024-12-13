@@ -51,7 +51,7 @@ from transformers.utils import (
     is_torch_available,
     is_vision_available,
 )
-from .agent_types import ImageType, handle_agent_inputs, handle_agent_outputs
+from .types import ImageType, handle_agent_inputs, handle_agent_outputs
 import logging
 
 logger = logging.getLogger(__name__)
@@ -928,8 +928,8 @@ def load_tool(task_or_repo_id, model_repo_id=None, token=None, **kwargs):
     """
     if task_or_repo_id in TOOL_MAPPING:
         tool_class_name = TOOL_MAPPING[task_or_repo_id]
-        main_module = importlib.import_module("transformers")
-        tools_module = main_module.agents
+        main_module = importlib.import_module("agents")
+        tools_module = main_module
         tool_class = getattr(tools_module, tool_class_name)
         return tool_class(model_repo_id, token=token, **kwargs)
     else:

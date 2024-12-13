@@ -19,7 +19,7 @@ There's a world of difference between building an agent that works and one that 
 In this guide, we're going to see best practices for building agents.
 
 > [!TIP]
-> If you're new to `transformers.agents`, make sure to first read the [intro to agents](./intro_agents).
+> If you're new to `agents`, make sure to first read the [intro to agents](./intro_agents).
 
 ### The best agentic systems are the simplest: simplify the workflow as much as you can
 

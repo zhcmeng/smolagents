@@ -20,7 +20,7 @@ import pytest
 
 from pathlib import Path
 
-from agents.agent_types import AgentText
+from agents.types import AgentText
 from agents.agents import (
     AgentMaxIterationsError,
     ManagedAgent,

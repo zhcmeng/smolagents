@@ -156,12 +156,12 @@ These types have three specific purposes:
 
 ### AgentText
 
-[[autodoc]] transformers.agents.agent_types.AgentText
+[[autodoc]] agents.types.AgentText
 
 ### AgentImage
 
-[[autodoc]] transformers.agents.agent_types.AgentImage
+[[autodoc]] agents.types.AgentImage
 
 ### AgentAudio
 
-[[autodoc]] transformers.agents.agent_types.AgentAudio
+[[autodoc]] agents.types.AgentAudio

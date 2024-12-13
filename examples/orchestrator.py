@@ -47,7 +47,7 @@ def visit_webpage(url: str) -> str:
 
 llm_engine = HfApiEngine(model)
 
-web_agent = JsonAgent(
+web_agent = CodeAgent(
     tools=[DuckDuckGoSearchTool(), visit_webpage],
     llm_engine=llm_engine,
     max_iterations=10,

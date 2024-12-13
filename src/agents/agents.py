@@ -38,7 +38,7 @@ from .prompts import (
     SYSTEM_PROMPT_PLAN_UPDATE,
     SYSTEM_PROMPT_PLAN,
 )
-from .python_interpreter import LIST_SAFE_MODULES, evaluate_python_code
+from .local_python_executor import LIST_SAFE_MODULES, evaluate_python_code
 from .tools import (
     DEFAULT_TOOL_DESCRIPTION_TEMPLATE,
     Tool,

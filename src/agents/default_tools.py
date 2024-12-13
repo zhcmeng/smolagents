@@ -23,7 +23,7 @@ from typing import Dict
 from huggingface_hub import hf_hub_download, list_spaces
 
 from transformers.utils import is_offline_mode
-from .python_interpreter import LIST_SAFE_MODULES, evaluate_python_code
+from .local_python_executor import LIST_SAFE_MODULES, evaluate_python_code
 from .tools import TOOL_CONFIG_FILE, Tool
 
 

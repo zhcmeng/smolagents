@@ -51,7 +51,7 @@ Particular guidelines to follow:
 For instance, here's a tool that :
 
 First, here's a poor version:
-```py
+```python
 from my_weather_api return convert_location_to_coordinates, get_weather_report_at_coordinates
 # Let's say "get_weather_report_at_coordinates" returns a list of [temperature in °C, risk of rain on a scale 0-1, wave height in m]
 import datetime
@@ -79,7 +79,7 @@ Why is it bad?
 If the tool call fails, the error trace logged in memory can help the LLM reverse engineer the tool to fix the errors. But why leave it so much heavy lifting to do?
 
 A better way to build this tool would have been the following:
-```py
+```python
 from my_weather_api return convert_location_to_coordinates, get_weather_report_at_coordinates
 # Let's say "get_weather_report_at_coordinates" returns a list of [temperature in °C, risk of rain on a scale 0-1, wave height in m]
 import datetime
@@ -104,7 +104,9 @@ def get_weather_api(location (str), date_time: str) -> str:
 
 In general, to ease the load on your LLM, the good question to ask yourself is: "How easy would it be for me, if I was dumb and using this tool for thsefirst time ever, to program with this tool and correct my own errors?".
 
-### How to debug your agent
+## How to debug your agent
+
+### 1. Use a stronger LLM
 
 In an agentic workflows, some of the errors are actual errors, some other are the fault of your LLM engine not reasoning properly.
 For instance, consider this trace for an `CodeAgent` that I asked to make me a car picture:
@@ -140,6 +142,8 @@ Thus it cannot access the image again except by leveraging the path that was log
 
 The first step to debugging your agent is thus "Use a more powerful LLM". Alternatives like `Qwen2/5-72B-Instruct` wouldn't have made that mistake.
 
+### 2. Provide more guidance / more information
+
 Then you can also use less powerful models but guide them better.
 
 To provide extra information, we do not recommend modifying the system prompt compared to default : there are many adjustments there that you do not want to mess up except if you understand the prompt very well.
@@ -147,4 +151,6 @@ Better ways to guide your LLM engine are:
 - If it 's about the task to solve: add all these details to the task. The task could be 100s of pages long.
 - If it's about how to use tools: the description attribute of your tools.
 
+### 3. Extra planning
 
+We provide a model for a supplementary planning step, that an agent can run regularly in-between normal action steps. In this step, there is no tool call, the LLM is simply asked to update a list of facts it knows and to reflect on what steps it should take next based on those facts.

@@ -26,7 +26,7 @@ from agents.types import (
     AgentImage,
     AgentText,
 )
-from agents.tools import Tool, tool
+from agents.tools import Tool, tool, AUTHORIZED_TYPES
 from transformers.testing_utils import get_tests_dir
 
 
@@ -35,9 +35,6 @@ if is_torch_available():
 
 if is_vision_available():
     from PIL import Image
-
-
-AUTHORIZED_TYPES = ["string", "boolean", "integer", "number", "audio", "image", "any"]
 
 
 def create_inputs(tool_inputs: Dict[str, Dict[Union[str, type], str]]):
@@ -100,14 +97,6 @@ class ToolTesterMixin:
         if self.tool.output_type != "any":
             agent_type = AGENT_TYPE_MAPPING[self.tool.output_type]
             self.assertTrue(isinstance(output, agent_type))
-
-    def test_agent_types_inputs(self):
-        inputs = create_inputs(self.tool.inputs)
-        _inputs = []
-        for _input, expected_input in zip(inputs, self.tool.inputs.values()):
-            input_type = expected_input["type"]
-            _inputs.append(AGENT_TYPE_MAPPING[input_type](_input))
-
 
 class ToolTests(unittest.TestCase):
     def test_tool_init_with_decorator(self):

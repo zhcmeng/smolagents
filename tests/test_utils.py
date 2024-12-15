@@ -4,6 +4,7 @@ import shutil
 import tempfile
 
 from pathlib import Path
+
 def str_to_bool(value) -> int:
     """
     Converts a string representation of truth to `True` (1) or `False` (0).
@@ -47,24 +48,6 @@ def slow(test_case):
     truthy value to run them.
     """
     return unittest.skipUnless(_run_slow_tests, "test is slow")(test_case)
-
-def get_launch_command(**kwargs) -> list:
-    """
-    Wraps around `kwargs` to help simplify launching from `subprocess`.
-
-    Example:
-    ```python
-    # returns ['accelerate', 'launch', '--num_processes=2', '--device_count=2']
-    get_launch_command(num_processes=2, device_count=2)
-    ```
-    """
-    command = ["accelerate", "launch"]
-    for k, v in kwargs.items():
-        if isinstance(v, bool) and v:
-            command.append(f"--{k}")
-        elif v is not None:
-            command.append(f"--{k}={v}")
-    return command
 
 
 class TempDirTestCase(unittest.TestCase):

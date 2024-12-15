@@ -36,7 +36,7 @@ The custom tool needs:
 - An `output_type` attribute, which specifies the output type.
 - A `forward` method which contains the inference code to be executed.
 
-The types for both `inputs` and `output_type` should be amongst [Pydantic formats](https://docs.pydantic.dev/latest/concepts/json_schema/#generating-json-schema), they can be either of these: `["string", "boolean", "integer", "number", "audio", "image", "any"]`.
+The types for both `inputs` and `output_type` should be amongst [Pydantic formats](https://docs.pydantic.dev/latest/concepts/json_schema/#generating-json-schema), they can be either of these: [`~AUTHORIZED_TYPES`].
 
 
 ```python
@@ -93,7 +93,7 @@ You only need to provide the id of the Space on the Hub, its name, and a descrip
 
 For instance, let's import the [FLUX.1-dev](https://huggingface.co/black-forest-labs/FLUX.1-dev) Space from the Hub and use it to generate an image.
 
-```
+```python
 from transformers import Tool
 
 image_generation_tool = Tool.from_space(
@@ -144,7 +144,7 @@ Import and instantiate the tool, then pass it to the `Tool.from_gradio` method:
 
 ```python
 from gradio_tools import StableDiffusionPromptGeneratorTool
-from transformers import Tool, load_tool, CodeAgent
+from agents import Tool, load_tool, CodeAgent
 
 gradio_prompt_generator_tool = StableDiffusionPromptGeneratorTool()
 prompt_generator_tool = Tool.from_gradio(gradio_prompt_generator_tool)
@@ -162,7 +162,7 @@ Here is how you can use it to recreate the intro's search result using a LangCha
 This tool will need `pip install google-search-results` to work properly.
 ```python
 from langchain.agents import load_tools
-from transformers import Tool, CodeAgent
+from agents import Tool, CodeAgent
 
 search_tool = Tool.from_langchain(load_tools(["serpapi"])[0])
 

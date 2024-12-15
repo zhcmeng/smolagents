@@ -121,6 +121,15 @@ def validate_after_init(cls, do_validate_forward: bool = True):
     cls.__init__ = new_init
     return cls
 
+AUTHORIZED_TYPES = [
+    "string",
+    "boolean",
+    "integer",
+    "number",
+    "image",
+    "audio",
+    "any",
+]
 
 CONVERSION_DICT = {"str": "string", "int": "integer", "float": "number"}
 
@@ -166,15 +175,6 @@ class Tool:
             "inputs": dict,
             "output_type": str,
         }
-        authorized_types = [
-            "string",
-            "integer",
-            "number",
-            "image",
-            "audio",
-            "any",
-            "boolean",
-        ]
 
         for attr, expected_type in required_attributes.items():
             attr_value = getattr(self, attr, None)
@@ -191,12 +191,12 @@ class Tool:
             assert (
                 "type" in input_content and "description" in input_content
             ), f"Input '{input_name}' should have keys 'type' and 'description', has only {list(input_content.keys())}."
-            if input_content["type"] not in authorized_types:
+            if input_content["type"] not in AUTHORIZED_TYPES:
                 raise Exception(
-                    f"Input '{input_name}': type '{input_content['type']}' is not an authorized value, should be one of {authorized_types}."
+                    f"Input '{input_name}': type '{input_content['type']}' is not an authorized value, should be one of {AUTHORIZED_TYPES}."
                 )
 
-        assert getattr(self, "output_type", None) in authorized_types
+        assert getattr(self, "output_type", None) in AUTHORIZED_TYPES
         if do_validate_forward:
             if not isinstance(self, PipelineTool):
                 signature = inspect.signature(self.forward)
@@ -1077,7 +1077,6 @@ def tool(tool_function: Callable) -> Tool:
     ] + list(original_signature.parameters.values())
     new_signature = original_signature.replace(parameters=new_parameters)
     SpecificTool.forward.__signature__ = new_signature
-
     SpecificTool.__name__ = class_name
     return SpecificTool()
 
@@ -1186,4 +1185,4 @@ class Toolbox:
             toolbox_description += f"\t{tool.name}: {tool.description}\n"
         return toolbox_description
 
-__all__ = ["Tool", "tool", "load_tool", "launch_gradio_demo", "Toolbox"]
+__all__ = ["AUTHORIZED_TYPES", "Tool", "tool", "load_tool", "launch_gradio_demo", "Toolbox"]

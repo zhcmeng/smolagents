@@ -61,11 +61,3 @@ class FinalAnswerToolTester(unittest.TestCase, ToolTesterMixin):
             output = self.tool(**input)
             agent_type = AGENT_TYPE_MAPPING[input_type]
             self.assertTrue(isinstance(output, agent_type))
-
-    @require_torch
-    def test_agent_types_inputs(self):
-        inputs = self.create_inputs()
-        for input_type, input in inputs.items():
-            output = self.tool(**input)
-            agent_type = AGENT_TYPE_MAPPING[input_type]
-            self.assertTrue(isinstance(output, agent_type))

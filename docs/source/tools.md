@@ -38,10 +38,10 @@ The custom tool needs:
 
 The types for both `inputs` and `output_type` should be amongst [Pydantic formats](https://docs.pydantic.dev/latest/concepts/json_schema/#generating-json-schema), they can be either of these: [`~AUTHORIZED_TYPES`].
 
+Also, all imports should be put within the tool's forward function, else you will get an error.
 
 ```python
 from transformers import Tool
-from huggingface_hub import list_models
 
 class HFModelDownloadsTool(Tool):
     name = "model_download_counter"
@@ -58,26 +58,27 @@ class HFModelDownloadsTool(Tool):
     output_type = "string"
 
     def forward(self, task: str):
+        from huggingface_hub import list_models
+
         model = next(iter(list_models(filter=task, sort="downloads", direction=-1)))
         return model.id
-```
-
-Now that the custom `HfModelDownloadsTool` class is ready, you can save it to a file named `model_downloads.py` and import it for use.
-
-
-```python
-from model_downloads import HFModelDownloadsTool
-
 tool = HFModelDownloadsTool()
 ```
+
+Now the custom `HfModelDownloadsTool` class is ready.
 
 You can also share your custom tool to the Hub by calling [`~Tool.push_to_hub`] on the tool. Make sure you've created a repository for it on the Hub and are using a token with read access.
 
 ```python
-tool.push_to_hub("{your_username}/hf-model-downloads")
+from dotenv import load_dotenv
+
+load_dotenv()
+
+tool.push_to_hub("m-ric/hf-model-downloads", token=os.getenv("HF_TOKEN"))
 ```
 
 Load the tool with the [`~Tool.load_tool`] function and pass it to the `tools` parameter in your agent.
+Since running tools means running custom code, you need to make sure you trust the repository, and pass `trust_remote_code=True`.
 
 ```python
 from transformers import load_tool, CodeAgent
@@ -159,7 +160,7 @@ We love Langchain and think it has a very compelling suite of tools.
 To import a tool from LangChain, use the `from_langchain()` method.
 
 Here is how you can use it to recreate the intro's search result using a LangChain web search tool.
-This tool will need `pip install google-search-results` to work properly.
+This tool will need `pip install langchain google-search-results -q` to work properly.
 ```python
 from langchain.agents import load_tools
 from agents import Tool, CodeAgent
@@ -190,7 +191,6 @@ agent.run(
     "Can you read out loud the name of the model that has the most downloads in the 'text-to-video' task on the Hugging Face Hub and return the audio?"
 )
 ```
-
 
 | **Audio**                                                                                                                                            |
 |------------------------------------------------------------------------------------------------------------------------------------------------------|

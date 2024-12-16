@@ -347,16 +347,15 @@ class Tool:
         # Save tool file
         forward_source_code = inspect.getsource(self.forward)
         validate_args_are_self_contained(forward_source_code)
-        tool_code = textwrap.dedent(f"""
-            from agents import Tool
+        tool_code = f"""
+from agents import Tool
 
-            class {class_name}(Tool):
-                name = "{self.name}"
-                description = \"\"\"{self.description}\"\"\"
-                inputs = {json.dumps(self.inputs, separators=(',', ':'))}
-                output_type = "{self.output_type}"
-            """
-        ).strip()
+class {class_name}(Tool):
+    name = "{self.name}"
+    description = \"\"\"{self.description}\"\"\"
+    inputs = {json.dumps(self.inputs, separators=(',', ':'))}
+    output_type = "{self.output_type}"
+""".strip()
 
         def add_self_argument(source_code: str) -> str:
             """Add 'self' as first argument to a function definition if not present."""

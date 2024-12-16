@@ -72,8 +72,8 @@ def get_weather_api(location: str, date_time: str) -> str:
     Returns the weather report.
 
     Args:
-        - location (`str`): the name of the place that you want the weather for.
-        - date_time (`str`): the date and time for which you want the report.
+        location: the name of the place that you want the weather for.
+        date_time: the date and time for which you want the report.
     """
     lon, lat = convert_location_to_coordinates(location)
     date_time = datetime.strptime(date_time)
@@ -96,8 +96,8 @@ def get_weather_api(location: str, date_time: str) -> str:
     Returns the weather report.
 
     Args:
-        - location (`str`): the name of the place that you want the weather for. Should be a place name, followed by possibly a city name, then a country, like "Anchor Point, Taghazout, Morocco".
-        - date_time (`str`): the date and time for which you want the report, formatted as '%m/%d/%y %H:%M:%S'.
+        location: the name of the place that you want the weather for. Should be a place name, followed by possibly a city name, then a country, like "Anchor Point, Taghazout, Morocco".
+        date_time: the date and time for which you want the report, formatted as '%m/%d/%y %H:%M:%S'.
     """
     lon, lat = convert_location_to_coordinates(location)
     try:

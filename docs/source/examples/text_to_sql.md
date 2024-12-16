@@ -114,8 +114,7 @@ Now let’s build our tool. It needs the following: (read the documentation for 
 ```py
 from transformers.agents import tool
 
-
-
+@tool
 def sql_engine(query: str) -> str:
     """
     Allows you to perform SQL queries on the table. Returns a string representation of the result.
@@ -212,8 +211,8 @@ agent.run("Which waiter got more total money from tips?")
 It directly works! The setup was surprisingly simple, wasn’t it?
 
 This example is done! We've touched upon these concepts:
-- building new tools
-- updating tool description
-- switching to a stronger LLM helps agent reasoning.
+- Building new tools.
+- Updating a tool's description.
+- Switching to a stronger LLM helps agent reasoning.
 
 ✅ Now you can go build this text-to-SQL system you’ve always dreamt of! ✨

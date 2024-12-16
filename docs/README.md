@@ -16,17 +16,21 @@ limitations under the License.
 
 # Generating the documentation
 
-To generate the documentation, you first have to build it. Several packages are necessary to build the doc, 
-you can install them with the following command, at the root of the code repository:
+To generate the documentation, you have to build it. Several packages are necessary to build the doc.
+
+First, you need to install the project itself by running the following command at the root of the code repository:
 
 ```bash
-pip install -e ".[docs]"
+pip install -e .
 ```
 
-Then you need to install our special tool that builds the documentation:
+You also need to install 2 extra packages:
 
 ```bash
-pip install git+https://github.com/huggingface/doc-builder
+# `hf-doc-builder` to build the docs
+pip install git+https://github.com/huggingface/doc-builder@main
+# `watchdog` for live reloads
+pip install watchdog
 ```
 
 ---
@@ -39,11 +43,11 @@ check how they look before committing for instance). You don't have to commit th
 
 ## Building the documentation
 
-Once you have setup the `doc-builder` and additional packages, you can generate the documentation by 
-typing the following command:
+Once you have setup the `doc-builder` and additional packages with the pip install command above,
+you can generate the documentation by typing the following command:
 
 ```bash
-doc-builder build accelerate docs/source/ --build_dir ~/tmp/test-build
+doc-builder build agents docs/source/ --build_dir ~/tmp/test-build
 ```
 
 You can adapt the `--build_dir` to set any temporary folder that you prefer. This command will create it and generate
@@ -52,30 +56,20 @@ Markdown editor.
 
 ## Previewing the documentation
 
-To preview the docs, first install the `watchdog` module with:
+To preview the docs, run the following command:
 
 ```bash
-pip install watchdog
+doc-builder preview agents docs/source/
 ```
 
-Then run the following command:
-
-```bash
-doc-builder preview {package_name} {path_to_docs}
-```
-
-For example:
-
-```bash
-doc-builder preview accelerate docs/source/
-```
-
-The docs will be viewable at [http://localhost:3000](http://localhost:3000). You can also preview the docs once you have opened a PR. You will see a bot add a comment to a link where the documentation with your changes lives.
+The docs will be viewable at [http://localhost:5173](http://localhost:5173). You can also preview the docs once you
+have opened a PR. You will see a bot add a comment to a link where the documentation with your changes lives.
 
 ---
 **NOTE**
 
-The `preview` command only works with existing doc files. When you add a completely new file, you need to update `_toctree.yml` & restart `preview` command (`ctrl-c` to stop it & call `doc-builder preview ...` again).
+The `preview` command only works with existing doc files. When you add a completely new file, you need to update
+`_toctree.yml` & restart `preview` command (`ctrl-c` to stop it & call `doc-builder preview ...` again).
 
 ---
 
@@ -84,7 +78,7 @@ The `preview` command only works with existing doc files. When you add a complet
 Accepted files are Markdown (.md).
 
 Create a file with its extension and put it in the source directory. You can then link it to the toc-tree by putting
-the filename without the extension in the [`_toctree.yml`](https://github.com/huggingface/accelerate/blob/main/docs/source/_toctree.yml) file.
+the filename without the extension in the [`_toctree.yml`](https://github.com/huggingface/agents/blob/main/docs/source/_toctree.yml) file.
 
 ## Renaming section headers and moving sections
 
@@ -109,10 +103,12 @@ Sections that were moved:
 
 Use the relative style to link to the new file so that the versioned docs continue to work.
 
+For an example of a rich moved section set please see the very end of [the transformers Trainer doc](https://github.com/huggingface/transformers/blob/main/docs/source/en/main_classes/trainer.md).
+
 
 ## Writing Documentation - Specification
 
-The `huggingface/accelerate` documentation follows the
+The `huggingface/agents` documentation follows the
 [Google documentation](https://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_google.html) style for docstrings,
 although we can write them directly in Markdown.
 
@@ -120,12 +116,14 @@ although we can write them directly in Markdown.
 
 Adding a new tutorial or section is done in two steps:
 
-- Add a new file under `./source`. This file can either be ReStructuredText (.rst) or Markdown (.md).
+- Add a new Markdown (.md) file under `./source`.
 - Link that file in `./source/_toctree.yml` on the correct toc-tree.
 
-Make sure to put your new file under the proper section. It's unlikely to go in the first section (*Get Started*), so
-depending on the intended targets (beginners, more advanced users, or researchers) it should go in sections two, three, or
-four.
+Make sure to put your new file under the proper section. If you have a doubt, feel free to ask in a Github Issue or PR.
+
+### Translating
+
+When translating, refer to the guide at [./TRANSLATING.md](https://github.com/huggingface/agents/blob/main/docs/TRANSLATING.md).
 
 ### Writing source documentation
 
@@ -133,13 +131,13 @@ Values that should be put in `code` should either be surrounded by backticks: \`
 and objects like True, None, or any strings should usually be put in `code`.
 
 When mentioning a class, function, or method, it is recommended to use our syntax for internal links so that our tool
-adds a link to its documentation with this syntax: \[\`XXXClass\`\] or \[\`function\`\]. This requires the class or 
+adds a link to its documentation with this syntax: \[\`XXXClass\`\] or \[\`function\`\]. This requires the class or
 function to be in the main package.
 
 If you want to create a link to some internal class or function, you need to
-provide its path. For instance: \[\`utils.gather\`\]. This will be converted into a link with
-`utils.gather` in the description. To get rid of the path and only keep the name of the object you are
-linking to in the description, add a ~: \[\`~utils.gather\`\] will generate a link with `gather` in the description.
+provide its path. For instance: \[\`utils.ModelOutput\`\]. This will be converted into a link with
+`utils.ModelOutput` in the description. To get rid of the path and only keep the name of the object you are
+linking to in the description, add a ~: \[\`~utils.ModelOutput\`\] will generate a link with `ModelOutput` in the description.
 
 The same works for methods so you can either use \[\`XXXClass.method\`\] or \[~\`XXXClass.method\`\].
 
@@ -154,20 +152,20 @@ description:
         n_layers (`int`): The number of layers of the model.
 ```
 
-If the description is too long to fit in one line (more than 119 characters in total), another indentation is necessary 
-before writing the description after the argument.
-
-Finally, to maintain uniformity if any *one* description is too long to fit on one line, the 
-rest of the parameters should follow suit and have an indention before their description.
+If the description is too long to fit in one line, another indentation is necessary before writing the description
+after the argument.
 
 Here's an example showcasing everything so far:
 
 ```
     Args:
-        gradient_accumulation_steps (`int`, *optional*, default to 1):
-            The number of steps that should pass before gradients are accumulated. A number > 1 should be combined with `Accelerator.accumulate`.
-        cpu (`bool`, *optional*):
-            Whether or not to force the script to execute on CPU. Will ignore GPU available if set to `True` and force the execution on one process only.
+        input_ids (`torch.LongTensor` of shape `(batch_size, sequence_length)`):
+            Indices of input sequence tokens in the vocabulary.
+
+            Indices can be obtained using [`AlbertTokenizer`]. See [`~PreTrainedTokenizer.encode`] and
+            [`~PreTrainedTokenizer.__call__`] for details.
+
+            [What are input IDs?](../glossary#input-ids)
 ```
 
 For optional arguments or arguments with defaults we follow the following syntax: imagine we have a function with the
@@ -182,9 +180,9 @@ then its documentation should look like this:
 ```
     Args:
         x (`str`, *optional*):
-            This argument controls ... and has a description longer than 119 chars.
+            This argument controls ...
         a (`float`, *optional*, defaults to 1):
-            This argument is used to ... and has a description longer than 119 chars.
+            This argument is used to ...
 ```
 
 Note that we always omit the "defaults to \`None\`" when None is the default for any argument. Also note that even
@@ -197,7 +195,7 @@ Multi-line code blocks can be useful for displaying examples. They are done betw
 
 
 ````
-```python
+```
 # first line of code
 # second line
 # etc
@@ -228,17 +226,15 @@ Here's an example of a tuple return, comprising several objects:
           Prediction scores of the language modeling head (scores for each vocabulary token before SoftMax).
 ```
 
-## Styling the docstring
+#### Adding an image
 
-We have an automatic script running with the `make style` comment that will make sure that:
-- the docstrings fully take advantage of the line width
-- all code examples are formatted using black, like the code of the Transformers library
+Due to the rapidly growing repository, it is important to make sure that no files that would significantly weigh down the repository are added. This includes images, videos, and other non-text files. We prefer to leverage a hf.co hosted `dataset` like
+the ones hosted on [`hf-internal-testing`](https://huggingface.co/hf-internal-testing) in which to place these files and reference
+them by URL. We recommend putting them in the following dataset: [huggingface/documentation-images](https://huggingface.co/datasets/huggingface/documentation-images).
+If an external contribution, feel free to add the images to your PR and ask a Hugging Face member to migrate your images
+to this dataset.
 
-This script may have some weird failures if you made a syntax mistake or if you uncover a bug. Therefore, it's
-recommended to commit your changes before running `make style`, so you can revert the changes done by that script
-easily.
-
-## Writing documentation examples
+#### Writing documentation examples
 
 The syntax for Example docstrings can look as follows:
 
@@ -246,22 +242,33 @@ The syntax for Example docstrings can look as follows:
     Example:
 
     ```python
-    >>> import time
-    >>> from accelerate import Accelerator
-    >>> accelerator = Accelerator()
-    >>> if accelerator.is_main_process:
-    ...     time.sleep(2)
-    >>> else:
-    ...     print("I'm waiting for the main process to finish its sleep...")
-    >>> accelerator.wait_for_everyone()
-    >>> # Should print on every process at the same time
-    >>> print("Everyone is here")
+    >>> from transformers import Wav2Vec2Processor, Wav2Vec2ForCTC
+    >>> from datasets import load_dataset
+    >>> import torch
+
+    >>> dataset = load_dataset("hf-internal-testing/librispeech_asr_demo", "clean", split="validation")
+    >>> dataset = dataset.sort("id")
+    >>> sampling_rate = dataset.features["audio"].sampling_rate
+
+    >>> processor = Wav2Vec2Processor.from_pretrained("facebook/wav2vec2-base-960h")
+    >>> model = Wav2Vec2ForCTC.from_pretrained("facebook/wav2vec2-base-960h")
+
+    >>> # audio file is decoded on the fly
+    >>> inputs = processor(dataset[0]["audio"]["array"], sampling_rate=sampling_rate, return_tensors="pt")
+    >>> with torch.no_grad():
+    ...     logits = model(**inputs).logits
+    >>> predicted_ids = torch.argmax(logits, dim=-1)
+
+    >>> # transcribe speech
+    >>> transcription = processor.batch_decode(predicted_ids)
+    >>> transcription[0]
+    'MISTER QUILTER IS THE APOSTLE OF THE MIDDLE CLASSES AND WE ARE GLAD TO WELCOME HIS GOSPEL'
     ```
 ```
 
-The docstring should give a minimal, clear example of how the respective function 
+The docstring should give a minimal, clear example of how the respective model
 is to be used in inference and also include the expected (ideally sensible)
 output.
-Often, readers will try out the example before even going through the function 
-or class definitions. Therefore, it is of utmost importance that the example 
+Often, readers will try out the example before even going through the function
+or class definitions. Therefore, it is of utmost importance that the example
 works as expected.

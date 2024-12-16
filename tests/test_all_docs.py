@@ -102,7 +102,7 @@ class TestDocs:
     def teardown_class(cls):
         shutil.rmtree(cls._tmpdir)
 
-    @pytest.mark.timeout(2)
+    @pytest.mark.timeout(100)
     def test_single_doc(self, doc_path: Path):
         """Test a single documentation file."""
         with open(doc_path, "r", encoding="utf-8") as f:

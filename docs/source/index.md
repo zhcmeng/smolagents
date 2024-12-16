@@ -15,60 +15,29 @@ rendered properly in your Markdown viewer.
 
 # Agents
 
-Accelerate is a library that enables the same PyTorch code to be run across any distributed configuration by adding just four lines of code! In short, training and inference at scale made simple, efficient and adaptable.
-
-```diff
-+ from accelerate import Accelerator
-+ accelerator = Accelerator()
-
-+ model, optimizer, training_dataloader, scheduler = accelerator.prepare(
-+     model, optimizer, training_dataloader, scheduler
-+ )
-
-  for batch in training_dataloader:
-      optimizer.zero_grad()
-      inputs, targets = batch
-      inputs = inputs.to(device)
-      targets = targets.to(device)
-      outputs = model(inputs)
-      loss = loss_function(outputs, targets)
-+     accelerator.backward(loss)
-      optimizer.step()
-      scheduler.step()
-```
-
-Built on `torch_xla` and `torch.distributed`, Accelerate takes care of the heavy lifting, so you don't have to write any custom code to adapt to these platforms.
-Convert existing codebases to utilize [DeepSpeed](usage_guides/deepspeed), perform [fully sharded data parallelism](usage_guides/fsdp), and have automatic support for mixed-precision training! 
-
-<Tip> 
-
-  To get a better idea of this process, make sure to check out the [Tutorials](basic_tutorials/overview)! 
-
-</Tip>
-
-
-This code can then be launched on any system through Accelerate's CLI interface:
-```bash
-accelerate launch {my_script.py}
-```
+Agents is a library that enables you to run powerful agents in a few lines of code!
+It is:
+- lightweight
+- understandable (we kept abstractions to the minimum)
+- the only library with first-class support for Code Agents, i.e. agents that write their actions in code! Head to [./conceptual_guides/intro_agents.md] to learn more.
 
 <div class="mt-10">
   <div class="w-full flex flex-col space-y-4 md:space-y-0 md:grid md:grid-cols-2 md:gap-y-4 md:gap-x-5">
-    <a class="!no-underline border dark:border-gray-700 p-5 rounded-lg shadow hover:shadow-lg" href="./basic_tutorials/overview"
+    <a class="!no-underline border dark:border-gray-700 p-5 rounded-lg shadow hover:shadow-lg" href="./tutorials/tools"
       ><div class="w-full text-center bg-gradient-to-br from-blue-400 to-blue-500 rounded-lg py-1.5 font-semibold mb-5 text-white text-lg leading-relaxed">Tutorials</div>
-      <p class="text-gray-700">Learn the basics and become familiar with using Accelerate. Start here if you are using Accelerate for the first time!</p>
+      <p class="text-gray-700">Learn the basics and become familiar with using Agents. Start here if you are using Agents for the first time!</p>
     </a>
-    <a class="!no-underline border dark:border-gray-700 p-5 rounded-lg shadow hover:shadow-lg" href="./usage_guides/explore"
+    <a class="!no-underline border dark:border-gray-700 p-5 rounded-lg shadow hover:shadow-lg" href="./examples/text_to_sql"
       ><div class="w-full text-center bg-gradient-to-br from-indigo-400 to-indigo-500 rounded-lg py-1.5 font-semibold mb-5 text-white text-lg leading-relaxed">How-to guides</div>
-      <p class="text-gray-700">Practical guides to help you achieve a specific goal. Take a look at these guides to learn how to use Accelerate to solve real-world problems.</p>
+      <p class="text-gray-700">Practical guides to help you achieve a specific goal: create an agent to generate and test SQL queries!</p>
     </a>
-    <a class="!no-underline border dark:border-gray-700 p-5 rounded-lg shadow hover:shadow-lg" href="./concept_guides/gradient_synchronization"
+    <a class="!no-underline border dark:border-gray-700 p-5 rounded-lg shadow hover:shadow-lg" href="./conceptual_guides/intro_agents"
       ><div class="w-full text-center bg-gradient-to-br from-pink-400 to-pink-500 rounded-lg py-1.5 font-semibold mb-5 text-white text-lg leading-relaxed">Conceptual guides</div>
-      <p class="text-gray-700">High-level explanations for building a better understanding of important topics such as avoiding subtle nuances and pitfalls in distributed training and DeepSpeed.</p>
+      <p class="text-gray-700">High-level explanations for building a better understanding of important topics to build better functioning agents.</p>
    </a>
-    <a class="!no-underline border dark:border-gray-700 p-5 rounded-lg shadow hover:shadow-lg" href="./package_reference/accelerator"
+    <a class="!no-underline border dark:border-gray-700 p-5 rounded-lg shadow hover:shadow-lg" href="./tutorials/building_good_agents"
       ><div class="w-full text-center bg-gradient-to-br from-purple-400 to-purple-500 rounded-lg py-1.5 font-semibold mb-5 text-white text-lg leading-relaxed">Reference</div>
-      <p class="text-gray-700">Technical descriptions of how Accelerate classes and methods work.</p>
+      <p class="text-gray-700">General, horizontal tutorials.</p>
     </a>
   </div>
 </div>

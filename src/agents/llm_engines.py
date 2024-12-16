@@ -37,6 +37,7 @@ DEFAULT_CODEAGENT_REGEX_GRAMMAR = {
     "value": "Thought: .+?\\nCode:\\n```(?:py|python)?\\n(?:.|\\s)+?\\n```<end_action>",
 }
 
+
 class MessageRole(str, Enum):
     USER = "user"
     ASSISTANT = "assistant"
@@ -48,6 +49,7 @@ class MessageRole(str, Enum):
     def roles(cls):
         return [r.value for r in cls]
 
+
 openai_role_conversions = {
     MessageRole.TOOL_RESPONSE: MessageRole.USER,
 }
@@ -55,6 +57,7 @@ openai_role_conversions = {
 llama_role_conversions = {
     MessageRole.TOOL_RESPONSE: MessageRole.USER,
 }
+
 
 def get_clean_message_list(
     message_list: List[Dict[str, str]], role_conversions: Dict[str, str] = {}
@@ -118,7 +121,7 @@ class HfEngine:
         messages: List[Dict[str, str]],
         stop_sequences: Optional[List[str]] = None,
         grammar: Optional[str] = None,
-        max_tokens: int = 1500
+        max_tokens: int = 1500,
     ):
         raise NotImplementedError
 
@@ -276,7 +279,12 @@ class TransformersEngine(HfEngine):
 
 
 class OpenAIEngine:
-    def __init__(self, model_name: Optional[str] = None, api_key: Optional[str] = None, base_url: Optional[str] = None):
+    def __init__(
+        self,
+        model_name: Optional[str] = None,
+        api_key: Optional[str] = None,
+        base_url: Optional[str] = None,
+    ):
         """Creates a LLM Engine that follows OpenAI format.
 
         Args:
@@ -301,7 +309,9 @@ class OpenAIEngine:
         grammar: Optional[str] = None,
         max_tokens: int = 1500,
     ) -> str:
-        messages = get_clean_message_list(messages, role_conversions=openai_role_conversions)
+        messages = get_clean_message_list(
+            messages, role_conversions=openai_role_conversions
+        )
 
         response = self.client.chat.completions.create(
             model=self.model_name,
@@ -337,7 +347,9 @@ class AnthropicEngine:
         grammar: Optional[str] = None,
         max_tokens: int = 1500,
     ) -> str:
-        messages = get_clean_message_list(messages, role_conversions=openai_role_conversions)
+        messages = get_clean_message_list(
+            messages, role_conversions=openai_role_conversions
+        )
         index_system_message, system_prompt = None, None
         for index, message in enumerate(messages):
             if message["role"] == MessageRole.SYSTEM:
@@ -346,7 +358,9 @@ class AnthropicEngine:
         if system_prompt is None:
             raise Exception("No system prompt found!")
 
-        filtered_messages = [message for i, message in enumerate(messages) if i != index_system_message]
+        filtered_messages = [
+            message for i, message in enumerate(messages) if i != index_system_message
+        ]
         if len(filtered_messages) == 0:
             print("Error, no user message:", messages)
             assert False
@@ -366,4 +380,13 @@ class AnthropicEngine:
         return full_response_text
 
 
-__all__ = ["MessageRole", "llama_role_conversions", "get_clean_message_list", "HfEngine", "TransformersEngine", "HfApiEngine", "OpenAIEngine", "AnthropicEngine"]
+__all__ = [
+    "MessageRole",
+    "llama_role_conversions",
+    "get_clean_message_list",
+    "HfEngine",
+    "TransformersEngine",
+    "HfApiEngine",
+    "OpenAIEngine",
+    "AnthropicEngine",
+]

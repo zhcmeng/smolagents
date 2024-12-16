@@ -98,6 +98,7 @@ class ToolTesterMixin:
             agent_type = AGENT_TYPE_MAPPING[self.tool.output_type]
             self.assertTrue(isinstance(output, agent_type))
 
+
 class ToolTests(unittest.TestCase):
     def test_tool_init_with_decorator(self):
         @tool
@@ -163,40 +164,46 @@ class ToolTests(unittest.TestCase):
             assert coolfunc.output_type == "number"
         assert "docstring has no description for the argument" in str(e)
 
-    def test_tool_definition_needs_imports_in_function(self):
+    def test_tool_definition_raises_error_imports_outside_function(self):
         with pytest.raises(Exception) as e:
             from datetime import datetime
+
             @tool
             def get_current_time() -> str:
                 """
                 Gets the current time.
                 """
                 return str(datetime.now())
+
         assert "datetime" in str(e)
 
         # Also test with classic definition
         with pytest.raises(Exception) as e:
+
             class GetCurrentTimeTool(Tool):
-                name="get_current_time_tool"
-                description="Gets the current time"
+                name = "get_current_time_tool"
+                description = "Gets the current time"
                 inputs = {}
                 output_type = "string"
 
                 def forward(self):
                     return str(datetime.now())
+
         assert "datetime" in str(e)
 
+    def test_tool_definition_raises_no_error_imports_in_function(self):
         @tool
         def get_current_time() -> str:
             """
             Gets the current time.
             """
             from datetime import datetime
+
             return str(datetime.now())
-        
+
         class GetCurrentTimeTool(Tool):
-            name="get_current_time_tool"
-            description="Gets the current time"
+            name = "get_current_time_tool"
+            description = "Gets the current time"
             inputs = {}
             output_type = "string"
 

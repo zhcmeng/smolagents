@@ -5,6 +5,7 @@ import tempfile
 
 from pathlib import Path
 
+
 def str_to_bool(value) -> int:
     """
     Converts a string representation of truth to `True` (1) or `False` (0).
@@ -28,10 +29,13 @@ def get_int_from_env(env_keys, default):
             return val
     return default
 
+
 def parse_flag_from_env(key, default=False):
     """Returns truthy value for `key` from the env if available else the default."""
     value = os.environ.get(key, str(default))
-    return str_to_bool(value) == 1  # As its name indicates `str_to_bool` actually returns an int...
+    return (
+        str_to_bool(value) == 1
+    )  # As its name indicates `str_to_bool` actually returns an int...
 
 
 _run_slow_tests = parse_flag_from_env("RUN_SLOW", default=False)

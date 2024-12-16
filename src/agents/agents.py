@@ -79,8 +79,9 @@ class AgentGenerationError(AgentError):
 
     pass
 
+
 @dataclass
-class ToolCall():
+class ToolCall:
     tool_name: str
     tool_arguments: Any
 
@@ -146,13 +147,17 @@ Here is a list of the team members that you can call:"""
 
 
 def format_prompt_with_managed_agents_descriptions(
-    prompt_template, managed_agents, agent_descriptions_placeholder: Optional[str] = None
+    prompt_template,
+    managed_agents,
+    agent_descriptions_placeholder: Optional[str] = None,
 ) -> str:
     if agent_descriptions_placeholder is None:
         agent_descriptions_placeholder = "{{managed_agents_descriptions}}"
     if agent_descriptions_placeholder not in prompt_template:
         print("PROMPT TEMPLLL", prompt_template)
-        raise ValueError(f"Provided prompt template does not contain the managed agents descriptions placeholder '{agent_descriptions_placeholder}'")
+        raise ValueError(
+            f"Provided prompt template does not contain the managed agents descriptions placeholder '{agent_descriptions_placeholder}'"
+        )
     if len(managed_agents.keys()) > 0:
         return prompt_template.replace(
             agent_descriptions_placeholder, show_agents_descriptions(managed_agents)
@@ -970,7 +975,9 @@ class CodeAgent(ReactAgent):
             error_msg = f"Error in code parsing: {e}. Make sure to provide correct code"
             raise AgentParsingError(error_msg)
 
-        log_entry.tool_call = ToolCall(tool_name="python_interpreter", tool_arguments=code_action)
+        log_entry.tool_call = ToolCall(
+            tool_name="python_interpreter", tool_arguments=code_action
+        )
 
         # Execute
         if self.verbose:
@@ -1075,4 +1082,13 @@ And even if your task resolution is not successful, please return as much contex
         else:
             return output
 
-__all__ = ["AgentError", "BaseAgent", "ManagedAgent", "ReactAgent", "CodeAgent", "JsonAgent", "Toolbox"]
+
+__all__ = [
+    "AgentError",
+    "BaseAgent",
+    "ManagedAgent",
+    "ReactAgent",
+    "CodeAgent",
+    "JsonAgent",
+    "Toolbox",
+]

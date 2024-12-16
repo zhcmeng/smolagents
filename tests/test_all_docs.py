@@ -25,6 +25,7 @@ from pathlib import Path
 from typing import List
 from dotenv import load_dotenv
 
+
 class SubprocessCallException(Exception):
     pass
 
@@ -37,10 +38,10 @@ def run_command(command: List[str], return_stdout=False, env=None):
     for i, c in enumerate(command):
         if isinstance(c, Path):
             command[i] = str(c)
-            
+
     if env is None:
         env = os.environ.copy()
-        
+
     try:
         output = subprocess.check_output(command, stderr=subprocess.STDOUT, env=env)
         if return_stdout:
@@ -55,14 +56,14 @@ def run_command(command: List[str], return_stdout=False, env=None):
 
 class DocCodeExtractor:
     """Handles extraction and validation of Python code from markdown files."""
-    
+
     @staticmethod
     def extract_python_code(content: str) -> List[str]:
         """Extract Python code blocks from markdown content."""
-        pattern = r'```(?:python|py)\n(.*?)\n```'
+        pattern = r"```(?:python|py)\n(.*?)\n```"
         matches = re.finditer(pattern, content, re.DOTALL)
         return [match.group(1).strip() for match in matches]
-    
+
     @staticmethod
     def create_test_script(code_blocks: List[str], tmp_dir: str) -> Path:
         """Create a temporary Python script from code blocks."""
@@ -74,13 +75,13 @@ class DocCodeExtractor:
 
         with open(tmp_file, "w", encoding="utf-8") as f:
             f.write(combined_code)
-            
+
         return tmp_file
 
 
 class TestDocs:
     """Test case for documentation code testing."""
-    
+
     @classmethod
     def setup_class(cls):
         cls._tmpdir = tempfile.mkdtemp()
@@ -93,7 +94,7 @@ class TestDocs:
 
         load_dotenv()
         cls.hf_token = os.getenv("HF_TOKEN")
-        
+
         cls.md_files = list(cls.docs_dir.rglob("*.md"))
         if not cls.md_files:
             raise ValueError(f"No markdown files found in {cls.docs_dir}")
@@ -107,29 +108,38 @@ class TestDocs:
         """Test a single documentation file."""
         with open(doc_path, "r", encoding="utf-8") as f:
             content = f.read()
-        
+
         code_blocks = self.extractor.extract_python_code(content)
         if not code_blocks:
             pytest.skip(f"No Python code blocks found in {doc_path.name}")
-        
+
         # Validate syntax of each block individually by parsing it
         for i, block in enumerate(code_blocks, 1):
             ast.parse(block)
-        
+
         # Create and execute test script
         try:
-            excluded_snippets = ["ToolCollection", "image_generation_tool", "from_langchain"]
+            excluded_snippets = [
+                "ToolCollection",
+                "image_generation_tool",
+                "from_langchain",
+            ]
             code_blocks = [
-                block.replace("<YOUR_HUGGINGFACEHUB_API_TOKEN>", self.hf_token) for block in code_blocks
-                if not any([snippet in block for snippet in excluded_snippets]) # Exclude these tools that take longer to run and add dependencies
+                block.replace("<YOUR_HUGGINGFACEHUB_API_TOKEN>", self.hf_token)
+                for block in code_blocks
+                if not any(
+                    [snippet in block for snippet in excluded_snippets]
+                )  # Exclude these tools that take longer to run and add dependencies
             ]
             test_script = self.extractor.create_test_script(code_blocks, self._tmpdir)
             run_command(self.launch_args + [str(test_script)])
-            
+
         except SubprocessCallException as e:
             pytest.fail(f"\nError while testing {doc_path.name}:\n{str(e)}")
-        except Exception as e:
-            pytest.fail(f"\nUnexpected error while testing {doc_path.name}:\n{traceback.format_exc()}")
+        except Exception:
+            pytest.fail(
+                f"\nUnexpected error while testing {doc_path.name}:\n{traceback.format_exc()}"
+            )
 
     @pytest.fixture(autouse=True)
     def _setup(self):
@@ -152,7 +162,5 @@ def pytest_generate_tests(metafunc):
 
         # Parameterize with the markdown files
         metafunc.parametrize(
-            "doc_path",
-            test_class.md_files,
-            ids=[f.stem for f in test_class.md_files]
+            "doc_path", test_class.md_files, ids=[f.stem for f in test_class.md_files]
         )

@@ -267,4 +267,5 @@ def handle_agent_outputs(output, output_type=None):
                 return _v(output)
         return output
 
+
 __all__ = ["AgentType", "AgentImage", "AgentText", "AgentAudio"]

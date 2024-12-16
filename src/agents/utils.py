@@ -18,6 +18,7 @@ import json
 import re
 from typing import Tuple, Dict, Union
 import ast
+from rich.console import Console
 
 from transformers.utils.import_utils import _is_package_available
 
@@ -27,8 +28,6 @@ _pygments_available = _is_package_available("pygments")
 def is_pygments_available():
     return _pygments_available
 
-
-from rich.console import Console
 
 console = Console()
 
@@ -110,21 +109,23 @@ def truncate_content(
             + f"\n..._This content has been truncated to stay below {max_length} characters_...\n"
             + content[-MAX_LENGTH_TRUNCATE_CONTENT // 2 :]
         )
-    
+
+
 class ImportFinder(ast.NodeVisitor):
     def __init__(self):
         self.packages = set()
-        
+
     def visit_Import(self, node):
         for alias in node.names:
             # Get the base package name (before any dots)
-            base_package = alias.name.split('.')[0]
+            base_package = alias.name.split(".")[0]
             self.packages.add(base_package)
 
     def visit_ImportFrom(self, node):
         if node.module:  # for "from x import y" statements
             # Get the base package name (before any dots)
-            base_package = node.module.split('.')[0]
+            base_package = node.module.split(".")[0]
             self.packages.add(base_package)
+
 
 __all__ = []

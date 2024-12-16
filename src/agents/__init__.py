@@ -18,11 +18,7 @@ __version__ = "0.1.0"
 
 from typing import TYPE_CHECKING
 
-from transformers.utils import (
-    OptionalDependencyNotAvailable,
-    _LazyModule,
-    is_torch_available,
-)
+from transformers.utils import _LazyModule
 from transformers.utils.import_utils import define_import_structure
 
 
@@ -43,4 +39,6 @@ else:
     import sys
 
     _file = globals()["__file__"]
-    sys.modules[__name__] = _LazyModule(__name__, _file, define_import_structure(_file), module_spec=__spec__)
+    sys.modules[__name__] = _LazyModule(
+        __name__, _file, define_import_structure(_file), module_spec=__spec__
+    )

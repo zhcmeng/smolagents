@@ -127,7 +127,10 @@ class PythonInterpreterTool(Tool):
     name = "python_interpreter"
     description = "This is a tool that evaluates python code. It can be used to perform calculations."
     inputs = {
-        "code": {"type": "string", "description": "The python code to run in interpreter"}
+        "code": {
+            "type": "string",
+            "description": "The python code to run in interpreter",
+        }
     }
     output_type = "string"
 
@@ -185,5 +188,6 @@ class UserInputTool(Tool):
     def forward(self, question):
         user_input = input(f"{question} => ")
         return user_input
+
 
 __all__ = ["PythonInterpreterTool", "FinalAnswerTool", "UserInputTool"]

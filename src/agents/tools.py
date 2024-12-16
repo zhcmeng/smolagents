@@ -39,12 +39,6 @@ from huggingface_hub import (
 from huggingface_hub.utils import RepositoryNotFoundError, build_hf_headers, get_session
 from packaging import version
 
-from transformers.dynamic_module_utils import (
-    custom_object_save,
-    get_class_from_dynamic_module,
-    get_imports,
-)
-from transformers import AutoProcessor
 from transformers.utils import (
     TypeHintParsingException,
     cached_file,
@@ -62,11 +56,10 @@ logger = logging.getLogger(__name__)
 
 
 if is_torch_available():
-    import torch
+    pass
 
 if is_accelerate_available():
-    from accelerate import PartialState
-    from accelerate.utils import send_to_device
+    pass
 
 
 TOOL_CONFIG_FILE = "tool_config.json"
@@ -123,12 +116,13 @@ def validate_after_init(cls, do_validate_forward: bool = True):
     cls.__init__ = new_init
     return cls
 
+
 def validate_args_are_self_contained(source_code):
     """Validates that all names in forward method are properly defined.
     In particular it will check that all imports are done within the function."""
     print("CODDDD", source_code)
     tree = ast.parse(textwrap.dedent(source_code))
-    
+
     # Get function arguments
     func_node = tree.body[0]
     arg_names = {arg.arg for arg in func_node.args.args} | {"kwargs"}
@@ -147,10 +141,10 @@ def validate_args_are_self_contained(source_code):
             for name in node.names:
                 actual_name = name.asname or name.name
                 self.imports[actual_name] = (name.name, actual_name)
-                
+
         def visit_ImportFrom(self, node):
             """Handle from imports like 'from datetime import datetime'."""
-            module = node.module or ''
+            module = node.module or ""
             for name in node.names:
                 actual_name = name.asname or name.name
                 self.from_imports[actual_name] = (module, name.name, actual_name)
@@ -161,7 +155,7 @@ def validate_args_are_self_contained(source_code):
                 if isinstance(target, ast.Name):
                     self.assigned_names.add(target.id)
             self.visit(node.value)
-            
+
         def visit_AnnAssign(self, node):
             """Track annotated assignments."""
             if isinstance(node.target, ast.Name):
@@ -179,52 +173,55 @@ def validate_args_are_self_contained(source_code):
                     if isinstance(elt, ast.Name):
                         names.add(elt.id)
             return names
-                
+
         def visit_For(self, node):
             """Track for-loop target variables and handle enumerate specially."""
             # Add names from the target
             target_names = self._handle_for_target(node.target)
             self.assigned_names.update(target_names)
-            
+
             # Special handling for enumerate
-            if (isinstance(node.iter, ast.Call) and 
-                isinstance(node.iter.func, ast.Name) and 
-                node.iter.func.id == 'enumerate'):
-                # For enumerate, if we have "for i, x in enumerate(...)", 
+            if (
+                isinstance(node.iter, ast.Call)
+                and isinstance(node.iter.func, ast.Name)
+                and node.iter.func.id == "enumerate"
+            ):
+                # For enumerate, if we have "for i, x in enumerate(...)",
                 # both i and x should be marked as assigned
                 if isinstance(node.target, ast.Tuple):
                     for elt in node.target.elts:
                         if isinstance(elt, ast.Name):
                             self.assigned_names.add(elt.id)
-                            
+
             # Visit the rest of the node
             self.generic_visit(node)
 
         def visit_Name(self, node):
-            if (isinstance(node.ctx, ast.Load) and not (
-                node.id == "tool" or
-                node.id in builtin_names or
-                node.id in arg_names or 
-                node.id == 'self' or
-                node.id in self.assigned_names
-            )):
+            if isinstance(node.ctx, ast.Load) and not (
+                node.id == "tool"
+                or node.id in builtin_names
+                or node.id in arg_names
+                or node.id == "self"
+                or node.id in self.assigned_names
+            ):
                 if node.id not in self.from_imports and node.id not in self.imports:
                     self.undefined_names.add(node.id)
-                    
+
         def visit_Attribute(self, node):
             # Skip self.something
-            if not (isinstance(node.value, ast.Name) and node.value.id == 'self'):
+            if not (isinstance(node.value, ast.Name) and node.value.id == "self"):
                 self.generic_visit(node)
-    
+
     checker = NameChecker()
     checker.visit(tree)
-    
+
     if checker.undefined_names:
         raise ValueError(
             f"""The following names in forward method are not defined: {', '.join(checker.undefined_names)}.
             Make sure all imports and variables are self-contained within the method.            
             """
         )
+
 
 AUTHORIZED_TYPES = [
     "string",
@@ -272,7 +269,6 @@ class Tool:
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
         validate_after_init(cls, do_validate_forward=False)
-
 
     def validate_arguments(self, do_validate_forward: bool = True):
         required_attributes = {
@@ -359,14 +355,14 @@ class {class_name}(Tool):
 
         def add_self_argument(source_code: str) -> str:
             """Add 'self' as first argument to a function definition if not present."""
-            pattern = r'def forward\(((?!self)[^)]*)\)'
-            
+            pattern = r"def forward\(((?!self)[^)]*)\)"
+
             def replacement(match):
                 args = match.group(1).strip()
                 if args:  # If there are other arguments
-                    return f'def forward(self, {args})'
-                return 'def forward(self)'
-                
+                    return f"def forward(self, {args})"
+                return "def forward(self)"
+
             return re.sub(pattern, replacement, source_code)
 
         forward_source_code = forward_source_code.replace(self.name, "forward")
@@ -391,11 +387,7 @@ class {class_name}(Tool):
         # Save app file
         app_file = os.path.join(output_dir, "app.py")
         with open(app_file, "w", encoding="utf-8") as f:
-            f.write(
-                APP_FILE_TEMPLATE.format(
-                    class_name=class_name
-                )
-            )
+            f.write(APP_FILE_TEMPLATE.format(class_name=class_name))
 
         # Save requirements file
         requirements_file = os.path.join(output_dir, "requirements.txt")
@@ -457,7 +449,7 @@ class {class_name}(Tool):
             self.save(work_dir)
             print(work_dir)
             with open(work_dir + "/tool.py", "r") as f:
-                print('\n'.join(f.readlines()))
+                print("\n".join(f.readlines()))
             logger.info(
                 f"Uploading the following files to {repo_id}: {','.join(os.listdir(work_dir))}"
             )
@@ -544,8 +536,8 @@ class {class_name}(Tool):
             )
 
         with open(resolved_tool_file, encoding="utf-8") as reader:
-            tool_code = "".join(reader.readlines())    
-        
+            tool_code = "".join(reader.readlines())
+
         # Find the Tool subclass in the namespace
         with tempfile.TemporaryDirectory() as temp_dir:
             # Save the code to a file
@@ -569,12 +561,11 @@ class {class_name}(Tool):
 
             if tool_class is None:
                 raise ValueError("No Tool subclass found in the code.")
-        
+
         if not isinstance(tool_class.inputs, dict):
             tool_class.inputs = ast.literal_eval(tool_class.inputs)
 
         return tool_class(**kwargs)
-
 
     @staticmethod
     def from_space(
@@ -702,7 +693,11 @@ class {class_name}(Tool):
                 return output
 
         return SpaceToolWrapper(
-            space_id=space_id, name=name, description=description, api_name=api_name, token=token
+            space_id=space_id,
+            name=name,
+            description=description,
+            api_name=api_name,
+            token=token,
         )
 
     @staticmethod
@@ -855,12 +850,12 @@ TOOL_MAPPING = {
 
 
 def load_tool(
-        task_or_repo_id,
-        model_repo_id: Optional[str] = None,
-        token: Optional[str] = None,
-        trust_remote_code: bool=False,
-        **kwargs
-    ):
+    task_or_repo_id,
+    model_repo_id: Optional[str] = None,
+    token: Optional[str] = None,
+    trust_remote_code: bool = False,
+    **kwargs,
+):
     """
     Main function to quickly load a tool, be it on the Hub or in the Transformers library.
 
@@ -909,7 +904,11 @@ def load_tool(
             f"code that you have checked."
         )
         return Tool.from_hub(
-            task_or_repo_id, model_repo_id=model_repo_id, token=token, trust_remote_code=trust_remote_code, **kwargs
+            task_or_repo_id,
+            model_repo_id=model_repo_id,
+            token=token,
+            trust_remote_code=trust_remote_code,
+            **kwargs,
         )
 
 
@@ -1028,7 +1027,7 @@ def tool(tool_function: Callable) -> Tool:
         raise TypeHintParsingException(
             "Tool return type not found: make sure your function has a return type hint!"
         )
-    class_name = ''.join([el.title() for el in parameters['name'].split('_')])
+    class_name = "".join([el.title() for el in parameters["name"].split("_")])
 
     if parameters["return"]["type"] == "object":
         parameters["return"]["type"] = "any"
@@ -1086,7 +1085,9 @@ class Toolbox:
         """Get all tools currently in the toolbox"""
         return self._tools
 
-    def show_tool_descriptions(self, tool_description_template: Optional[str] = None) -> str:
+    def show_tool_descriptions(
+        self, tool_description_template: Optional[str] = None
+    ) -> str:
         """
         Returns the description of all tools in the toolbox
 
@@ -1151,4 +1152,12 @@ class Toolbox:
             toolbox_description += f"\t{tool.name}: {tool.description}\n"
         return toolbox_description
 
-__all__ = ["AUTHORIZED_TYPES", "Tool", "tool", "load_tool", "launch_gradio_demo", "Toolbox"]
+
+__all__ = [
+    "AUTHORIZED_TYPES",
+    "Tool",
+    "tool",
+    "load_tool",
+    "launch_gradio_demo",
+    "Toolbox",
+]

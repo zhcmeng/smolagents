@@ -44,4 +44,5 @@ class Monitor:
             console.print(f"- Input tokens: {self.total_input_token_count:,}")
             console.print(f"- Output tokens: {self.total_output_token_count:,}")
 
+
 __all__ = ["Monitor"]

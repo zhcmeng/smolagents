@@ -27,11 +27,12 @@ from agents.agents import (
     CodeAgent,
     JsonAgent,
     Toolbox,
-    ToolCall
+    ToolCall,
 )
 from agents.tools import tool
 from agents.default_tools import PythonInterpreterTool
 from transformers.testing_utils import get_tests_dir
+
 
 def get_new_path(suffix="") -> str:
     directory = tempfile.mkdtemp()
@@ -60,6 +61,7 @@ Action:
 }
 """
 
+
 def fake_json_llm_image(messages, stop_sequences=None, grammar=None) -> str:
     prompt = str(messages)
 
@@ -81,6 +83,7 @@ Action:
     "action_input": "image.png"
 }
 """
+
 
 def fake_code_llm(messages, stop_sequences=None, grammar=None) -> str:
     prompt = str(messages)
@@ -179,9 +182,7 @@ class AgentTests(unittest.TestCase):
         assert output == "7.2904"
 
     def test_fake_json_agent(self):
-        agent = JsonAgent(
-            tools=[PythonInterpreterTool()], llm_engine=fake_json_llm
-        )
+        agent = JsonAgent(tools=[PythonInterpreterTool()], llm_engine=fake_json_llm)
         output = agent.run("What is 2 multiplied by 3.6452?")
         assert isinstance(output, str)
         assert output == "7.2904"
@@ -209,9 +210,7 @@ Action:
             Args:
                 prompt: The prompt
             """
-            return Image.open(
-                Path(get_tests_dir("fixtures")) / "000000039769.png"
-            )
+            return Image.open(Path(get_tests_dir("fixtures")) / "000000039769.png")
 
         agent = JsonAgent(
             tools=[fake_image_generation_tool], llm_engine=fake_json_llm_image
@@ -221,9 +220,7 @@ Action:
         assert isinstance(agent.state["image.png"], Image.Image)
 
     def test_fake_code_agent(self):
-        agent = CodeAgent(
-            tools=[PythonInterpreterTool()], llm_engine=fake_code_llm
-        )
+        agent = CodeAgent(tools=[PythonInterpreterTool()], llm_engine=fake_code_llm)
         output = agent.run("What is 2 multiplied by 3.6452?")
         assert isinstance(output, float)
         assert output == 7.2904
@@ -234,9 +231,7 @@ Action:
         )
 
     def test_reset_conversations(self):
-        agent = CodeAgent(
-            tools=[PythonInterpreterTool()], llm_engine=fake_code_llm
-        )
+        agent = CodeAgent(tools=[PythonInterpreterTool()], llm_engine=fake_code_llm)
         output = agent.run("What is 2 multiplied by 3.6452?", reset=True)
         assert output == 7.2904
         assert len(agent.logs) == 4
@@ -299,9 +294,7 @@ Action:
 
         # check that python_interpreter base tool does not get added to code agents
         agent = CodeAgent(tools=[], llm_engine=fake_code_llm, add_base_tools=True)
-        assert (
-            len(agent.toolbox.tools) == 2
-        )  # added final_answer tool + search
+        assert len(agent.toolbox.tools) == 2  # added final_answer tool + search
 
     def test_function_persistence_across_steps(self):
         agent = CodeAgent(

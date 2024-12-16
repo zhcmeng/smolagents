@@ -20,9 +20,10 @@ import numpy as np
 from PIL import Image
 
 from transformers import is_torch_available
-from agents.types import AGENT_TYPE_MAPPING
-from agents.default_tools import FinalAnswerTool
 from transformers.testing_utils import get_tests_dir, require_torch
+from agents.types import AGENT_TYPE_MAPPING
+
+from agents.default_tools import FinalAnswerTool
 
 from .test_tools_common import ToolTesterMixin
 

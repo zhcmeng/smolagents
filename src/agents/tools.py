@@ -16,16 +16,18 @@
 # limitations under the License.
 import ast
 import base64
+import builtins
 import importlib
 import inspect
 import io
 import json
 import os
+import re
 import tempfile
 import textwrap
 from functools import lru_cache, wraps
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Union
+from typing import Any, Callable, Dict, List, Optional, Union, Set
 
 from huggingface_hub import (
     create_repo,
@@ -92,11 +94,10 @@ def get_repo_type(repo_id, repo_type=None, **hub_kwargs):
 
 def setup_default_tools():
     default_tools = {}
-    main_module = importlib.import_module("transformers")
-    tools_module = main_module.agents
+    main_module = importlib.import_module("agents")
 
     for task_name, tool_class_name in TOOL_MAPPING.items():
-        tool_class = getattr(tools_module, tool_class_name)
+        tool_class = getattr(main_module, tool_class_name)
         tool_instance = tool_class()
         default_tools[tool_class.name] = tool_instance
 
@@ -122,31 +123,24 @@ def validate_after_init(cls, do_validate_forward: bool = True):
     cls.__init__ = new_init
     return cls
 
-def validate_forward_method_args(cls):
+def validate_args_are_self_contained(source_code):
     """Validates that all names in forward method are properly defined.
     In particular it will check that all imports are done within the function."""
-    if 'forward' not in cls.__dict__:
-        return
-
-    forward = cls.__dict__['forward']
-    source_code = textwrap.dedent(inspect.getsource(forward))
-    tree = ast.parse(source_code)
+    print("CODDDD", source_code)
+    tree = ast.parse(textwrap.dedent(source_code))
     
     # Get function arguments
     func_node = tree.body[0]
-    arg_names = {arg.arg for arg in func_node.args.args}
+    arg_names = {arg.arg for arg in func_node.args.args} | {"kwargs"}
 
-
-    import builtins
     builtin_names = set(vars(builtins))
 
-    
-    # Find all used names that aren't arguments or self attributes
     class NameChecker(ast.NodeVisitor):
         def __init__(self):
             self.undefined_names = set()
             self.imports = {}
             self.from_imports = {}
+            self.assigned_names = set()
 
         def visit_Import(self, node):
             """Handle simple imports like 'import datetime'."""
@@ -160,17 +154,63 @@ def validate_forward_method_args(cls):
             for name in node.names:
                 actual_name = name.asname or name.name
                 self.from_imports[actual_name] = (module, name.name, actual_name)
+
+        def visit_Assign(self, node):
+            """Track variable assignments."""
+            for target in node.targets:
+                if isinstance(target, ast.Name):
+                    self.assigned_names.add(target.id)
+            self.visit(node.value)
             
+        def visit_AnnAssign(self, node):
+            """Track annotated assignments."""
+            if isinstance(node.target, ast.Name):
+                self.assigned_names.add(node.target.id)
+            if node.value:
+                self.visit(node.value)
+
+        def _handle_for_target(self, target) -> Set[str]:
+            """Extract all names from a for loop target."""
+            names = set()
+            if isinstance(target, ast.Name):
+                names.add(target.id)
+            elif isinstance(target, ast.Tuple):
+                for elt in target.elts:
+                    if isinstance(elt, ast.Name):
+                        names.add(elt.id)
+            return names
+                
+        def visit_For(self, node):
+            """Track for-loop target variables and handle enumerate specially."""
+            # Add names from the target
+            target_names = self._handle_for_target(node.target)
+            self.assigned_names.update(target_names)
+            
+            # Special handling for enumerate
+            if (isinstance(node.iter, ast.Call) and 
+                isinstance(node.iter.func, ast.Name) and 
+                node.iter.func.id == 'enumerate'):
+                # For enumerate, if we have "for i, x in enumerate(...)", 
+                # both i and x should be marked as assigned
+                if isinstance(node.target, ast.Tuple):
+                    for elt in node.target.elts:
+                        if isinstance(elt, ast.Name):
+                            self.assigned_names.add(elt.id)
+                            
+            # Visit the rest of the node
+            self.generic_visit(node)
+
         def visit_Name(self, node):
             if (isinstance(node.ctx, ast.Load) and not (
                 node.id == "tool" or
                 node.id in builtin_names or
                 node.id in arg_names or 
-                node.id == 'self'
+                node.id == 'self' or
+                node.id in self.assigned_names
             )):
                 if node.id not in self.from_imports and node.id not in self.imports:
                     self.undefined_names.add(node.id)
-                
+                    
         def visit_Attribute(self, node):
             # Skip self.something
             if not (isinstance(node.value, ast.Name) and node.value.id == 'self'):
@@ -182,9 +222,7 @@ def validate_forward_method_args(cls):
     if checker.undefined_names:
         raise ValueError(
             f"""The following names in forward method are not defined: {', '.join(checker.undefined_names)}.
-            Make sure all imports and variables are defined within the method.
-            For instance:
-            
+            Make sure all imports and variables are self-contained within the method.            
             """
         )
 
@@ -233,7 +271,6 @@ class Tool:
 
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
-        validate_forward_method_args(cls)
         validate_after_init(cls, do_validate_forward=False)
 
 
@@ -309,17 +346,18 @@ class Tool:
 
         # Save tool file
         forward_source_code = inspect.getsource(self.forward)
+        validate_args_are_self_contained(forward_source_code)
         tool_code = textwrap.dedent(f"""
-        from agents import Tool
+            from agents import Tool
 
-        class {class_name}(Tool):
-            name = "{self.name}"
-            description = "{self.description}"
-            inputs = {json.dumps(self.inputs, separators=(',', ':'))}
-            output_type = "{self.output_type}"
-        """).strip()
+            class {class_name}(Tool):
+                name = "{self.name}"
+                description = \"\"\"{self.description}\"\"\"
+                inputs = {json.dumps(self.inputs, separators=(',', ':'))}
+                output_type = "{self.output_type}"
+            """
+        ).strip()
 
-        import re
         def add_self_argument(source_code: str) -> str:
             """Add 'self' as first argument to a function definition if not present."""
             pattern = r'def forward\(((?!self)[^)]*)\)'
@@ -516,6 +554,8 @@ class Tool:
             with open(module_path, "w") as f:
                 f.write(tool_code)
 
+            print("TOOLCODE:\n", tool_code)
+
             # Load module from file path
             spec = importlib.util.spec_from_file_location("custom_tool", module_path)
             module = importlib.util.module_from_spec(spec)
@@ -529,7 +569,7 @@ class Tool:
                     break
 
             if tool_class is None:
-                raise ValueError("No Tool subclass found in the code")
+                raise ValueError("No Tool subclass found in the code.")
         
         if not isinstance(tool_class.inputs, dict):
             tool_class.inputs = ast.literal_eval(tool_class.inputs)
@@ -593,9 +633,9 @@ class Tool:
                 api_name: Optional[str] = None,
                 token: Optional[str] = None,
             ):
-                self.client = Client(space_id, hf_token=token)
                 self.name = name
                 self.description = description
+                self.client = Client(space_id, hf_token=token)
                 space_description = self.client.view_api(
                     return_format="dict", print_info=False
                 )["named_endpoints"]
@@ -632,6 +672,7 @@ class Tool:
                     self.output_type = "audio"
                 else:
                     self.output_type = "any"
+                self.is_initialized = True
 
             def sanitize_argument_for_prediction(self, arg):
                 if isinstance(arg, ImageType):
@@ -662,7 +703,7 @@ class Tool:
                 return output
 
         return SpaceToolWrapper(
-            space_id, name, description, api_name=api_name, token=token
+            space_id=space_id, name=name, description=description, api_name=api_name, token=token
         )
 
     @staticmethod
@@ -814,7 +855,13 @@ TOOL_MAPPING = {
 }
 
 
-def load_tool(task_or_repo_id, model_repo_id=None, token=None, **kwargs):
+def load_tool(
+        task_or_repo_id,
+        model_repo_id: Optional[str] = None,
+        token: Optional[str] = None,
+        trust_remote_code: bool=False,
+        **kwargs
+    ):
     """
     Main function to quickly load a tool, be it on the Hub or in the Transformers library.
 
@@ -842,6 +889,8 @@ def load_tool(task_or_repo_id, model_repo_id=None, token=None, **kwargs):
         token (`str`, *optional*):
             The token to identify you on hf.co. If unset, will use the token generated when running `huggingface-cli
             login` (stored in `~/.huggingface`).
+        trust_remote_code (`bool`, *optional*, defaults to False):
+            This needs to be accepted in order to load a tool from Hub.
         kwargs (additional keyword arguments, *optional*):
             Additional keyword arguments that will be split in two: all arguments relevant to the Hub (such as
             `cache_dir`, `revision`, `subfolder`) will be used when downloading the files for your tool, and the others
@@ -861,7 +910,7 @@ def load_tool(task_or_repo_id, model_repo_id=None, token=None, **kwargs):
             f"code that you have checked."
         )
         return Tool.from_hub(
-            task_or_repo_id, model_repo_id=model_repo_id, token=token, **kwargs
+            task_or_repo_id, model_repo_id=model_repo_id, token=token, trust_remote_code=trust_remote_code, **kwargs
         )
 
 
@@ -1096,12 +1145,6 @@ class Toolbox:
     def clear_toolbox(self):
         """Clears the toolbox"""
         self._tools = {}
-
-    # def _load_tools_if_needed(self):
-    #     for name, tool in self._tools.items():
-    #         if not isinstance(tool, Tool):
-    #             task_or_repo_id = tool.task if tool.repo_id is None else tool.repo_id
-    #             self._tools[name] = load_tool(task_or_repo_id)
 
     def __repr__(self):
         toolbox_description = "Toolbox contents:\n"

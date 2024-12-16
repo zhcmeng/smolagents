@@ -18,12 +18,12 @@ import os
 import re
 import shutil
 import tempfile
-import unittest
 import subprocess
+import traceback
 import pytest
 from pathlib import Path
 from typing import List
-
+from dotenv import load_dotenv
 
 class SubprocessCallException(Exception):
     pass
@@ -69,7 +69,9 @@ class DocCodeExtractor:
         combined_code = "\n\n".join(code_blocks)
         assert len(combined_code) > 0, "Code is empty!"
         tmp_file = Path(tmp_dir) / "test_script.py"
-        
+
+        print("COFF", combined_code)
+
         with open(tmp_file, "w", encoding="utf-8") as f:
             f.write(combined_code)
             
@@ -86,12 +88,13 @@ class TestDocs:
         cls.docs_dir = Path(__file__).parent.parent / "docs" / "source"
         cls.extractor = DocCodeExtractor()
 
-        # Verify docs directory exists
         if not cls.docs_dir.exists():
             raise ValueError(f"Docs directory not found at {cls.docs_dir}")
+
+        load_dotenv()
+        cls.hf_token = os.getenv("HF_TOKEN")
         
-        # Verify we have markdown files
-        cls.md_files = list(cls.docs_dir.glob("*.md"))
+        cls.md_files = list(cls.docs_dir.rglob("*.md"))
         if not cls.md_files:
             raise ValueError(f"No markdown files found in {cls.docs_dir}")
 
@@ -99,6 +102,7 @@ class TestDocs:
     def teardown_class(cls):
         shutil.rmtree(cls._tmpdir)
 
+    @pytest.mark.timeout(2)
     def test_single_doc(self, doc_path: Path):
         """Test a single documentation file."""
         with open(doc_path, "r", encoding="utf-8") as f:
@@ -114,13 +118,18 @@ class TestDocs:
         
         # Create and execute test script
         try:
+            excluded_snippets = ["ToolCollection", "image_generation_tool", "from_langchain"]
+            code_blocks = [
+                block.replace("<YOUR_HUGGINGFACEHUB_API_TOKEN>", self.hf_token) for block in code_blocks
+                if not any([snippet in block for snippet in excluded_snippets]) # Exclude these tools that take longer to run and add dependencies
+            ]
             test_script = self.extractor.create_test_script(code_blocks, self._tmpdir)
             run_command(self.launch_args + [str(test_script)])
             
         except SubprocessCallException as e:
-            pytest.fail(str(e))
+            pytest.fail(f"\nError while testing {doc_path.name}:\n{str(e)}")
         except Exception as e:
-            pytest.fail(f"Error testing {doc_path.name}: {str(e)}")
+            pytest.fail(f"\nUnexpected error while testing {doc_path.name}:\n{traceback.format_exc()}")
 
     @pytest.fixture(autouse=True)
     def _setup(self):
@@ -136,11 +145,11 @@ def pytest_generate_tests(metafunc):
     """Generate test cases for each markdown file."""
     if "doc_path" in metafunc.fixturenames:
         test_class = metafunc.cls
-        
+
         # Initialize the class if needed
         if not hasattr(test_class, "md_files"):
             test_class.setup_class()
-            
+
         # Parameterize with the markdown files
         metafunc.parametrize(
             "doc_path",

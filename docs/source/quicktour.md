@@ -1,4 +1,4 @@
-<!--Copyright 2021 The HuggingFace Team. All rights reserved.
+<!--Copyright 2024 The HuggingFace Team. All rights reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
 the License. You may obtain a copy of the License at
@@ -9,181 +9,454 @@ Unless required by applicable law or agreed to in writing, software distributed 
 an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
 specific language governing permissions and limitations under the License.
 
-⚠️ Note that this file is in Markdown but contains specific syntax for our doc-builder (similar to MDX) that may not be
+⚠️ Note that this file is in Markdown but contain specific syntax for our doc-builder (similar to MDX) that may not be
 rendered properly in your Markdown viewer.
+
 -->
+# Agents and tools
 
-# Quicktour
+[[open-in-colab]]
 
-There are many ways to launch and run your code depending on your training environment ([torchrun](https://pytorch.org/docs/stable/elastic/run.html), [DeepSpeed](https://www.deepspeed.ai/), etc.) and available hardware. Accelerate offers a unified interface for launching and training on different distributed setups, allowing you to focus on your PyTorch training code instead of the intricacies of adapting your code to these different setups. This allows you to easily scale your PyTorch code for training and inference on distributed setups with hardware like GPUs and TPUs. Accelerate also provides Big Model Inference to make loading and running inference with really large models that usually don't fit in memory more accessible.
+### What is an agent?
 
-This quicktour introduces the three main features of Accelerate:
+Large Language Models (LLMs) trained to perform [causal language modeling](./tasks/language_modeling) can tackle a wide range of tasks, but they often struggle with basic tasks like logic, calculation, and search. When prompted in domains in which they do not perform well, they often fail to generate the answer we expect them to.
 
-* a unified command line launching interface for distributed training scripts
-* a training library for adapting PyTorch training code to run on different distributed setups
-* Big Model Inference
+One approach to overcome this weakness is to create an *agent*.
 
-## Unified launch interface
+An agent is a system that uses an LLM as its engine, and it has access to functions called *tools*.
 
-Accelerate automatically selects the appropriate configuration values for any given distributed training framework (DeepSpeed, FSDP, etc.) through a unified configuration file generated from the [`accelerate config`](package_reference/cli#accelerate-config) command. You could also pass the configuration values explicitly to the command line which is helpful in certain situations like if you're using SLURM.
+These *tools* are functions for performing a task, and they contain all necessary description for the agent to properly use them.
 
+The agent can be programmed to:
+- devise a series of actions/tools and run them all at once,  like the [`CodeAgent`]
+- plan and execute actions/tools one by one and wait for the outcome of each action before launching the next one, like the [`JsonAgent`]
 
-But in most cases, you should always run [`accelerate config`](package_reference/cli#accelerate-config) first to help Accelerate learn about your training setup.
+### Types of agents
 
-```bash
-accelerate config
-```
+#### Code agent
 
-The [`accelerate config`](package_reference/cli#accelerate-config) command creates and saves a default_config.yaml file in Accelerates cache folder. This file stores the configuration for your training environment, which helps Accelerate correctly launch your training script based on your machine.
+This agent has a planning step, then generates python code to execute all its actions at once. It natively handles different input and output types for its tools, thus it is the recommended choice for multimodal tasks.
 
-After you've configured your environment, you can test your setup with [`accelerate test`](package_reference/cli#accelerate-test), which launches a short script to test the distributed environment.
+#### React agents
 
-```bash
-accelerate test
-```
+This is the go-to agent to solve reasoning tasks, since the ReAct framework ([Yao et al., 2022](https://huggingface.co/papers/2210.03629)) makes it really efficient to think on the basis of its previous observations.
+
+We implement two versions of JsonAgent: 
+- [`JsonAgent`] generates tool calls as a JSON in its output.
+- [`CodeAgent`] is a new type of JsonAgent that generates its tool calls as blobs of code, which works really well for LLMs that have strong coding performance.
 
 > [!TIP]
-> Add `--config_file` to the `accelerate test` or `accelerate launch` command to specify the location of the configuration file if it is saved in a non-default location like the cache.
+> Read [Open-source LLMs as LangChain Agents](https://huggingface.co/blog/open-source-llms-as-agents) blog post to learn more about ReAct agents.
 
-Once your environment is setup, launch your training script with [`accelerate launch`](package_reference/cli#accelerate-launch)!
+<div class="flex justify-center">
+    <img
+        class="block dark:hidden"
+        src="https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/transformers/Agent_ManimCE.gif"
+    />
+    <img
+        class="hidden dark:block"
+        src="https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/transformers/Agent_ManimCE.gif"
+    />
+</div>
+
+![Framework of a React Agent](https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/blog/open-source-llms-as-agents/ReAct.png)
+
+For example, here is how a ReAct Code agent would work its way through the following question.
+
+```py3
+agent.run(
+"""How many more blocks (also denoted as layers) in BERT base encoder than the encoder from the architecture
+proposed in Attention is All You Need?"""
+)
+```
+```text
+=====New task=====
+How many more blocks (also denoted as layers) in BERT base encoder than the encoder from the architecture proposed in Attention is All You Need?
+====Agent is executing the code below:
+bert_blocks = search(query="number of blocks in BERT base encoder")
+print("BERT blocks:", bert_blocks)
+====
+Print outputs:
+BERT blocks: twelve encoder blocks
+
+====Agent is executing the code below:
+attention_layer = search(query="number of layers in Attention is All You Need")
+print("Attention layers:", attention_layer)
+====
+Print outputs:
+Attention layers: Encoder: The encoder is composed of a stack of N = 6 identical layers. Each layer has two sub-layers. The first is a multi-head self-attention mechanism, and the second is a simple, position- 2 Page 3 Figure 1: The Transformer - model architecture.
+
+====Agent is executing the code below:
+bert_blocks = 12
+attention_layers = 6
+diff = bert_blocks - attention_layers
+print("Difference in blocks:", diff)
+final_answer(diff)
+====
+
+Print outputs:
+Difference in blocks: 6
+
+Final answer: 6
+```
+
+### How can I build an agent?
+
+To initialize an agent, you need these arguments:
+
+- an LLM to power your agent - the agent is not exactly the LLM, it’s more like the agent is a program that uses an LLM as its engine.
+- a system prompt: what the LLM engine will be prompted with to generate its output
+- a toolbox from which the agent pick tools to execute
+- a parser to extract from the LLM output which tools are to call and with which arguments
+
+Upon initialization of the agent system, the tool attributes are used to generate a tool description, then baked into the agent’s `system_prompt` to let it know which tools it can use and why.
+
+To start with, please install the `agents` extras in order to install all default dependencies.
 
 ```bash
-accelerate launch path_to_script.py --args_for_the_script
+pip install agents
 ```
 
-To learn more, check out the [Launch distributed code](basic_tutorials/launch) tutorial for more information about launching your scripts.
-
-We also have a [configuration zoo](https://github.com/huggingface/accelerate/blob/main/examples/config_yaml_templates) which showcases a number of premade **minimal** example configurations for a variety of setups you can run.
-
-## Adapt training code
-
-The next main feature of Accelerate is the [`Accelerator`] class which adapts your PyTorch code to run on different distributed setups.
-
-You only need to add a few lines of code to your training script to enable it to run on multiple GPUs or TPUs.
-
-```diff
-+ from accelerate import Accelerator
-+ accelerator = Accelerator()
-
-+ device = accelerator.device
-+ model, optimizer, training_dataloader, scheduler = accelerator.prepare(
-+     model, optimizer, training_dataloader, scheduler
-+ )
-
-  for batch in training_dataloader:
-      optimizer.zero_grad()
-      inputs, targets = batch
--     inputs = inputs.to(device)
--     targets = targets.to(device)
-      outputs = model(inputs)
-      loss = loss_function(outputs, targets)
-+     accelerator.backward(loss)
-      optimizer.step()
-      scheduler.step()
-```
-
-1. Import and instantiate the [`Accelerator`] class at the beginning of your training script. The [`Accelerator`] class initializes everything necessary for distributed training, and it automatically detects your training environment (a single machine with a GPU, a machine with several GPUs, several machines with multiple GPUs or a TPU, etc.) based on how the code was launched.
+Build your LLM engine by defining a `llm_engine` method which accepts a list of [messages](./chat_templating) and returns text. This callable also needs to accept a `stop` argument that indicates when to stop generating.
 
 ```python
-from accelerate import Accelerator
+from huggingface_hub import login, InferenceClient
 
-accelerator = Accelerator()
+login("<YOUR_HUGGINGFACEHUB_API_TOKEN>")
+
+model_id = "Qwen/Qwen2.5-72B-Instruct"
+
+client = InferenceClient(model=model_id)
+
+def llm_engine(messages, stop_sequences=["Task"]) -> str:
+    response = client.chat_completion(messages, stop=stop_sequences, max_tokens=1000)
+    answer = response.choices[0].message.content
+    return answer
 ```
 
-2. Remove calls like `.cuda()` on your model and input data. The [`Accelerator`] class automatically places these objects on the appropriate device for you.
+You could use any `llm_engine` method as long as:
+1. it follows the [messages format](./chat_templating) (`List[Dict[str, str]]`) for its input `messages`, and it returns a `str`.
+2. it stops generating outputs at the sequences passed in the argument `stop_sequences`
 
-> [!WARNING]
-> This step is *optional* but it is considered best practice to allow Accelerate to handle device placement. You could also deactivate automatic device placement by passing `device_placement=False` when initializing the [`Accelerator`]. If you want to explicitly place objects on a device with `.to(device)`, make sure you use `accelerator.device` instead. For example, if you create an optimizer before placing a model on `accelerator.device`, training fails on a TPU.
+Additionally, `llm_engine` can also take a `grammar` argument. In the case where you specify a `grammar` upon agent initialization, this argument will be passed to the calls to llm_engine, with the `grammar` that you defined upon initialization, to allow [constrained generation](https://huggingface.co/docs/text-generation-inference/conceptual/guidance) in order to force properly-formatted agent outputs.
 
-> [!WARNING]
-> Accelerate does not use non-blocking transfers by default for its automatic device placement, which can result in potentially unwanted CUDA synchronizations.  You can enable non-blocking transfers by passing a [`~utils.dataclasses.DataLoaderConfiguration`] with `non_blocking=True` set as the `dataloader_config` when initializing the [`Accelerator`].  As usual, non-blocking transfers will only work if the dataloader also has `pin_memory=True` set.  Be wary that using non-blocking transfers from GPU to CPU may cause incorrect results if it results in CPU operations being performed on non-ready tensors.
+You will also need a `tools` argument which accepts a list of `Tools` - it can be an empty list. You can also add the default toolbox on top of your `tools` list by defining the optional argument `add_base_tools=True`.
 
-```py
-device = accelerator.device
-```
-
-3. Pass all relevant PyTorch objects for training (optimizer, model, dataloader(s), learning rate scheduler) to the [`~Accelerator.prepare`] method as soon as they're created. This method wraps the model in a container optimized for your distributed setup, uses Accelerates version of the optimizer and scheduler, and creates a sharded version of your dataloader for distribution across GPUs or TPUs.
+Now you can create an agent, like [`CodeAgent`], and run it. You can also create a [`TransformersEngine`] with a pre-initialized pipeline to run inference on your local machine using `transformers`.
+For convenience, since agentic behaviours generally require strong models that are harder to run locally for now, we also provide the [`HfApiEngine`] class that initializes a `huggingface_hub.InferenceClient` under the hood. 
 
 ```python
-model, optimizer, train_dataloader, lr_scheduler = accelerator.prepare(
-    model, optimizer, train_dataloader, lr_scheduler
+from agents import CodeAgent, HfApiEngine
+
+llm_engine = HfApiEngine(model=model_id)
+agent = CodeAgent(tools=[], llm_engine=llm_engine, add_base_tools=True)
+
+agent.run(
+    "Could you translate this sentence from French, say it out loud and return the audio.",
+    sentence="Où est la boulangerie la plus proche?",
 )
 ```
 
-4. Replace `loss.backward()` with [`~Accelerator.backward`] to use the correct `backward()` method for your training setup.
-
-```py
-accelerator.backward(loss)
-```
-
-Read [Accelerate’s internal mechanisms](concept_guides/internal_mechanism) guide to learn more details about how Accelerate adapts your code.
-
-### Distributed evaluation
-
-To perform distributed evaluation, pass your validation dataloader to the [`~Accelerator.prepare`] method:
+This will be handy in case of emergency baguette need!
+You can even leave the argument `llm_engine` undefined, and an [`HfApiEngine`] will be created by default.
 
 ```python
-validation_dataloader = accelerator.prepare(validation_dataloader)
-```
+from agents import CodeAgent
 
-Each device in your distributed setup only receives a part of the evaluation data, which means you should group your predictions together with the [`~Accelerator.gather_for_metrics`] method. This method requires all tensors to be the same size on each process, so if your tensors have different sizes on each process (for instance when dynamically padding to the maximum length in a batch), you should use the [`~Accelerator.pad_across_processes`] method to pad you tensor to the largest size across processes. Note that the tensors needs to be 1D and that we concatenate the tensors along the first dimension. 
+agent = CodeAgent(tools=[], add_base_tools=True)
 
-```python
-for inputs, targets in validation_dataloader:
-    predictions = model(inputs)
-    # Gather all predictions and targets
-    all_predictions, all_targets = accelerator.gather_for_metrics((predictions, targets))
-    # Example of use with a *Datasets.Metric*
-    metric.add_batch(all_predictions, all_targets)
-```
-
-For more complex cases (e.g. 2D tensors, don't want to concatenate tensors, dict of 3D tensors), you can pass `use_gather_object=True` in `gather_for_metrics`. This will return the list of objects after gathering. Note that using it with GPU tensors is not well supported and inefficient.
-
-> [!TIP]
-> Data at the end of a dataset may be duplicated so the batch can be equally divided among all workers. The [`~Accelerator.gather_for_metrics`] method automatically removes the duplicated data to calculate a more accurate metric.
-
-## Big Model Inference
-
-Accelerate's Big Model Inference has two main features, [`~accelerate.init_empty_weights`] and [`~accelerate.load_checkpoint_and_dispatch`], to load large models for inference that typically don't fit into memory.
-
-> [!TIP]
-> Take a look at the [Handling big models for inference](concept_guides/big_model_inference) guide for a better understanding of how Big Model Inference works under the hood.
-
-### Empty weights initialization
-
-The [`~accelerate.init_empty_weights`] context manager initializes models of any size by creating a *model skeleton* and moving and placing parameters each time they're created to PyTorch's [**meta**](https://pytorch.org/docs/main/meta.html) device. This way, not all weights are immediately loaded and only a small part of the model is loaded into memory at a time.
-
-For example, loading an empty [Mixtral-8x7B](https://huggingface.co/mistralai/Mixtral-8x7B-Instruct-v0.1) model takes significantly less memory than fully loading the models and weights on the CPU.
-
-```py
-from accelerate import init_empty_weights
-from transformers import AutoConfig, AutoModelForCausalLM
-
-config = AutoConfig.from_pretrained("mistralai/Mixtral-8x7B-Instruct-v0.1")
-with init_empty_weights():
-    model = AutoModelForCausalLM.from_config(config)
-```
-
-### Load and dispatch weights
-
-The [`~accelerate.load_checkpoint_and_dispatch`] function loads full or sharded checkpoints into the empty model, and automatically distribute weights across all available devices.
-
-The `device_map` parameter determines where to place each model layer, and specifiying `"auto"` places them on the GPU first, then the CPU, and finally the hard drive as memory-mapped tensors if there's still not enough memory. Use the `no_split_module_classes` parameter to indicate which modules shouldn't be split across devices (typically those with a residual connection).
-
-```py
-from accelerate import load_checkpoint_and_dispatch
-
-model_checkpoint = "your-local-model-folder"
-model = load_checkpoint_and_dispatch(
-    model, checkpoint=model_checkpoint, device_map="auto", no_split_module_classes=['Block']
+agent.run(
+    "Could you translate this sentence from French, say it out loud and give me the audio.",
+    sentence="Où est la boulangerie la plus proche?",
 )
 ```
 
-## Next steps
+Note that we used an additional `sentence` argument: you can pass text as additional arguments to the model.
 
-Now that you've been introduced to the main Accelerate features, your next steps could include:
+You can also use this to indicate the path to local or remote files for the model to use:
 
-* Check out the [tutorials](basic_tutorials/overview) for a gentle walkthrough of Accelerate. This is especially useful if you're new to distributed training and the library.
-* Dive into the [guides](usage_guides/explore) to see how to use Accelerate for specific use-cases.
-* Deepen your conceptual understanding of how Accelerate works internally by reading the [concept guides](concept_guides/internal_mechanism).
-* Look up classes and commands in the [API reference](package_reference/accelerator) to see what parameters and options are available.
+```py
+from agents import CodeAgent
+
+agent = CodeAgent(tools=[], llm_engine=llm_engine, add_base_tools=True)
+
+agent.run("Why does Mike not know many people in New York?", audio="https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/transformers/recording.mp3")
+```
+
+
+The prompt and output parser were automatically defined, but you can easily inspect them by calling the `system_prompt_template` on your agent.
+
+```python
+print(agent.system_prompt_template)
+```
+
+It's important to explain as clearly as possible the task you want to perform.
+Every [`~Agent.run`] operation is independent, and since an agent is powered by an LLM, minor variations in your prompt might yield completely different results.
+You can also run an agent consecutively for different tasks: each time the attributes `agent.task` and `agent.logs` will be re-initialized.
+
+
+#### Code execution
+
+A Python interpreter executes the code on a set of inputs passed along with your tools.
+This should be safe because the only functions that can be called are the tools you provided (especially if it's only tools by Hugging Face) and the print function, so you're already limited in what can be executed.
+
+The Python interpreter also doesn't allow imports by default outside of a safe list, so all the most obvious attacks shouldn't be an issue.
+You can still authorize additional imports by passing the authorized modules as a list of strings in argument `additional_authorized_imports` upon initialization of your [`CodeAgent`] or [`CodeAgent`]:
+
+```py
+from agents import CodeAgent
+
+agent = CodeAgent(tools=[], additional_authorized_imports=['requests', 'bs4'])
+agent.run("Could you get me the title of the page at url 'https://huggingface.co/blog'?")
+```
+This gives you at the end of the agent run:
+```text
+'Hugging Face – Blog'
+```
+The execution will stop at any code trying to perform an illegal operation or if there is a regular Python error with the code generated by the agent.
+
+> [!WARNING]
+> The LLM can generate arbitrary code that will then be executed: do not add any unsafe imports!
+
+### The system prompt
+
+An agent, or rather the LLM that drives the agent, generates an output based on the system prompt. The system prompt can be customized and tailored to the intended task. For example, check the system prompt for the [`CodeAgent`] (below version is slightly simplified).
+
+```text
+You will be given a task to solve as best you can.
+You have access to the following tools:
+{{tool_descriptions}}
+
+To solve the task, you must plan forward to proceed in a series of steps, in a cycle of 'Thought:', 'Code:', and 'Observation:' sequences.
+
+At each step, in the 'Thought:' sequence, you should first explain your reasoning towards solving the task, then the tools that you want to use.
+Then in the 'Code:' sequence, you should write the code in simple Python. The code sequence must end with '/End code' sequence.
+During each intermediate step, you can use 'print()' to save whatever important information you will then need.
+These print outputs will then be available in the 'Observation:' field, for using this information as input for the next step.
+
+In the end you have to return a final answer using the `final_answer` tool.
+
+Here are a few examples using notional tools:
+---
+{examples}
+
+Above example were using notional tools that might not exist for you. You only have acces to those tools:
+{{tool_names}}
+You also can perform computations in the python code you generate.
+
+Always provide a 'Thought:' and a 'Code:\n```py' sequence ending with '```<end_code>' sequence. You MUST provide at least the 'Code:' sequence to move forward.
+
+Remember to not perform too many operations in a single code block! You should split the task into intermediate code blocks.
+Print results at the end of each step to save the intermediate results. Then use final_answer() to return the final result.
+
+Remember to make sure that variables you use are all defined.
+
+Now Begin!
+```
+
+The system prompt includes:
+- An *introduction* that explains how the agent should behave and what tools are.
+- A description of all the tools that is defined by a `{{tool_descriptions}}` token that is dynamically replaced at runtime with the tools defined/chosen by the user.
+    - The tool description comes from the tool attributes, `name`, `description`, `inputs` and `output_type`,  and a simple `jinja2` template that you can refine.
+- The expected output format.
+
+You could improve the system prompt, for example, by adding an explanation of the output format.
+
+For maximum flexibility, you can overwrite the whole system prompt template by passing your custom prompt as an argument to the `system_prompt` parameter.
+
+```python
+from agents import JsonAgent, PythonInterpreterTool, JSON_SYSTEM_PROMPT
+
+modified_prompt = JSON_SYSTEM_PROMPT
+
+agent = JsonAgent(tools=[PythonInterpreterTool()], system_prompt=modified_prompt)
+```
+
+> [!WARNING]
+> Please make sure to define the `{{tool_descriptions}}` string somewhere in the `template` so the agent is aware 
+of the available tools.
+
+
+### Inspecting an agent run
+
+Here are a few useful attributes to inspect what happened after a run:
+- `agent.logs` stores the fine-grained logs of the agent. At every step of the agent's run, everything gets stored in a dictionary that then is appended to `agent.logs`.
+- Running `agent.write_inner_memory_from_logs()` creates an inner memory of the agent's logs for the LLM to view, as a list of chat messages. This method goes over each step of the log and only stores what it's interested in as a message: for instance, it will save the system prompt and task in separate messages, then for each step it will store the LLM output as a message, and the tool call output as another message. Use this if you want a higher-level view of what has happened - but not every log will be transcripted by this method.
+
+## Tools
+
+A tool is an atomic function to be used by an agent.
+
+You can for instance check the [`PythonInterpreterTool`]: it has a name, a description, input descriptions, an output type, and a `__call__` method to perform the action.
+
+When the agent is initialized, the tool attributes are used to generate a tool description which is baked into the agent's system prompt. This lets the agent know which tools it can use and why.
+
+### Default toolbox
+
+Transformers comes with a default toolbox for empowering agents, that you can add to your agent upon initialization with argument `add_base_tools = True`:
+
+- **DuckDuckGo web search***: performs a web search using DuckDuckGo browser.
+- **Python code interpreter**: runs your the LLM generated Python code in a secure environment. This tool will only be added to [`JsonAgent`] if you initialize it with `add_base_tools=True`, since code-based agent can already natively execute Python code
+
+You can manually use a tool by calling the [`load_tool`] function and a task to perform.
+
+```python
+from transformers import load_tool
+
+search_tool = load_tool("web_search")
+print(search_tool("Who's the current president of Russia?"))
+```
+
+
+### Create a new tool
+
+You can create your own tool for use cases not covered by the default tools from Hugging Face.
+For example, let's create a tool that returns the most downloaded model for a given task from the Hub.
+
+You'll start with the code below.
+
+```python
+from huggingface_hub import list_models
+
+task = "text-classification"
+
+model = next(iter(list_models(filter=task, sort="downloads", direction=-1)))
+print(model.id)
+```
+
+This code can quickly be converted into a tool, just by wrapping it in a function and adding the `tool` decorator:
+
+
+```py
+from transformers import tool
+
+@tool
+def model_download_tool(task: str) -> str:
+    """
+    This is a tool that returns the most downloaded model of a given task on the Hugging Face Hub.
+    It returns the name of the checkpoint.
+
+    Args:
+        task: The task for which
+    """
+    model = next(iter(list_models(filter="text-classification", sort="downloads", direction=-1)))
+    return model.id
+```
+
+The function needs:
+- A clear name. The name usually describes what the tool does. Since the code returns the model with the most downloads for a task, let's put `model_download_tool`.
+- Type hints on both inputs and output
+- A description, that includes an 'Args:' part where each argument is described (without a type indication this time, it will be pulled from the type hint).
+All these will be automatically baked into the agent's system prompt upon initialization: so strive to make them as clear as possible!
+
+> [!TIP]
+> This definition format is the same as tool schemas used in `apply_chat_template`, the only difference is the added `tool` decorator: read more on our tool use API [here](https://huggingface.co/blog/unified-tool-use#passing-tools-to-a-chat-template).
+
+Then you can directly initialize your agent:
+```py
+from agents import CodeAgent
+agent = CodeAgent(tools=[model_download_tool], llm_engine=llm_engine)
+agent.run(
+    "Can you give me the name of the model that has the most downloads in the 'text-to-video' task on the Hugging Face Hub?"
+)
+```
+
+You get the following:
+```text
+======== New task ========
+Can you give me the name of the model that has the most downloads in the 'text-to-video' task on the Hugging Face Hub?
+==== Agent is executing the code below:
+most_downloaded_model = model_download_tool(task="text-to-video")
+print(f"The most downloaded model for the 'text-to-video' task is {most_downloaded_model}.")
+====
+```
+
+And the output:
+`"The most downloaded model for the 'text-to-video' task is ByteDance/AnimateDiff-Lightning."`
+
+## Multi-agents
+
+Multi-agent has been introduced in Microsoft's framework [Autogen](https://huggingface.co/papers/2308.08155).
+It simply means having several agents working together to solve your task instead of only one.
+It empirically yields better performance on most benchmarks. The reason for this better performance is conceptually simple: for many tasks, rather than using a do-it-all system, you would prefer to specialize units on sub-tasks. Here, having agents with separate tool sets and memories allows to achieve efficient specialization.
+
+You can easily build hierarchical multi-agent systems with `agents`.
+
+To do so, encapsulate the agent in a [`ManagedAgent`] object. This object needs arguments `agent`, `name`, and a `description`, which will then be embedded in the manager agent's system prompt to let it know how to call this managed agent, as we also do for tools.
+
+Here's an example of making an agent that managed a specific web search agent using our [`DuckDuckGoSearchTool`]:
+
+```py
+from agents import CodeAgent, HfApiEngine, DuckDuckGoSearchTool, ManagedAgent
+
+llm_engine = HfApiEngine()
+
+web_agent = CodeAgent(tools=[DuckDuckGoSearchTool()], llm_engine=llm_engine)
+
+managed_web_agent = ManagedAgent(
+    agent=web_agent,
+    name="web_search",
+    description="Runs web searches for you. Give it your query as an argument."
+)
+
+manager_agent = CodeAgent(
+    tools=[], llm_engine=llm_engine, managed_agents=[managed_web_agent]
+)
+
+manager_agent.run("Who is the CEO of Hugging Face?")
+```
+
+> [!TIP]
+> For an in-depth example of an efficient multi-agent implementation, see [how we pushed our multi-agent system to the top of the GAIA leaderboard](https://huggingface.co/blog/beating-gaia).
+
+
+## Display your agent run in a cool Gradio interface
+
+You can leverage `gradio.Chatbot` to display your agent's thoughts using `stream_to_gradio`, here is an example:
+
+```py
+import gradio as gr
+from transformers import (
+    load_tool,
+    CodeAgent,
+    HfApiEngine,
+    stream_to_gradio,
+)
+
+# Import tool from Hub
+image_generation_tool = load_tool("m-ric/text-to-image")
+
+llm_engine = HfApiEngine(model_id)
+
+# Initialize the agent with the image generation tool
+agent = CodeAgent(tools=[image_generation_tool], llm_engine=llm_engine)
+
+
+def interact_with_agent(task):
+    messages = []
+    messages.append(gr.ChatMessage(role="user", content=task))
+    yield messages
+    for msg in stream_to_gradio(agent, task):
+        messages.append(msg)
+        yield messages + [
+            gr.ChatMessage(role="assistant", content="⏳ Task not finished yet!")
+        ]
+    yield messages
+
+
+with gr.Blocks() as demo:
+    text_input = gr.Textbox(lines=1, label="Chat Message", value="Make me a picture of the Statue of Liberty.")
+    submit = gr.Button("Run illustrator agent!")
+    chatbot = gr.Chatbot(
+        label="Agent",
+        type="messages",
+        avatar_images=(
+            None,
+            "https://em-content.zobj.net/source/twitter/53/robot-face_1f916.png",
+        ),
+    )
+    submit.click(interact_with_agent, [text_input], [chatbot])
+
+if __name__ == "__main__":
+    demo.launch()
+```

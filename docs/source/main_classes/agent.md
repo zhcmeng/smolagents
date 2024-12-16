@@ -23,7 +23,7 @@ can vary as the APIs or underlying models are prone to change.
 
 </Tip>
 
-To learn more about agents and tools make sure to read the [introductory guide](../transformers_agents). This page
+To learn more about agents and tools make sure to read the [introductory guide](../index). This page
 contains the API docs for the underlying classes.
 
 ## Agents
@@ -72,10 +72,6 @@ We provide two types of agents, based on the main [`Agent`] class:
 
 [[autodoc]] Toolbox
 
-### PipelineTool
-
-[[autodoc]] PipelineTool
-
 ### launch_gradio_demo
 
 [[autodoc]] launch_gradio_demo
@@ -100,18 +96,16 @@ These engines have the following specification:
 For convenience, we have added a `TransformersEngine` that implements the points above, taking a pre-initialized `Pipeline` as input.
 
 ```python
->>> from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline, TransformersEngine
+from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline, TransformersEngine
 
->>> model_name = "HuggingFaceTB/SmolLM-135M-Instruct"
->>> tokenizer = AutoTokenizer.from_pretrained(model_name)
->>> model = AutoModelForCausalLM.from_pretrained(model_name)
+model_name = "HuggingFaceTB/SmolLM-135M-Instruct"
+tokenizer = AutoTokenizer.from_pretrained(model_name)
+model = AutoModelForCausalLM.from_pretrained(model_name)
 
->>> pipe = pipeline("text-generation", model=model, tokenizer=tokenizer)
+pipe = pipeline("text-generation", model=model, tokenizer=tokenizer)
 
->>> engine = TransformersEngine(pipe)
->>> engine([{"role": "user", "content": "Ok!"}], stop_sequences=["great"])
-
-"What a "
+engine = TransformersEngine(pipe)
+engine([{"role": "user", "content": "Ok!"}], stop_sequences=["great"])
 ```
 
 [[autodoc]] TransformersEngine
@@ -121,16 +115,17 @@ For convenience, we have added a `TransformersEngine` that implements the points
 The `HfApiEngine` is an engine that wraps an [HF Inference API](https://huggingface.co/docs/api-inference/index) client for the execution of the LLM.
 
 ```python
->>> from transformers import HfApiEngine
+from transformers import HfApiEngine
 
->>> messages = [
-...   {"role": "user", "content": "Hello, how are you?"},
-...   {"role": "assistant", "content": "I'm doing great. How can I help you today?"},
-...   {"role": "user", "content": "No need to help, take it easy."},
-... ]
+messages = [
+  {"role": "user", "content": "Hello, how are you?"},
+  {"role": "assistant", "content": "I'm doing great. How can I help you today?"},
+  {"role": "user", "content": "No need to help, take it easy."},
+]
 
->>> HfApiEngine()(messages, stop_sequences=["conversation"])
-
+HfApiEngine()(messages, stop_sequences=["conversation"])
+```
+```text
 "That's very kind of you to say! It's always nice to have a relaxed "
 ```
 

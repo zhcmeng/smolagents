@@ -15,7 +15,10 @@ rendered properly in your Markdown viewer.
 -->
 # Building good agents
 
-There's a world of difference between building an agent that works and one that doesn't. How to build into this latter category?
+[[open-in-colab]]
+
+There's a world of difference between building an agent that works and one that doesn't.
+How to build into this latter category?
 In this guide, we're going to see best practices for building agents.
 
 > [!TIP]
@@ -52,12 +55,19 @@ For instance, here's a tool that :
 
 First, here's a poor version:
 ```python
-from my_weather_api return convert_location_to_coordinates, get_weather_report_at_coordinates
-# Let's say "get_weather_report_at_coordinates" returns a list of [temperature in °C, risk of rain on a scale 0-1, wave height in m]
 import datetime
+from agents import tool
+
+def get_weather_report_at_coordinates(coordinates, date_time):
+    # Dummy function, returns a list of [temperature in °C, risk of rain on a scale 0-1, wave height in m]
+    return [28.0, 0.35, 0.85]
+
+def get_coordinates_from_location(location):
+    # Returns dummy coordinates
+    return [3.3, -42.0]
 
 @tool
-def get_weather_api(location (str), date_time: str) -> str:
+def get_weather_api(location: str, date_time: str) -> str:
     """
     Returns the weather report.
 
@@ -80,12 +90,8 @@ If the tool call fails, the error trace logged in memory can help the LLM revers
 
 A better way to build this tool would have been the following:
 ```python
-from my_weather_api return convert_location_to_coordinates, get_weather_report_at_coordinates
-# Let's say "get_weather_report_at_coordinates" returns a list of [temperature in °C, risk of rain on a scale 0-1, wave height in m]
-import datetime
-
 @tool
-def get_weather_api(location (str), date_time: str) -> str:
+def get_weather_api(location: str, date_time: str) -> str:
     """
     Returns the weather report.
 
@@ -154,3 +160,27 @@ Better ways to guide your LLM engine are:
 ### 3. Extra planning
 
 We provide a model for a supplementary planning step, that an agent can run regularly in-between normal action steps. In this step, there is no tool call, the LLM is simply asked to update a list of facts it knows and to reflect on what steps it should take next based on those facts.
+
+```py
+from agents import load_tool, CodeAgent, HfApiEngine, DuckDuckGoSearchTool
+from dotenv import load_dotenv
+
+load_dotenv()
+
+# Import tool from Hub
+image_generation_tool = load_tool("m-ric/text-to-image", cache=False)
+
+search_tool = DuckDuckGoSearchTool()
+
+agent = CodeAgent(
+    tools=[search_tool],
+    llm_engine=HfApiEngine("Qwen/Qwen2.5-72B-Instruct"),
+    planning_interval=3 # This is where you activate planning!
+)
+
+# Run it!
+result = agent.run(
+    "How long would a cheetah at full speed take to run the length of Pont Alexandre III?",
+)
+print("RESULT:", result)
+```

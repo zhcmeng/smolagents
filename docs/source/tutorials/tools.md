@@ -41,7 +41,7 @@ The types for both `inputs` and `output_type` should be amongst [Pydantic format
 Also, all imports should be put within the tool's forward function, else you will get an error.
 
 ```python
-from transformers import Tool
+from agents import Tool
 
 class HFModelDownloadsTool(Tool):
     name = "model_download_counter"
@@ -70,20 +70,16 @@ Now the custom `HfModelDownloadsTool` class is ready.
 You can also share your custom tool to the Hub by calling [`~Tool.push_to_hub`] on the tool. Make sure you've created a repository for it on the Hub and are using a token with read access.
 
 ```python
-from dotenv import load_dotenv
-
-load_dotenv()
-
-tool.push_to_hub("m-ric/hf-model-downloads", token=os.getenv("HF_TOKEN"))
+tool.push_to_hub("m-ric/hf-model-downloads", token="<YOUR_HUGGINGFACEHUB_API_TOKEN>")
 ```
 
 Load the tool with the [`~Tool.load_tool`] function and pass it to the `tools` parameter in your agent.
 Since running tools means running custom code, you need to make sure you trust the repository, and pass `trust_remote_code=True`.
 
 ```python
-from transformers import load_tool, CodeAgent
+from agents import load_tool, CodeAgent
 
-model_download_tool = load_tool("m-ric/hf-model-downloads")
+model_download_tool = load_tool("m-ric/hf-model-downloads", trust_remote_code=True)
 ```
 
 ### Import a Space as a tool 🚀
@@ -95,10 +91,8 @@ You only need to provide the id of the Space on the Hub, its name, and a descrip
 For instance, let's import the [FLUX.1-dev](https://huggingface.co/black-forest-labs/FLUX.1-dev) Space from the Hub and use it to generate an image.
 
 ```python
-from transformers import Tool
-
 image_generation_tool = Tool.from_space(
-    "black-forest-labs/FLUX.1-dev",
+    "black-forest-labs/FLUX.1-schnell",
     name="image_generator",
     description="Generate an image from a prompt")
 
@@ -111,9 +105,10 @@ And voilà, here's your image! 🏖️
 Then you can use this tool just like any other tool.  For example, let's improve the prompt  `a rabbit wearing a space suit` and generate an image of it.
 
 ```python
-from transformers import CodeAgent
+from agents import CodeAgent, HfApiEngine
 
-agent = CodeAgent(tools=[image_generation_tool])
+llm_engine = HfApiEngine("Qwen/Qwen2.5-Coder-32B-Instruct")
+agent = CodeAgent(tools=[image_generation_tool], llm_engine=llm_engine)
 
 agent.run(
     "Improve this prompt, then generate an image of it.", prompt='A rabbit wearing a space suit'
@@ -145,7 +140,6 @@ Import and instantiate the tool, then pass it to the `Tool.from_gradio` method:
 
 ```python
 from gradio_tools import StableDiffusionPromptGeneratorTool
-from agents import Tool, load_tool, CodeAgent
 
 gradio_prompt_generator_tool = StableDiffusionPromptGeneratorTool()
 prompt_generator_tool = Tool.from_gradio(gradio_prompt_generator_tool)
@@ -163,11 +157,10 @@ Here is how you can use it to recreate the intro's search result using a LangCha
 This tool will need `pip install langchain google-search-results -q` to work properly.
 ```python
 from langchain.agents import load_tools
-from agents import Tool, CodeAgent
 
 search_tool = Tool.from_langchain(load_tools(["serpapi"])[0])
 
-agent = CodeAgent(tools=[search_tool])
+agent = CodeAgent(tools=[search_tool], llm_engine=llm_engine)
 
 agent.run("How many more blocks (also denoted as layers) are in BERT base encoder compared to the encoder from the architecture proposed in Attention is All You Need?")
 ```
@@ -179,22 +172,20 @@ You can manage an agent's toolbox by adding or replacing a tool.
 Let's add the `model_download_tool` to an existing agent initialized with only the default toolbox.
 
 ```python
-from transformers import CodeAgent
+from agents import HfApiEngine
+
+llm_engine = HfApiEngine("Qwen/Qwen2.5-Coder-32B-Instruct")
 
 agent = CodeAgent(tools=[], llm_engine=llm_engine, add_base_tools=True)
 agent.toolbox.add_tool(model_download_tool)
 ```
-Now we can leverage both the new tool and the previous text-to-speech tool:
+Now we can leverage the new tool:
 
 ```python
 agent.run(
-    "Can you read out loud the name of the model that has the most downloads in the 'text-to-video' task on the Hugging Face Hub and return the audio?"
+    "Can you give me the name of the model that has the most downloads in the 'text-to-video' task on the Hugging Face Hub but reverse the letters?"
 )
 ```
-
-| **Audio**                                                                                                                                            |
-|------------------------------------------------------------------------------------------------------------------------------------------------------|
-| <audio controls><source src="https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/transformers/damo.wav" type="audio/wav"/> |
 
 
 > [!WARNING]
@@ -214,8 +205,11 @@ Then pass them as a list to initialize you agent, and start using them!
 ```py
 from transformers import ToolCollection, CodeAgent
 
-image_tool_collection = ToolCollection(collection_slug="huggingface-tools/diffusion-tools-6630bb19a942c2306a2cdb6f")
-agent = CodeAgent(tools=[*image_tool_collection.tools], add_base_tools=True)
+image_tool_collection = ToolCollection(
+    collection_slug="huggingface-tools/diffusion-tools-6630bb19a942c2306a2cdb6f",
+    token="<YOUR_HUGGINGFACEHUB_API_TOKEN>"
+)
+agent = CodeAgent(tools=[*image_tool_collection.tools], llm_engine=llm_engine, add_base_tools=True)
 
 agent.run("Please draw me a picture of rivers and lakes.")
 ```

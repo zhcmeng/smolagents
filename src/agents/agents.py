@@ -151,6 +151,7 @@ def format_prompt_with_managed_agents_descriptions(
     if agent_descriptions_placeholder is None:
         agent_descriptions_placeholder = "{{managed_agents_descriptions}}"
     if agent_descriptions_placeholder not in prompt_template:
+        print("PROMPT TEMPLLL", prompt_template)
         raise ValueError(f"Provided prompt template does not contain the managed agents descriptions placeholder '{agent_descriptions_placeholder}'")
     if len(managed_agents.keys()) > 0:
         return prompt_template.replace(

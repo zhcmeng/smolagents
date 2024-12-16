@@ -27,3 +27,6 @@ dependencies = [
 dev = [
     "anthropic",
 ]
+test = [
+    "gradio-tools"
+]

@@ -101,4 +101,4 @@ Few existing framework build on this idea to make code agents first-class citize
 
 Especially, since code execution can be a security concern (arbitrary code execution!), we provide options at runtime:
 - a secure python interpreter to run code more safely in your environment
-- a sandboxed `uv` environment.
+- a sandboxed environment.

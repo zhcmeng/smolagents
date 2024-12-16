@@ -147,13 +147,15 @@ class PythonInterpreterTool(Tool):
                 ),
             }
         }
+        self.base_python_tool = BASE_PYTHON_TOOLS
+        self.python_evaluator = evaluate_python_code
         super().__init__(*args, **kwargs)
 
     def forward(self, code: str) -> str:
         output = str(
-            evaluate_python_code(
+            self.python_evaluator(
                 code,
-                static_tools=BASE_PYTHON_TOOLS,
+                static_tools=self.base_python_tool,
                 authorized_imports=self.authorized_imports,
             )
         )

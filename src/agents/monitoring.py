@@ -15,7 +15,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from .utils import console
-
+from rich.text import Text
+from rich.console import Group
 
 class Monitor:
     def __init__(self, tracked_llm_engine):
@@ -31,8 +32,10 @@ class Monitor:
     def update_metrics(self, step_log):
         step_duration = step_log.duration
         self.step_durations.append(step_duration)
-        console.print(f"Step {len(self.step_durations)}:")
-        console.print(f"- Time taken: {step_duration:.2f} seconds")
+        console_outputs = [
+            Text(f"Step {len(self.step_durations)}:", style="bold"),
+            Text(f"- Time taken: {step_duration:.2f} seconds")
+        ]
 
         if getattr(self.tracked_llm_engine, "last_input_token_count", None) is not None:
             self.total_input_token_count += (
@@ -41,8 +44,11 @@ class Monitor:
             self.total_output_token_count += (
                 self.tracked_llm_engine.last_output_token_count
             )
-            console.print(f"- Input tokens: {self.total_input_token_count:,}")
-            console.print(f"- Output tokens: {self.total_output_token_count:,}")
+            console_outputs += [
+                Text(f"- Input tokens: {self.total_input_token_count:,}"),
+                Text(f"- Output tokens: {self.total_output_token_count:,}")
+            ]
+        console.print(Group(*console_outputs))
 
 
 __all__ = ["Monitor"]

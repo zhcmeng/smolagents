@@ -1,6 +1,7 @@
 import docker
 from typing import List, Optional 
 import warnings
+import socket
 
 from agents.tools import Tool
 
@@ -18,7 +19,7 @@ class DockerPythonInterpreter:
         try:            
             self.container = self.client.containers.run(
                 "pyrunner:latest",
-                "tail -f /dev/null",
+                ports={'65432/tcp': 65432},
                 detach=True,
                 remove=True,
            )
@@ -37,10 +38,11 @@ class DockerPythonInterpreter:
         """
         Execute Python code in the container and return stdout and stderr
         """
-        
-        tool_instance = tools[0]()
 
-        import_code = f"""
+        if tools != None:        
+            tool_instance = tools[0]()
+
+            import_code = f"""
 module_path = '{tool_instance.__class__.__module__}'
 class_name = '{tool_instance.__class__.__name__}'
 
@@ -50,14 +52,14 @@ module = importlib.import_module(module_path)
 web_search = getattr(module, class_name)()
 """
 
-        full_code = import_code + "\n" + code
+            code = import_code + "\n" + code
 
         try:
-            exec_command = self.container.exec_run(
-                cmd=["python", "-c", full_code],
-            )
-            output = exec_command.output
-            return output.decode('utf-8')
+            # Connect to the server running inside the container
+            with socket.create_connection(('localhost', 65432)) as sock:
+                sock.sendall(code.encode('utf-8'))
+                output = sock.recv(4096)
+                return output.decode('utf-8')
 
         except Exception as e:
             return f"Error executing code: {str(e)}"

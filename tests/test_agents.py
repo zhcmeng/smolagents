@@ -230,6 +230,12 @@ Action:
             tool_arguments="final_answer(7.2904)",
         )
 
+    def test_additional_args_added_to_task(self):
+        agent = CodeAgent(tools=[], llm_engine=fake_code_llm)
+        output = agent.run("What is 2 multiplied by 3.6452?", additional_instruction="Remember this.")
+        assert "Remember this" in agent.task
+        assert "Remember this" in str(agent.prompt_messages)
+
     def test_reset_conversations(self):
         agent = CodeAgent(tools=[PythonInterpreterTool()], llm_engine=fake_code_llm)
         output = agent.run("What is 2 multiplied by 3.6452?", reset=True)

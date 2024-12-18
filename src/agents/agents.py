@@ -528,7 +528,7 @@ class ReactAgent(BaseAgent):
                 self.logs.append(system_prompt_step)
 
         console.print(Group(Rule("[bold]New task", characters="="), Text(self.task)))
-        self.logs.append(TaskStep(task=task))
+        self.logs.append(TaskStep(task=self.task))
 
         if oneshot:
             step_start_time = time.time()
@@ -541,9 +541,9 @@ class ReactAgent(BaseAgent):
             return result
 
         if stream:
-            return self.stream_run(task)
+            return self.stream_run(self.task)
         else:
-            return self.direct_run(task)
+            return self.direct_run(self.task)
 
     def stream_run(self, task: str):
         """

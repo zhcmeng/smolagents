@@ -29,7 +29,7 @@ from agents.agents import (
     Toolbox,
     ToolCall,
 )
-from agents.tools import tool
+from agents.tool import tool
 from agents.default_tools import PythonInterpreterTool
 from transformers.testing_utils import get_tests_dir
 

@@ -1,5 +1,5 @@
 # Base Python image
-FROM python:3.12-slim
+FROM python:3.9-slim
 
 # Set working directory
 WORKDIR /app
@@ -24,5 +24,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 RUN pip install -e .
 
 COPY server.py /app/server.py
+
+# Expose the port your server will run on
+EXPOSE 65432
 
 CMD ["python", "/app/server.py"]

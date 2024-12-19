@@ -1,4 +1,4 @@
-from agents.tools import Tool
+from agents.tool import Tool
 
 
 class DummyTool(Tool):

@@ -23,11 +23,11 @@ Here, we're going to see advanced tool usage.
 > If you're new to `agents`, make sure to first read the main [agents documentation](./agents).
 
 
-### Directly define a tool by subclassing Tool, and share it to the Hub
+### Directly define a tool by subclassing Tool
 
-Let's take again the tool example from main documentation, for which we had implemented a `tool` decorator.
+Let's take again the tool example from the [quicktour](../quicktour), for which we had implemented a `@tool` decorator. The `tool` decorator is the standard format, but sometimes you need more: use several methods in a class for more clarity, or using additional class attributes.
 
-If you need to add variation, like custom attributes for your tool, you can build your tool following the fine-grained method: building a class that inherits from the [`Tool`] superclass.
+In this case, you can build your tool following the fine-grained method: building a class that inherits from the [`Tool`] superclass.
 
 The custom tool needs:
 - An attribute `name`, which corresponds to the name of the tool itself. The name usually describes what the tool does. Since the code returns the model with the most downloads for a task, let's name it `model_download_counter`.
@@ -67,19 +67,28 @@ tool = HFModelDownloadsTool()
 
 Now the custom `HfModelDownloadsTool` class is ready.
 
+### Share your tool to the Hub
+
 You can also share your custom tool to the Hub by calling [`~Tool.push_to_hub`] on the tool. Make sure you've created a repository for it on the Hub and are using a token with read access.
 
 ```python
-tool.push_to_hub("m-ric/hf-model-downloads", token="<YOUR_HUGGINGFACEHUB_API_TOKEN>")
+tool.push_to_hub("{your_username}/hf-model-downloads", token="<YOUR_HUGGINGFACEHUB_API_TOKEN>")
 ```
 
-Load the tool with the [`~Tool.load_tool`] function and pass it to the `tools` parameter in your agent.
+For the push to Hub to work, your tool will need to respect some rules:
+- All method are self-contained, e.g. use variables that come either from their args, 
+- If you subclass the `__init__` method, you can give it no other argument than `self`. This is because arguments set during a specific tool instance's initialization are hard to track, which prevents from sharing them properly to the hub. And anyway, the idea of making a specific class is that you can already set class attributes for anything you need to hard-code (just set `your_variable=(...)` directly under the `class YourTool(Tool):` line). And of course you can still create a class attribute anywhere in your code by assigning stuff to `self.your_variable`.
+
+Once your tool is pushed to Hub, you can load it with the [`~Tool.load_tool`] function and pass it to the `tools` parameter in your agent.
 Since running tools means running custom code, you need to make sure you trust the repository, and pass `trust_remote_code=True`.
 
 ```python
 from agents import load_tool, CodeAgent
 
-model_download_tool = load_tool("m-ric/hf-model-downloads", trust_remote_code=True)
+model_download_tool = load_tool(
+    "{your_username}/hf-model-downloads",
+    trust_remote_code=True
+)
 ```
 
 ### Import a Space as a tool 🚀
@@ -215,7 +224,3 @@ agent.run("Please draw me a picture of rivers and lakes.")
 ```
 
 To speed up the start, tools are loaded only if called by the agent.
-
-This gets you this image:
-
-<img src="https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/transformers/rivers_and_lakes.png">

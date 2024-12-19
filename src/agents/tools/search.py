@@ -19,7 +19,7 @@ import re
 import requests
 from requests.exceptions import RequestException
 
-from .tools import Tool
+from ..tools import Tool
 
 
 class DuckDuckGoSearchTool(Tool):

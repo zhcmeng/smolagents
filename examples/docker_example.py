@@ -1,9 +1,8 @@
-from agents.search import DuckDuckGoSearchTool
+from agents.tools.search import DuckDuckGoSearchTool
 from agents.docker_alternative import DockerPythonInterpreter
 
 
-test = """
-from agents.tools import Tool
+from agents.tool import Tool
 
 class DummyTool(Tool):
     name = "echo"
@@ -17,7 +16,6 @@ class DummyTool(Tool):
     def forward(self, cmd: str) -> str:
        return cmd 
 
-"""
 
 container = DockerPythonInterpreter()
 
@@ -30,10 +28,8 @@ breakpoint()
 
 print("---------")
 
-output = container.execute(test)
-print(output)
 
-output = container.execute("res = DummyTool(cmd='echo this'); print(res)")
+output = container.execute("res = DummyTool(cmd='echo this'); print(res())")
 print(output)
 
 container.stop()

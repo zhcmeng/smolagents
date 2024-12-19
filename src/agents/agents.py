@@ -43,7 +43,7 @@ from .prompts import (
     SYSTEM_PROMPT_PLAN,
 )
 from .local_python_executor import LIST_SAFE_MODULES, evaluate_python_code
-from .tools import (
+from .tool import (
     DEFAULT_TOOL_DESCRIPTION_TEMPLATE,
     Tool,
     get_tool_description_with_args,

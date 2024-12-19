@@ -26,7 +26,7 @@ from agents.types import (
     AgentImage,
     AgentText,
 )
-from agents.tools import Tool, tool, AUTHORIZED_TYPES
+from agents.tool import Tool, tool, AUTHORIZED_TYPES
 from transformers.testing_utils import get_tests_dir
 
 
@@ -174,6 +174,8 @@ class ToolTests(unittest.TestCase):
                 Gets the current time.
                 """
                 return str(datetime.now())
+            
+            get_current_time.save("output")
 
         assert "datetime" in str(e)
 
@@ -188,6 +190,9 @@ class ToolTests(unittest.TestCase):
 
                 def forward(self):
                     return str(datetime.now())
+                
+            get_current_time = GetCurrentTimeTool()
+            get_current_time.save("output")
 
         assert "datetime" in str(e)
 
@@ -210,3 +215,63 @@ class ToolTests(unittest.TestCase):
             def forward(self):
                 from datetime import datetime
                 return str(datetime.now())
+            
+    def test_saving_tool_allows_no_arg_in_init(self):
+        # Test one cannot save tool with additional args in init
+        class FailTool(Tool):
+            name = "specific"
+            description = "test description"
+            inputs = {"input_str": {"type": "string", "description": "input description"}}
+            output_type = "string"
+
+            def __init__(self, url):
+                super().__init__(self)
+                self.url = "none"
+
+            def forward(self, string_input):
+                return self.url + string_input
+
+        fail_tool = FailTool("dummy_url")
+        with pytest.raises(Exception) as e:
+            fail_tool.save('output')
+        assert '__init__' in str(e)
+
+    def test_saving_tool_allows_no_imports_from_outside_methods(self):
+        # Test that using imports from outside functions fails
+        from numpy import random
+        class FailTool2(Tool):
+            name = "specific"
+            description = "test description"
+            inputs = {"input_str": {"type": "string", "description": "input description"}}
+            output_type = "string"
+
+            def useless_method(self):
+                self.client = random.random()
+                return ""
+
+            def forward(self, string_input):
+                return self.useless_method() + string_input
+
+        fail_tool_2 = FailTool2()
+        with pytest.raises(Exception) as e:
+            fail_tool_2.save('output')
+        assert 'random' in str(e)
+
+        # Test that putting these imports inside functions works
+
+        class FailTool3(Tool):
+            name = "specific"
+            description = "test description"
+            inputs = {"input_str": {"type": "string", "description": "input description"}}
+            output_type = "string"
+
+            def useless_method(self):
+                from numpy import random
+                self.client = random.random()
+                return ""
+
+            def forward(self, string_input):
+                return self.useless_method() + string_input
+
+        fail_tool_3 = FailTool3()
+        fail_tool_3.save('output')

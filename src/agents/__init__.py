@@ -30,10 +30,11 @@ if TYPE_CHECKING:
     from .local_python_executor import *
     from .monitoring import *
     from .prompts import *
-    from .search import *
-    from .tools import *
+    from .tools.search import *
+    from .tool import *
     from .types import *
     from .utils import *
+
 
 else:
     import sys

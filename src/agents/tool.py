@@ -47,8 +47,10 @@ from transformers.utils import (
     is_torch_available,
     is_vision_available,
 )
+from transformers.dynamic_module_utils import get_imports
 from .types import ImageType, handle_agent_inputs, handle_agent_outputs
-from .utils import ImportFinder
+from .utils import instance_to_source
+from .tool_validation import validate_tool_attributes, MethodChecker
 
 import logging
 
@@ -97,14 +99,6 @@ def setup_default_tools():
     return default_tools
 
 
-# docstyle-ignore
-APP_FILE_TEMPLATE = """from transformers import launch_gradio_demo
-from tool import {class_name}
-
-launch_gradio_demo({class_name})
-"""
-
-
 def validate_after_init(cls, do_validate_forward: bool = True):
     original_init = cls.__init__
 
@@ -115,112 +109,6 @@ def validate_after_init(cls, do_validate_forward: bool = True):
 
     cls.__init__ = new_init
     return cls
-
-
-def validate_args_are_self_contained(source_code):
-    """Validates that all names in forward method are properly defined.
-    In particular it will check that all imports are done within the function."""
-    print("CODDDD", source_code)
-    tree = ast.parse(textwrap.dedent(source_code))
-
-    # Get function arguments
-    func_node = tree.body[0]
-    arg_names = {arg.arg for arg in func_node.args.args} | {"kwargs"}
-
-    builtin_names = set(vars(builtins))
-
-    class NameChecker(ast.NodeVisitor):
-        def __init__(self):
-            self.undefined_names = set()
-            self.imports = {}
-            self.from_imports = {}
-            self.assigned_names = set()
-
-        def visit_Import(self, node):
-            """Handle simple imports like 'import datetime'."""
-            for name in node.names:
-                actual_name = name.asname or name.name
-                self.imports[actual_name] = (name.name, actual_name)
-
-        def visit_ImportFrom(self, node):
-            """Handle from imports like 'from datetime import datetime'."""
-            module = node.module or ""
-            for name in node.names:
-                actual_name = name.asname or name.name
-                self.from_imports[actual_name] = (module, name.name, actual_name)
-
-        def visit_Assign(self, node):
-            """Track variable assignments."""
-            for target in node.targets:
-                if isinstance(target, ast.Name):
-                    self.assigned_names.add(target.id)
-            self.visit(node.value)
-
-        def visit_AnnAssign(self, node):
-            """Track annotated assignments."""
-            if isinstance(node.target, ast.Name):
-                self.assigned_names.add(node.target.id)
-            if node.value:
-                self.visit(node.value)
-
-        def _handle_for_target(self, target) -> Set[str]:
-            """Extract all names from a for loop target."""
-            names = set()
-            if isinstance(target, ast.Name):
-                names.add(target.id)
-            elif isinstance(target, ast.Tuple):
-                for elt in target.elts:
-                    if isinstance(elt, ast.Name):
-                        names.add(elt.id)
-            return names
-
-        def visit_For(self, node):
-            """Track for-loop target variables and handle enumerate specially."""
-            # Add names from the target
-            target_names = self._handle_for_target(node.target)
-            self.assigned_names.update(target_names)
-
-            # Special handling for enumerate
-            if (
-                isinstance(node.iter, ast.Call)
-                and isinstance(node.iter.func, ast.Name)
-                and node.iter.func.id == "enumerate"
-            ):
-                # For enumerate, if we have "for i, x in enumerate(...)",
-                # both i and x should be marked as assigned
-                if isinstance(node.target, ast.Tuple):
-                    for elt in node.target.elts:
-                        if isinstance(elt, ast.Name):
-                            self.assigned_names.add(elt.id)
-
-            # Visit the rest of the node
-            self.generic_visit(node)
-
-        def visit_Name(self, node):
-            if isinstance(node.ctx, ast.Load) and not (
-                node.id == "tool"
-                or node.id in builtin_names
-                or node.id in arg_names
-                or node.id == "self"
-                or node.id in self.assigned_names
-            ):
-                if node.id not in self.from_imports and node.id not in self.imports:
-                    self.undefined_names.add(node.id)
-
-        def visit_Attribute(self, node):
-            # Skip self.something
-            if not (isinstance(node.value, ast.Name) and node.value.id == "self"):
-                self.generic_visit(node)
-
-    checker = NameChecker()
-    checker.visit(tree)
-
-    if checker.undefined_names:
-        raise ValueError(
-            f"""The following names in forward method are not defined: {', '.join(checker.undefined_names)}.
-            Make sure all imports and variables are self-contained within the method.            
-            """
-        )
 
 
 AUTHORIZED_TYPES = [
@@ -339,64 +227,79 @@ class Tool:
         """
         os.makedirs(output_dir, exist_ok=True)
         class_name = self.__class__.__name__
+        tool_file = os.path.join(output_dir, "tool.py")
 
         # Save tool file
-        forward_source_code = inspect.getsource(self.forward)
-        validate_args_are_self_contained(forward_source_code)
-        tool_code = f"""
-from agents import Tool
+        if type(self).__name__ == "SimpleTool":
+            # Check that imports are self-contained
+            forward_node = ast.parse(textwrap.dedent(inspect.getsource(self.forward)))
+            # If tool was created using '@tool' decorator, it has only a forward pass, so it's simpler to just get its code
+            method_checker = MethodChecker(set())
+            method_checker.visit(forward_node)
+            if len(method_checker.errors) > 0:
+                raise(ValueError("\n".join(method_checker.errors)))
 
-class {class_name}(Tool):
-    name = "{self.name}"
-    description = \"\"\"{self.description}\"\"\"
-    inputs = {json.dumps(self.inputs, separators=(',', ':'))}
-    output_type = "{self.output_type}"
-""".strip()
+            forward_source_code = inspect.getsource(self.forward)
+            tool_code = textwrap.dedent(f"""
+            from agents import Tool
 
-        def add_self_argument(source_code: str) -> str:
-            """Add 'self' as first argument to a function definition if not present."""
-            pattern = r"def forward\(((?!self)[^)]*)\)"
+            class {class_name}(Tool):
+                name = "{self.name}"
+                description = "{self.description}"
+                inputs = {json.dumps(self.inputs, separators=(',', ':'))}
+                output_type = "{self.output_type}"
+            """).strip()
+            import re
+            def add_self_argument(source_code: str) -> str:
+                """Add 'self' as first argument to a function definition if not present."""
+                pattern = r'def forward\(((?!self)[^)]*)\)'
+                
+                def replacement(match):
+                    args = match.group(1).strip()
+                    if args:  # If there are other arguments
+                        return f'def forward(self, {args})'
+                    return 'def forward(self)'
+                    
+                return re.sub(pattern, replacement, source_code)
 
-            def replacement(match):
-                args = match.group(1).strip()
-                if args:  # If there are other arguments
-                    return f"def forward(self, {args})"
-                return "def forward(self)"
+            forward_source_code = forward_source_code.replace(self.name, "forward")
+            forward_source_code = add_self_argument(forward_source_code)
+            forward_source_code = forward_source_code.replace("@tool", "").strip()
+            tool_code += "\n\n" + textwrap.indent(forward_source_code, "    ")
+            
+            with open(tool_file, "w", encoding="utf-8") as f:
+                f.write(tool_code)
+        else: # If the tool was not created by the @tool decorator, it was made by subclassing Tool
+            if type(self).__name__ in ["SpaceToolWrapper", "LangChainToolWrapper", "GradioToolWrapper"]:
+                raise ValueError(
+                    f"Cannot save objects created with from_space, from_langchain or from_gradio, as this would create errors."
+                )
 
-            return re.sub(pattern, replacement, source_code)
+            validate_tool_attributes(self.__class__)
 
-        forward_source_code = forward_source_code.replace(self.name, "forward")
-        forward_source_code = add_self_argument(forward_source_code)
-        forward_source_code = forward_source_code.replace("@tool", "").strip()
-        tool_code += "\n\n" + textwrap.indent(forward_source_code, "    ")
-        with open(os.path.join(output_dir, "tool.py"), "w", encoding="utf-8") as f:
-            f.write(tool_code)
-
-        # Save config file
-        config_file = os.path.join(output_dir, "tool_config.json")
-        tool_config = {
-            "tool_class": self.__class__.__name__,
-            "description": self.description,
-            "name": self.name,
-            "inputs": self.inputs,
-            "output_type": str(self.output_type),
-        }
-        with open(config_file, "w", encoding="utf-8") as f:
-            f.write(json.dumps(tool_config, indent=2, sort_keys=True) + "\n")
+            tool_code = instance_to_source(self, base_cls=Tool)
+            with open(tool_file, "w", encoding="utf-8") as f:
+                f.write(tool_code)
 
         # Save app file
         app_file = os.path.join(output_dir, "app.py")
         with open(app_file, "w", encoding="utf-8") as f:
-            f.write(APP_FILE_TEMPLATE.format(class_name=class_name))
+            f.write(textwrap.dedent(f"""
+            from agents import launch_gradio_demo
+            from tool import {class_name}
+
+            tool = {class_name}()
+
+            launch_gradio_demo(tool)
+            """).lstrip())
 
         # Save requirements file
         requirements_file = os.path.join(output_dir, "requirements.txt")
 
-        tree = ast.parse(forward_source_code)
-        import_finder = ImportFinder()
-        import_finder.visit(tree)
-
-        imports = list(set(import_finder.packages))
+        imports = []
+        for module in [tool_file]:
+            imports.extend(get_imports(module))
+        imports = list(set(imports))
         with open(requirements_file, "w", encoding="utf-8") as f:
             f.write("agents_package\n" + "\n".join(imports) + "\n")
 
@@ -612,7 +515,6 @@ class {class_name}(Tool):
         ```
         """
         from gradio_client import Client, handle_file
-        from gradio_client.utils import is_http_url_like
 
         class SpaceToolWrapper(Tool):
             def __init__(
@@ -665,6 +567,7 @@ class {class_name}(Tool):
                 self.is_initialized = True
 
             def sanitize_argument_for_prediction(self, arg):
+                from gradio_client.utils import is_http_url_like
                 if isinstance(arg, ImageType):
                     temp_file = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
                     arg.save(temp_file.name)
@@ -793,13 +696,13 @@ def compile_jinja_template(template):
     return jinja_env.from_string(template)
 
 
-def launch_gradio_demo(tool_class: Tool):
+def launch_gradio_demo(tool: Tool):
     """
     Launches a gradio demo for a tool. The corresponding tool class needs to properly implement the class attributes
     `inputs` and `output_type`.
 
     Args:
-        tool_class (`type`): The class of the tool for which to launch the demo.
+        tool (`type`): The tool for which to launch the demo.
     """
     try:
         import gradio as gr
@@ -807,11 +710,6 @@ def launch_gradio_demo(tool_class: Tool):
         raise ImportError(
             "Gradio should be installed in order to launch a gradio demo."
         )
-
-    tool = tool_class()
-
-    def fn(*args, **kwargs):
-        return tool(*args, **kwargs)
 
     TYPE_TO_COMPONENT_CLASS_MAPPING = {
         "image": gr.Image,
@@ -822,7 +720,7 @@ def launch_gradio_demo(tool_class: Tool):
     }
 
     gradio_inputs = []
-    for input_name, input_details in tool_class.inputs.items():
+    for input_name, input_details in tool.inputs.items():
         input_gradio_component_class = TYPE_TO_COMPONENT_CLASS_MAPPING[
             input_details["type"]
         ]
@@ -830,15 +728,15 @@ def launch_gradio_demo(tool_class: Tool):
         gradio_inputs.append(new_component)
 
     output_gradio_componentclass = TYPE_TO_COMPONENT_CLASS_MAPPING[
-        tool_class.output_type
+        tool.output_type
     ]
-    gradio_output = output_gradio_componentclass(label=input_name)
+    gradio_output = output_gradio_componentclass(label="Output")
 
     gr.Interface(
-        fn=fn,
+        fn=tool, # This works because `tool` has a __call__ method
         inputs=gradio_inputs,
         outputs=gradio_output,
-        title=tool_class.__name__,
+        title=tool.name,
         article=tool.description,
     ).launch()
 
@@ -1027,29 +925,34 @@ def tool(tool_function: Callable) -> Tool:
         raise TypeHintParsingException(
             "Tool return type not found: make sure your function has a return type hint!"
         )
-    class_name = "".join([el.title() for el in parameters["name"].split("_")])
 
     if parameters["return"]["type"] == "object":
         parameters["return"]["type"] = "any"
 
-    class SpecificTool(Tool):
-        name = parameters["name"]
-        description = parameters["description"]
-        inputs = parameters["parameters"]["properties"]
-        output_type = parameters["return"]["type"]
+    class SimpleTool(Tool):
+        def __init__(self, name, description, inputs, output_type, function):
+            self.name = name
+            self.description = description
+            self.inputs = inputs
+            self.output_type = output_type
+            self.forward = function
+            self.is_initialized = True
 
-        @wraps(tool_function)
-        def forward(self, *args, **kwargs):
-            return tool_function(*args, **kwargs)
-
+    simple_tool = SimpleTool(
+        parameters["name"],
+        parameters["description"],
+        parameters["parameters"]["properties"],
+        parameters["return"]["type"],
+        function=tool_function
+    )
     original_signature = inspect.signature(tool_function)
     new_parameters = [
         inspect.Parameter("self", inspect.Parameter.POSITIONAL_OR_KEYWORD)
     ] + list(original_signature.parameters.values())
     new_signature = original_signature.replace(parameters=new_parameters)
-    SpecificTool.forward.__signature__ = new_signature
-    SpecificTool.__name__ = class_name
-    return SpecificTool()
+    simple_tool.forward.__signature__ = new_signature
+    # SimpleTool.__name__ = "".join([el.title() for el in parameters["name"].split("_")])
+    return simple_tool
 
 
 HUGGINGFACE_DEFAULT_TOOLS = {}

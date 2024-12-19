@@ -27,3 +27,20 @@ limitations under the License.
 <h3 align="center">
 <p>Run agents!
 </h3>
+
+W
+
+<div class="flex justify-center">
+    <img
+        class="block dark:hidden"
+        src="https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/transformers/Agent_ManimCE.gif"
+    />
+    <img
+        class="hidden dark:block"
+        src="https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/transformers/Agent_ManimCE.gif"
+    />
+</div>
+
+To run Docker, run `docker build -t pyrunner:latest .`
+
+This will use the Local Dockerfile to create your Docker image!

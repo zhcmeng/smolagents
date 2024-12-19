@@ -125,7 +125,7 @@ class TestDocs:
                 "from_langchain",
             ]
             code_blocks = [
-                block.replace("<YOUR_HUGGINGFACEHUB_API_TOKEN>", self.hf_token)
+                block.replace("<YOUR_HUGGINGFACEHUB_API_TOKEN>", self.hf_token).replace("{your_username}", "m-ric")
                 for block in code_blocks
                 if not any(
                     [snippet in block for snippet in excluded_snippets]

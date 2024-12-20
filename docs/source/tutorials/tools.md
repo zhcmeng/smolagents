@@ -197,8 +197,8 @@ agent.run(
 ```
 
 
-> [!WARNING]
-> Beware when adding tools to an agent that already works well because it can bias selection towards your tool or select another tool other than the one already defined.
+> [!TIP]
+> Beware of not adding too many tools to an agent: this can overwhelm weaker LLM engines.
 
 
 Use the `agent.toolbox.update_tool()` method to replace an existing tool in the agent's toolbox.

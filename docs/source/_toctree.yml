@@ -1,25 +1,28 @@
-- sections:
+- title: Get started
+  sections:
   - local: index
     title: 🤗 Agents
   - local: quicktour
-    title: Quick tour
-  title: Get started
-- sections:
-  - local: building_good_agents
-    title: Building good agents
-  - local: tools
+    title: ⏱️ Quick tour
+- title: Tutorials
+  sections:
+  - local: tutorials/building_good_agents
+    title: ✨ Building good agents
+  - local: tutorials/tools
     title: 🛠️ Tools - in-depth guide
-  title: Tutorials
-- sections:
-  - local: intro_agents
-    title: An introduction to agentic systems
-  title: Conceptual guides
-- sections:
-  - local: text_to_sql
+- title: Conceptual guides
+  sections:
+  - local: conceptual_guides/intro_agents
+    title: 🤖 An introduction to agentic systems
+  - local: conceptual_guides/react
+    title: 🤔 ReAct agents
+- title: Examples
+  sections:
+  - local: examples/text_to_sql
     title: Text-to-SQL
-  title: Examples
-- sections:
-  - sections:
-    - local: main_classes/agent
-      title: Agents and Tools
-    title: Main Classes
+- title: Reference
+  sections:
+  - local: reference/agents
+    title: Agent-related objects
+  - local: reference/tools
+    title: Tool-related objects

@@ -14,7 +14,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from .types import AgentAudio, AgentImage, AgentText
+from .types import AgentAudio, AgentImage, AgentText, handle_agent_output_types
 from .agents import BaseAgent, AgentStep, ActionStep
 import gradio as gr
 
@@ -58,7 +58,7 @@ def stream_to_gradio(
         for message in pull_messages_from_step(step_log, test_mode=test_mode):
             yield message
 
-    final_answer = step_log  # Last log is the run's final_answer
+    final_answer = handle_agent_output_types(step_log)  # Last log is the run's final_answer
 
     if isinstance(final_answer, AgentText):
         yield gr.ChatMessage(
@@ -93,7 +93,7 @@ class GradioUI:
             yield messages
         yield messages
 
-    def run(self):
+    def launch(self):
         with gr.Blocks() as demo:
             stored_message = gr.State([])
             chatbot = gr.Chatbot(

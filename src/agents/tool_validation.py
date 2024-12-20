@@ -5,27 +5,30 @@ import builtins
 from pathlib import Path
 from typing import List, Set, Dict
 import textwrap
+from .utils import BASE_BUILTIN_MODULES
 
 _BUILTIN_NAMES = set(vars(builtins))
 
-def is_local_import(module_name: str) -> bool:
+IMPORTED_PACKAGES = BASE_BUILTIN_MODULES
+
+def is_installed_package(module_name: str) -> bool:
     """
-    Check if an import is from a local file or a package.
-    Returns True if it's a local file import.
+    Check if an import is from an installed package.
+    Returns False if it's not found or a local file import.
     """
     try:
         spec = importlib.util.find_spec(module_name)
         if spec is None:
-            return True  # If we can't find the module, assume it's local
+            return False  # If we can't find the module, assume it's local
         
         # If the module is found and has a file path, check if it's in site-packages
         if spec.origin and 'site-packages' not in spec.origin:
             # Check if it's a .py file in the current directory or subdirectories
-            return spec.origin.endswith('.py')
-            
+            return not spec.origin.endswith('.py')
+
         return False
     except ImportError:
-        return True  # If there's an import error, assume it's local
+        return False  # If there's an import error, assume it's local
 
 class MethodChecker(ast.NodeVisitor):
     """
@@ -33,7 +36,7 @@ class MethodChecker(ast.NodeVisitor):
     - only uses defined names
     - contains no local imports (e.g. numpy is ok but local_script is not)
     """
-    def __init__(self, class_attributes: Set[str]):
+    def __init__(self, class_attributes: Set[str], check_imports: bool = True):
         self.undefined_names = set()
         self.imports = {}
         self.from_imports = {}
@@ -41,6 +44,7 @@ class MethodChecker(ast.NodeVisitor):
         self.arg_names = set()
         self.class_attributes = class_attributes
         self.errors = []
+        self.check_imports = check_imports
 
     def visit_arguments(self, node):
         """Collect function arguments"""
@@ -53,16 +57,16 @@ class MethodChecker(ast.NodeVisitor):
     def visit_Import(self, node):
         for name in node.names:
             actual_name = name.asname or name.name
-            if is_local_import(actual_name):
-                self.errors.append(f"Local import '{actual_name}'")
+            if not is_installed_package(actual_name) and self.check_imports:
+                self.errors.append(f"Package not found in importlib, might be a local install: '{actual_name}'")
             self.imports[actual_name] = name.name
             
     def visit_ImportFrom(self, node):
         module = node.module or ""
         for name in node.names:
             actual_name = name.asname or name.name
-            if is_local_import(module):
-                self.errors.append(f"Local import '{module}'")
+            if not is_installed_package(module) and self.check_imports:
+                self.errors.append(f"Package not found in importlib, might be a local install: '{module}'")
             self.from_imports[actual_name] = (module, name.name)
             
     def visit_Assign(self, node):
@@ -70,6 +74,20 @@ class MethodChecker(ast.NodeVisitor):
             if isinstance(target, ast.Name):
                 self.assigned_names.add(target.id)
         self.visit(node.value)
+
+    def visit_With(self, node):
+        """Track aliases in 'with' statements (the 'y' in 'with X as y')"""
+        for item in node.items:
+            if item.optional_vars:  # This is the 'y' in 'with X as y'
+                if isinstance(item.optional_vars, ast.Name):
+                    self.assigned_names.add(item.optional_vars.id)
+        self.generic_visit(node)
+
+    def visit_ExceptHandler(self, node):
+        """Track exception aliases (the 'e' in 'except Exception as e')"""
+        if node.name:  # This is the 'e' in 'except Exception as e'
+            self.assigned_names.add(node.name)
+        self.generic_visit(node)
 
     def visit_AnnAssign(self, node):
         """Track annotated assignments."""
@@ -97,6 +115,7 @@ class MethodChecker(ast.NodeVisitor):
         if isinstance(node.ctx, ast.Load):
             if not (
                 node.id in _BUILTIN_NAMES
+                or node.id in IMPORTED_PACKAGES
                 or node.id in self.arg_names
                 or node.id == "self"
                 or node.id in self.class_attributes
@@ -110,17 +129,18 @@ class MethodChecker(ast.NodeVisitor):
         if isinstance(node.func, ast.Name):
             if not (
                 node.func.id in _BUILTIN_NAMES
+                or node.func.id in IMPORTED_PACKAGES
                 or node.func.id in self.arg_names
                 or node.func.id == "self"
                 or node.func.id in self.class_attributes
                 or node.func.id in self.imports
                 or node.func.id in self.from_imports
                 or node.func.id in self.assigned_names
-            ):                        
+            ):         
                 self.errors.append(f"Name '{node.func.id}' is undefined.")
         self.generic_visit(node)
 
-def validate_tool_attributes(cls) -> None:
+def validate_tool_attributes(cls, check_imports: bool = True) -> None:
     """
     Validates that a Tool class follows the proper patterns:
     0. __init__ takes no argument (args chosen at init are not traceable so we cannot rebuild the source code for them, make them class attributes!).
@@ -156,8 +176,17 @@ def validate_tool_attributes(cls) -> None:
             self.imported_names = set()
             self.complex_attributes = set()
             self.class_attributes = set()
+            self.in_method = False
+
+        def visit_FunctionDef(self, node):
+            old_context = self.in_method
+            self.in_method = True
+            self.generic_visit(node)
+            self.in_method = old_context
 
         def visit_Assign(self, node):
+            if self.in_method:
+                return
             # Track class attributes
             for target in node.targets:
                 if isinstance(target, ast.Name):
@@ -182,7 +211,7 @@ def validate_tool_attributes(cls) -> None:
     # Run checks on all methods
     for node in class_node.body:
         if isinstance(node, ast.FunctionDef):
-            method_checker = MethodChecker(class_level_checker.class_attributes)
+            method_checker = MethodChecker(class_level_checker.class_attributes, check_imports=check_imports)
             method_checker.visit(node)
             errors += [f"- {node.name}: {error}" for error in method_checker.errors]
 

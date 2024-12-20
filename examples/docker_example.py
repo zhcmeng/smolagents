@@ -1,8 +1,8 @@
-from agents.tools.search import DuckDuckGoSearchTool
+from agents.default_tools.search import DuckDuckGoSearchTool
 from agents.docker_alternative import DockerPythonInterpreter
 
 
-from agents.tool import Tool
+from agents.tools import Tool
 
 class DummyTool(Tool):
     name = "echo"

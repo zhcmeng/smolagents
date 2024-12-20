@@ -19,12 +19,12 @@ import builtins
 import difflib
 from collections.abc import Mapping
 from importlib import import_module
-from typing import Any, Callable, Dict, List, Optional
-
+from typing import Any, Callable, Dict, List, Optional, Tuple
+import math
 import numpy as np
 import pandas as pd
 
-from .utils import truncate_content
+from .utils import truncate_content, BASE_BUILTIN_MODULES
 
 
 class InterpreterError(ValueError):
@@ -43,24 +43,66 @@ ERRORS = {
     and issubclass(getattr(builtins, name), BaseException)
 }
 
-
-LIST_SAFE_MODULES = [
-    "random",
-    "collections",
-    "math",
-    "time",
-    "queue",
-    "itertools",
-    "re",
-    "stat",
-    "statistics",
-    "unicodedata",
-]
-
 PRINT_OUTPUTS, MAX_LEN_OUTPUT = "", 50000
 OPERATIONS_COUNT, MAX_OPERATIONS = 0, 10000000
 
+def custom_print(*args):
+    return None
 
+
+BASE_PYTHON_TOOLS = {
+    "print": custom_print,
+    "isinstance": isinstance,
+    "range": range,
+    "float": float,
+    "int": int,
+    "bool": bool,
+    "str": str,
+    "set": set,
+    "list": list,
+    "dict": dict,
+    "tuple": tuple,
+    "round": round,
+    "ceil": math.ceil,
+    "floor": math.floor,
+    "log": math.log,
+    "exp": math.exp,
+    "sin": math.sin,
+    "cos": math.cos,
+    "tan": math.tan,
+    "asin": math.asin,
+    "acos": math.acos,
+    "atan": math.atan,
+    "atan2": math.atan2,
+    "degrees": math.degrees,
+    "radians": math.radians,
+    "pow": math.pow,
+    "sqrt": math.sqrt,
+    "len": len,
+    "sum": sum,
+    "max": max,
+    "min": min,
+    "abs": abs,
+    "enumerate": enumerate,
+    "zip": zip,
+    "reversed": reversed,
+    "sorted": sorted,
+    "all": all,
+    "any": any,
+    "map": map,
+    "filter": filter,
+    "ord": ord,
+    "chr": chr,
+    "next": next,
+    "iter": iter,
+    "divmod": divmod,
+    "callable": callable,
+    "getattr": getattr,
+    "hasattr": hasattr,
+    "setattr": setattr,
+    "issubclass": issubclass,
+    "type": type,
+}
 class BreakException(Exception):
     pass
 
@@ -771,7 +813,7 @@ def evaluate_ast(
     state: Dict[str, Any],
     static_tools: Dict[str, Callable],
     custom_tools: Dict[str, Callable],
-    authorized_imports: List[str] = LIST_SAFE_MODULES,
+    authorized_imports: List[str] = BASE_BUILTIN_MODULES,
 ):
     """
     Evaluate an abstract syntax tree using the content of the variables stored in a state and only evaluating a given
@@ -949,7 +991,7 @@ def evaluate_python_code(
     static_tools: Optional[Dict[str, Callable]] = None,
     custom_tools: Optional[Dict[str, Callable]] = None,
     state: Optional[Dict[str, Any]] = None,
-    authorized_imports: List[str] = LIST_SAFE_MODULES,
+    authorized_imports: List[str] = BASE_BUILTIN_MODULES,
 ):
     """
     Evaluate a python expression using the content of the variables stored in a state and only evaluating a given set
@@ -1001,4 +1043,30 @@ def evaluate_python_code(
         raise InterpreterError(msg)
 
 
-__all__ = ["evaluate_python_code"]
+class LocalPythonExecutor():
+    def __init__(self, additional_authorized_imports: List[str], tools: Dict):
+        self.custom_tools = {}
+        self.state = {}
+        self.additional_authorized_imports = additional_authorized_imports
+        self.authorized_imports = list(
+            set(BASE_BUILTIN_MODULES) | set(self.additional_authorized_imports)
+        )
+        # Add base trusted tools to list
+        self.static_tools = {
+            **tools,
+            **BASE_PYTHON_TOOLS.copy(),
+        }
+        # TODO: assert self.authorized imports are all installed locally
+
+    def __call__(self, code_action: str) -> Tuple[Any, str]:
+        output = evaluate_python_code(
+            code_action,
+            static_tools=self.static_tools,
+            custom_tools=self.custom_tools,
+            state=self.state,
+            authorized_imports=self.authorized_imports,
+        )
+        logs = self.state["print_outputs"]
+        return output, logs
+
+__all__ = ["evaluate_python_code", "LocalPythonExecutor"]

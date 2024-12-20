@@ -16,6 +16,7 @@ import os
 import pathlib
 import tempfile
 import uuid
+from io import BytesIO
 
 import numpy as np
 
@@ -105,6 +106,8 @@ class AgentImage(AgentType, ImageType):
 
         if isinstance(value, ImageType):
             self._raw = value
+        elif isinstance(value, bytes):
+            self._raw = Image.open(BytesIO(value))
         elif isinstance(value, (str, pathlib.Path)):
             self._path = value
         elif isinstance(value, torch.Tensor):
@@ -241,13 +244,13 @@ class AgentAudio(AgentType, str):
 
 
 AGENT_TYPE_MAPPING = {"string": AgentText, "image": AgentImage, "audio": AgentAudio}
-INSTANCE_TYPE_MAPPING = {str: AgentText, ImageType: AgentImage}
+INSTANCE_TYPE_MAPPING = {str: AgentText, ImageType: AgentImage, np.ndarray: AgentAudio}
 
 if is_torch_available():
     INSTANCE_TYPE_MAPPING[Tensor] = AgentAudio
 
 
-def handle_agent_inputs(*args, **kwargs):
+def handle_agent_input_types(*args, **kwargs):
     args = [(arg.to_raw() if isinstance(arg, AgentType) else arg) for arg in args]
     kwargs = {
         k: (v.to_raw() if isinstance(v, AgentType) else v) for k, v in kwargs.items()
@@ -255,7 +258,7 @@ def handle_agent_inputs(*args, **kwargs):
     return args, kwargs
 
 
-def handle_agent_outputs(output, output_type=None):
+def handle_agent_output_types(output, output_type=None):
     if output_type in AGENT_TYPE_MAPPING:
         # If the class has defined outputs, we can map directly according to the class definition
         decoded_outputs = AGENT_TYPE_MAPPING[output_type](output)

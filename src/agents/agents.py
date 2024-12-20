@@ -27,7 +27,7 @@ from transformers.utils import is_torch_available
 
 from .utils import console, parse_code_blob, parse_json_tool_call, truncate_content
 from .types import AgentAudio, AgentImage
-from .default_tools import BASE_PYTHON_TOOLS, FinalAnswerTool
+from .default_tools.base import FinalAnswerTool
 from .llm_engines import HfApiEngine, MessageRole
 from .monitoring import Monitor
 from .prompts import (
@@ -42,8 +42,9 @@ from .prompts import (
     SYSTEM_PROMPT_PLAN_UPDATE,
     SYSTEM_PROMPT_PLAN,
 )
-from .local_python_executor import LIST_SAFE_MODULES, evaluate_python_code
-from .tool import (
+from .local_python_executor import BASE_BUILTIN_MODULES, LocalPythonExecutor
+from .e2b_executor import E2BExecutor
+from .tools import (
     DEFAULT_TOOL_DESCRIPTION_TEMPLATE,
     Tool,
     get_tool_description_with_args,
@@ -169,17 +170,6 @@ def format_prompt_with_managed_agents_descriptions(
     else:
         return prompt_template.replace(agent_descriptions_placeholder, "")
 
-
-def format_prompt_with_imports(
-    prompt_template: str, authorized_imports: List[str]
-) -> str:
-    if "<<authorized_imports>>" not in prompt_template:
-        raise AgentError(
-            "Tag '<<authorized_imports>>' should be provided in the prompt."
-        )
-    return prompt_template.replace("<<authorized_imports>>", str(authorized_imports))
-
-
 class BaseAgent:
     def __init__(
         self,
@@ -264,11 +254,6 @@ class BaseAgent:
         self.system_prompt = format_prompt_with_managed_agents_descriptions(
             self.system_prompt, self.managed_agents
         )
-        if hasattr(self, "authorized_imports"):
-            self.system_prompt = format_prompt_with_imports(
-                self.system_prompt,
-                list(set(LIST_SAFE_MODULES) | set(getattr(self, "authorized_imports"))),
-            )
 
         return self.system_prompt
 
@@ -439,9 +424,7 @@ class ReactAgent(BaseAgent):
             tool_name (`str`): Name of the Tool to execute (should be one from self.toolbox).
             arguments (Dict[str, str]): Arguments passed to the Tool.
         """
-        available_tools = self.toolbox.tools
-        if self.managed_agents is not None:
-            available_tools = {**available_tools, **self.managed_agents}
+        available_tools = {**self.toolbox.tools, **self.managed_agents}
         if tool_name not in available_tools:
             error_msg = f"Error: unknown tool {tool_name}, should be instead one of {list(available_tools.keys())}."
             console.print(f"[bold red]{error_msg}")
@@ -674,8 +657,6 @@ Now begin!""",
                     ),
                     managed_agents_descriptions=(
                         show_agents_descriptions(self.managed_agents)
-                        if self.managed_agents is not None
-                        else ""
                     ),
                     answer_facts=answer_facts,
                 ),
@@ -729,8 +710,6 @@ Now begin!""",
                     ),
                     managed_agents_descriptions=(
                         show_agents_descriptions(self.managed_agents)
-                        if self.managed_agents is not None
-                        else ""
                     ),
                     facts_update=facts_update,
                     remaining_steps=(self.max_iterations - iteration),
@@ -891,6 +870,7 @@ class CodeAgent(ReactAgent):
         grammar: Optional[Dict[str, str]] = None,
         additional_authorized_imports: Optional[List[str]] = None,
         planning_interval: Optional[int] = None,
+        use_e2b_executor: bool = False,
         **kwargs,
     ):
         if llm_engine is None:
@@ -909,17 +889,24 @@ class CodeAgent(ReactAgent):
             **kwargs,
         )
 
-        self.python_evaluator = evaluate_python_code
         self.additional_authorized_imports = (
             additional_authorized_imports if additional_authorized_imports else []
         )
+        all_tools = {**self.toolbox.tools, **self.managed_agents}
+        if use_e2b_executor:
+            self.python_executor = E2BExecutor(self.additional_authorized_imports, list(all_tools.values()))
+        else:
+            self.python_executor = LocalPythonExecutor(self.additional_authorized_imports, all_tools)
         self.authorized_imports = list(
-            set(LIST_SAFE_MODULES) | set(self.additional_authorized_imports)
+            set(BASE_BUILTIN_MODULES) | set(self.additional_authorized_imports)
         )
+        if "{{authorized_imports}}" not in self.system_prompt:
+            raise AgentError(
+                "Tag '{{authorized_imports}}' should be provided in the prompt."
+            )
         self.system_prompt = self.system_prompt.replace(
             "{{authorized_imports}}", str(self.authorized_imports)
         )
-        self.custom_tools = {}
 
     def step(self, log_entry: ActionStep) -> Union[None, Any]:
         """
@@ -991,22 +978,12 @@ class CodeAgent(ReactAgent):
         )
 
         try:
-            static_tools = {
-                **BASE_PYTHON_TOOLS.copy(),
-                **self.toolbox.tools,
-            }
-            if self.managed_agents is not None:
-                static_tools = {**static_tools, **self.managed_agents}
-            output = self.python_evaluator(
+            output, execution_logs = self.python_executor(
                 code_action,
-                static_tools=static_tools,
-                custom_tools=self.custom_tools,
-                state=self.state,
-                authorized_imports=self.authorized_imports,
             )
-            if len(self.state["print_outputs"]) > 0:
-                console.print(Group(Text("Print outputs:", style="bold"), Text(self.state["print_outputs"])))
-            observation = "Print outputs:\n" + self.state["print_outputs"]
+            if len(execution_logs) > 0:
+                console.print(Group(Text("Execution logs:", style="bold"), Text(execution_logs)))
+            observation = "Execution logs:\n" + execution_logs
             if output is not None:
                 truncated_output = truncate_content(
                     str(output)
@@ -1026,7 +1003,7 @@ class CodeAgent(ReactAgent):
                 console.print(Group(Text("Final answer:", style="bold"), Text(str(output), style="bold green")))
                 log_entry.action_output = output
                 return output
-        return None
+
 
 
 class ManagedAgent:

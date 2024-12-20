@@ -16,15 +16,11 @@
 # limitations under the License.
 import re
 
-import requests
-from requests.exceptions import RequestException
-
 from ..tools import Tool
-
 
 class DuckDuckGoSearchTool(Tool):
     name = "web_search"
-    description = """Perform a web search based on your query (think a Google search) then returns the top search results as a list of dict elements.
+    description = """Performs a web search based on your query (think a Google search) then returns the top search results as a list of dict elements.
     Each result has keys 'title', 'href' and 'body'."""
     inputs = {
         "query": {"type": "string", "description": "The search query to perform."}
@@ -56,9 +52,11 @@ class VisitWebpageTool(Tool):
     def forward(self, url: str) -> str:
         try:
             from markdownify import markdownify
+            import requests
+            from requests.exceptions import RequestException
         except ImportError:
             raise ImportError(
-                "You must install package `markdownify` to run this tool: for instance run `pip install markdownify`."
+                "You must install packages `markdownify` and `requests` to run this tool: for instance run `pip install markdownify requests`."
             )
         try:
             # Send a GET request to the URL

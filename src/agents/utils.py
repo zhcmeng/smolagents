@@ -34,7 +34,18 @@ def is_pygments_available():
 
 console = Console()
 
-
+BASE_BUILTIN_MODULES = [
+    "random",
+    "collections",
+    "math",
+    "time",
+    "queue",
+    "itertools",
+    "re",
+    "stat",
+    "statistics",
+    "unicodedata",
+]
 def parse_json_blob(json_blob: str) -> Dict[str, str]:
     try:
         first_accolade_index = json_blob.find("{")
@@ -190,7 +201,10 @@ def instance_to_source(instance, base_cls=None):
     
     for name, value in class_attrs.items():
         if isinstance(value, str):
-            class_lines.append(f'    {name} = "{value}"')
+            if "\n" in value:
+                class_lines.append(f'    {name} = """{value}"""')
+            else:
+                class_lines.append(f'    {name} = "{value}"')
         else:
             class_lines.append(f'    {name} = {repr(value)}')
     
@@ -230,7 +244,8 @@ def instance_to_source(instance, base_cls=None):
         final_lines.append(f"from {base_cls.__module__} import {base_cls.__name__}")
 
     # Add discovered imports
-    final_lines.extend(required_imports)
+    for package in required_imports:
+        final_lines.append(f"import {package}")
     
     if final_lines:  # Add empty line after imports
         final_lines.append("")

@@ -28,6 +28,7 @@ import textwrap
 from functools import lru_cache, wraps
 from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Union, Set
+import math
 
 from huggingface_hub import (
     create_repo,
@@ -48,7 +49,7 @@ from transformers.utils import (
     is_vision_available,
 )
 from transformers.dynamic_module_utils import get_imports
-from .types import ImageType, handle_agent_inputs, handle_agent_outputs
+from .types import ImageType, handle_agent_input_types, handle_agent_output_types
 from .utils import instance_to_source
 from .tool_validation import validate_tool_attributes, MethodChecker
 
@@ -65,7 +66,6 @@ if is_accelerate_available():
 
 
 TOOL_CONFIG_FILE = "tool_config.json"
-
 
 def get_repo_type(repo_id, repo_type=None, **hub_kwargs):
     if repo_type is not None:
@@ -197,12 +197,15 @@ class Tool:
     def forward(self, *args, **kwargs):
         return NotImplementedError("Write this method in your subclass of `Tool`.")
 
-    def __call__(self, *args, **kwargs):
+    def __call__(self, *args, sanitize_inputs_outputs: bool = False, **kwargs):
         if not self.is_initialized:
             self.setup()
-        args, kwargs = handle_agent_inputs(*args, **kwargs)
+        if sanitize_inputs_outputs:
+            args, kwargs = handle_agent_input_types(*args, **kwargs)
         outputs = self.forward(*args, **kwargs)
-        return handle_agent_outputs(outputs, self.output_type)
+        if sanitize_inputs_outputs:
+            outputs = handle_agent_output_types(outputs, self.output_type)
+        return outputs
 
     def setup(self):
         """
@@ -266,9 +269,7 @@ class Tool:
             forward_source_code = add_self_argument(forward_source_code)
             forward_source_code = forward_source_code.replace("@tool", "").strip()
             tool_code += "\n\n" + textwrap.indent(forward_source_code, "    ")
-            
-            with open(tool_file, "w", encoding="utf-8") as f:
-                f.write(tool_code)
+
         else: # If the tool was not created by the @tool decorator, it was made by subclassing Tool
             if type(self).__name__ in ["SpaceToolWrapper", "LangChainToolWrapper", "GradioToolWrapper"]:
                 raise ValueError(
@@ -278,8 +279,9 @@ class Tool:
             validate_tool_attributes(self.__class__)
 
             tool_code = instance_to_source(self, base_cls=Tool)
-            with open(tool_file, "w", encoding="utf-8") as f:
-                f.write(tool_code)
+
+        with open(tool_file, "w", encoding="utf-8") as f:
+            f.write(tool_code)
 
         # Save app file
         app_file = os.path.join(output_dir, "app.py")
@@ -719,6 +721,9 @@ def launch_gradio_demo(tool: Tool):
         "number": gr.Textbox,
     }
 
+    def fn(*args, **kwargs):
+        return tool(*args, **kwargs, sanitize_inputs_outputs=True)
+
     gradio_inputs = []
     for input_name, input_details in tool.inputs.items():
         input_gradio_component_class = TYPE_TO_COMPONENT_CLASS_MAPPING[
@@ -733,7 +738,7 @@ def launch_gradio_demo(tool: Tool):
     gradio_output = output_gradio_componentclass(label="Output")
 
     gr.Interface(
-        fn=tool, # This works because `tool` has a __call__ method
+        fn=fn,
         inputs=gradio_inputs,
         outputs=gradio_output,
         title=tool.name,
@@ -821,61 +826,6 @@ def add_description(description):
         return func
 
     return inner
-
-
-## Will move to the Hub
-class EndpointClient:
-    def __init__(self, endpoint_url: str, token: Optional[str] = None):
-        self.headers = {
-            **build_hf_headers(token=token),
-            "Content-Type": "application/json",
-        }
-        self.endpoint_url = endpoint_url
-
-    @staticmethod
-    def encode_image(image):
-        _bytes = io.BytesIO()
-        image.save(_bytes, format="PNG")
-        b64 = base64.b64encode(_bytes.getvalue())
-        return b64.decode("utf-8")
-
-    @staticmethod
-    def decode_image(raw_image):
-        if not is_vision_available():
-            raise ImportError(
-                "This tool returned an image but Pillow is not installed. Please install it (`pip install Pillow`)."
-            )
-
-        from PIL import Image
-
-        b64 = base64.b64decode(raw_image)
-        _bytes = io.BytesIO(b64)
-        return Image.open(_bytes)
-
-    def __call__(
-        self,
-        inputs: Optional[Union[str, Dict, List[str], List[List[str]]]] = None,
-        params: Optional[Dict] = None,
-        data: Optional[bytes] = None,
-        output_image: bool = False,
-    ) -> Any:
-        # Build payload
-        payload = {}
-        if inputs:
-            payload["inputs"] = inputs
-        if params:
-            payload["parameters"] = params
-
-        # Make API call
-        response = get_session().post(
-            self.endpoint_url, headers=self.headers, json=payload, data=data
-        )
-
-        # By default, parse the response for the user.
-        if output_image:
-            return self.decode_image(response.content)
-        else:
-            return response.json()
 
 
 class ToolCollection:
@@ -1063,4 +1013,5 @@ __all__ = [
     "load_tool",
     "launch_gradio_demo",
     "Toolbox",
+    "ToolCollection",
 ]

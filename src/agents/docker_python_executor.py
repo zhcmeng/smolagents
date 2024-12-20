@@ -343,7 +343,7 @@ if __name__ == '__main__':
 
 
 def execute_locally(code: str, work_dir: Path, tools: Dict[str, Any]) -> Any:
-    from .local_python_executor import evaluate_python_code, LIST_SAFE_MODULES
+    from .local_python_executor import evaluate_python_code, BASE_BUILTIN_MODULES
 
     """Execute code locally with state transfer."""
     state_manager = StateManager(work_dir)
@@ -363,7 +363,7 @@ def execute_locally(code: str, work_dir: Path, tools: Dict[str, Any]) -> Any:
         tools,
         {},
         namespace,
-        LIST_SAFE_MODULES,
+        BASE_BUILTIN_MODULES,
     )
 
     # Save state for Docker

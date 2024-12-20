@@ -15,75 +15,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import json
-import math
 from dataclasses import dataclass
-from math import sqrt
 from typing import Dict
 
 from huggingface_hub import hf_hub_download, list_spaces
 
 from transformers.utils import is_offline_mode
-from .local_python_executor import LIST_SAFE_MODULES, evaluate_python_code
-from .tool import TOOL_CONFIG_FILE, Tool
-
-
-def custom_print(*args):
-    return None
-
-
-BASE_PYTHON_TOOLS = {
-    "print": custom_print,
-    "isinstance": isinstance,
-    "range": range,
-    "float": float,
-    "int": int,
-    "bool": bool,
-    "str": str,
-    "set": set,
-    "list": list,
-    "dict": dict,
-    "tuple": tuple,
-    "round": round,
-    "ceil": math.ceil,
-    "floor": math.floor,
-    "log": math.log,
-    "exp": math.exp,
-    "sin": math.sin,
-    "cos": math.cos,
-    "tan": math.tan,
-    "asin": math.asin,
-    "acos": math.acos,
-    "atan": math.atan,
-    "atan2": math.atan2,
-    "degrees": math.degrees,
-    "radians": math.radians,
-    "pow": math.pow,
-    "sqrt": sqrt,
-    "len": len,
-    "sum": sum,
-    "max": max,
-    "min": min,
-    "abs": abs,
-    "enumerate": enumerate,
-    "zip": zip,
-    "reversed": reversed,
-    "sorted": sorted,
-    "all": all,
-    "any": any,
-    "map": map,
-    "filter": filter,
-    "ord": ord,
-    "chr": chr,
-    "next": next,
-    "iter": iter,
-    "divmod": divmod,
-    "callable": callable,
-    "getattr": getattr,
-    "hasattr": hasattr,
-    "setattr": setattr,
-    "issubclass": issubclass,
-    "type": type,
-}
+from ..local_python_executor import BASE_BUILTIN_MODULES, BASE_PYTHON_TOOLS, evaluate_python_code
+from ..tools import TOOL_CONFIG_FILE, Tool
 
 
 @dataclass
@@ -136,10 +75,10 @@ class PythonInterpreterTool(Tool):
 
     def __init__(self, *args, authorized_imports=None, **kwargs):
         if authorized_imports is None:
-            self.authorized_imports = list(set(LIST_SAFE_MODULES))
+            self.authorized_imports = list(set(BASE_BUILTIN_MODULES))
         else:
             self.authorized_imports = list(
-                set(LIST_SAFE_MODULES) | set(authorized_imports)
+                set(BASE_BUILTIN_MODULES) | set(authorized_imports)
             )
         self.inputs = {
             "code": {

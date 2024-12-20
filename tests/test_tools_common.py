@@ -26,7 +26,7 @@ from agents.types import (
     AgentImage,
     AgentText,
 )
-from agents.tool import Tool, tool, AUTHORIZED_TYPES
+from agents.tools import Tool, tool, AUTHORIZED_TYPES
 from transformers.testing_utils import get_tests_dir
 
 

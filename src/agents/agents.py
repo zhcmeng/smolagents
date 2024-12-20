@@ -42,7 +42,7 @@ from .prompts import (
     SYSTEM_PROMPT_PLAN_UPDATE,
     SYSTEM_PROMPT_PLAN,
 )
-from .local_python_executor import BASE_BUILTIN_MODULES, LocalPythonExecutor
+from .local_python_executor import BASE_BUILTIN_MODULES, LocalPythonInterpreter
 from .e2b_executor import E2BExecutor
 from .tools import (
     DEFAULT_TOOL_DESCRIPTION_TEMPLATE,
@@ -892,11 +892,14 @@ class CodeAgent(ReactAgent):
         self.additional_authorized_imports = (
             additional_authorized_imports if additional_authorized_imports else []
         )
+        if use_e2b_executor and len(self.managed_agents) > 0:
+            raise Exception(f"You passed both {use_e2b_executor=} and some managed agents. Managed agents is not yet supported with remote code execution.")
+
         all_tools = {**self.toolbox.tools, **self.managed_agents}
         if use_e2b_executor:
             self.python_executor = E2BExecutor(self.additional_authorized_imports, list(all_tools.values()))
         else:
-            self.python_executor = LocalPythonExecutor(self.additional_authorized_imports, all_tools)
+            self.python_executor = LocalPythonInterpreter(self.additional_authorized_imports, all_tools)
         self.authorized_imports = list(
             set(BASE_BUILTIN_MODULES) | set(self.additional_authorized_imports)
         )

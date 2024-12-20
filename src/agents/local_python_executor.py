@@ -1043,7 +1043,7 @@ def evaluate_python_code(
         raise InterpreterError(msg)
 
 
-class LocalPythonExecutor():
+class LocalPythonInterpreter():
     def __init__(self, additional_authorized_imports: List[str], tools: Dict):
         self.custom_tools = {}
         self.state = {}
@@ -1069,4 +1069,4 @@ class LocalPythonExecutor():
         logs = self.state["print_outputs"]
         return output, logs
 
-__all__ = ["evaluate_python_code", "LocalPythonExecutor"]
+__all__ = ["evaluate_python_code", "LocalPythonInterpreter"]

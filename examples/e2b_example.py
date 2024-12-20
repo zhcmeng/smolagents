@@ -34,7 +34,7 @@ agent = CodeAgent(
 )
 
 if LAUNCH_GRADIO:
-    from agents.gradio_ui import GradioUI
+    from agents import GradioUI
 
     GradioUI(agent).launch()
 else:

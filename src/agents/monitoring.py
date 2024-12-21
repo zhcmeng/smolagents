@@ -18,6 +18,7 @@ from .utils import console
 from rich.text import Text
 from rich.console import Group
 
+
 class Monitor:
     def __init__(self, tracked_llm_engine):
         self.step_durations = []
@@ -34,7 +35,7 @@ class Monitor:
         self.step_durations.append(step_duration)
         console_outputs = [
             Text(f"Step {len(self.step_durations)}:", style="bold"),
-            Text(f"- Time taken: {step_duration:.2f} seconds")
+            Text(f"- Time taken: {step_duration:.2f} seconds"),
         ]
 
         if getattr(self.tracked_llm_engine, "last_input_token_count", None) is not None:
@@ -46,7 +47,7 @@ class Monitor:
             )
             console_outputs += [
                 Text(f"- Input tokens: {self.total_input_token_count:,}"),
-                Text(f"- Output tokens: {self.total_output_token_count:,}")
+                Text(f"- Output tokens: {self.total_output_token_count:,}"),
             ]
         console.print(Group(*console_outputs))
 

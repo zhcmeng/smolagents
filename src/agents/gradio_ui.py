@@ -58,7 +58,8 @@ def stream_to_gradio(
         for message in pull_messages_from_step(step_log, test_mode=test_mode):
             yield message
 
-    final_answer = handle_agent_output_types(step_log)  # Last log is the run's final_answer
+    final_answer = step_log  # Last log is the run's final_answer
+    final_answer = handle_agent_output_types(final_answer)
 
     if isinstance(final_answer, AgentText):
         yield gr.ChatMessage(

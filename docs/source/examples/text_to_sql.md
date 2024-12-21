@@ -17,7 +17,7 @@ rendered properly in your Markdown viewer.
 
 In this tutorial, we’ll see how to implement an agent that leverages SQL using `agents`.
 
-What’s the advantage over a standard text-to-SQL pipeline?
+> Let's start with the goldnen question: why not keep it simple and use a standard text-to-SQL pipeline?
 
 A standard text-to-sql pipeline is brittle, since the generated SQL query can be incorrect. Even worse, the query could be incorrect, but not raise an error, instead giving some incorrect/useless outputs without raising an alarm.
 
@@ -69,22 +69,6 @@ for row in rows:
         cursor = connection.execute(stmt)
 ```
 
-Let’s check that our system works with a basic query:
-
-```py
-with engine.connect() as con:
-    rows = con.execute(text("""SELECT * from receipts"""))
-    for row in rows:
-        print(row)
-```
-Output:
-```text
-(1, 'Alan Payne', 12.06, 1.2)
-(2, 'Alex Mason', 23.86, 0.24)
-(3, 'Woodrow Wilson', 53.43, 5.43)
-(4, 'Margaret James', 21.11, 1.0)
-```
-
 ### Build our agent
 
 Now let’s make our SQL table retrievable by a tool.
@@ -107,9 +91,9 @@ Columns:
   - tip: FLOAT
 ```
 
-Now let’s build our tool. It needs the following: (read the documentation for more detail)
-- A docstring with an `Args:` part
-- Type hints
+Now let’s build our tool. It needs the following: (read [the tool doc](../tutorials/tools) for more detail)
+- A docstring with an `Args:` part listing arguments.
+- Type hints on both inputs and output.
 
 ```py
 from transformers.agents import tool
@@ -179,7 +163,7 @@ for row in rows:
     with engine.begin() as connection:
         cursor = connection.execute(stmt)
 ```
-We need to update the `SQLExecutorTool` with this table’s description to let the LLM properly leverage information from this table.
+Since we changed the table, we update the `SQLExecutorTool` with this table’s description to let the LLM properly leverage information from this table.
 
 ```py
 updated_description = """Allows you to perform SQL queries on the table. Beware that this tool's output is a string representation of the execution output.
@@ -196,7 +180,7 @@ for table in ["receipts", "waiters"]:
 
 print(updated_description)
 ```
-Since this request is a bit harder than the previous one, we’ll switch the llm engine to use the more powerful [Qwen/Qwen2.5-72B-Instruct](https://huggingface.co/Qwen/Qwen2.5-72B-Instruct)!
+Since this request is a bit harder than the previous one, we’ll switch the LLM engine to use the more powerful [Qwen/Qwen2.5-72B-Instruct](https://huggingface.co/Qwen/Qwen2.5-72B-Instruct)!
 
 ```py
 sql_engine.description = updated_description

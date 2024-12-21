@@ -41,6 +41,7 @@ from .prompts import (
     USER_PROMPT_PLAN,
     SYSTEM_PROMPT_PLAN_UPDATE,
     SYSTEM_PROMPT_PLAN,
+    MANAGED_AGENT_PROMPT,
 )
 from .local_python_executor import BASE_BUILTIN_MODULES, LocalPythonInterpreter
 from .e2b_executor import E2BExecutor
@@ -169,6 +170,7 @@ def format_prompt_with_managed_agents_descriptions(
         )
     else:
         return prompt_template.replace(agent_descriptions_placeholder, "")
+
 
 class BaseAgent:
     def __init__(
@@ -677,7 +679,9 @@ Now begin!""",
             self.logs.append(
                 PlanningStep(plan=final_plan_redaction, facts=final_facts_redaction)
             )
-            console.print(Rule("[bold]Initial plan", style="orange"), Text(final_plan_redaction))
+            console.print(
+                Rule("[bold]Initial plan", style="orange"), Text(final_plan_redaction)
+            )
         else:  # update plan
             agent_memory = self.write_inner_memory_from_logs(
                 summary_mode=False
@@ -731,15 +735,14 @@ Now begin!""",
             self.logs.append(
                 PlanningStep(plan=final_plan_redaction, facts=final_facts_redaction)
             )
-            console.print(Rule("[bold]Updated plan", style="orange"), Text(final_plan_redaction))
-
+            console.print(
+                Rule("[bold]Updated plan", style="orange"), Text(final_plan_redaction)
+            )
 
 
 class JsonAgent(ReactAgent):
     """
-    This agent that solves the given task step by step, using the ReAct framework:
-    While the objective is not reached, the agent will perform a cycle of thinking and acting.
-    The tool calls will be formulated by the LLM in JSON format, then parsed and executed.
+    In this agent, the tool calls will be formulated by the LLM in JSON format, then parsed and executed.
     """
 
     def __init__(
@@ -781,10 +784,16 @@ class JsonAgent(ReactAgent):
         log_entry.agent_memory = agent_memory.copy()
 
         if self.verbose:
-            console.print(Group(
-                Rule("[italic]Calling LLM engine with this last message:", align="left", style="orange"),
-                Text(str(self.prompt_messages[-1]))
-            ))
+            console.print(
+                Group(
+                    Rule(
+                        "[italic]Calling LLM engine with this last message:",
+                        align="left",
+                        style="orange",
+                    ),
+                    Text(str(self.prompt_messages[-1])),
+                )
+            )
 
         try:
             additional_args = (
@@ -800,10 +809,16 @@ class JsonAgent(ReactAgent):
             raise AgentGenerationError(f"Error in generating llm_engine output: {e}.")
 
         if self.verbose:
-            console.print(Group(
-                Rule("[italic]Output message of the LLM:", align="left", style="orange"),
-                Text(llm_output)
-            ))
+            console.print(
+                Group(
+                    Rule(
+                        "[italic]Output message of the LLM:",
+                        align="left",
+                        style="orange",
+                    ),
+                    Text(llm_output),
+                )
+            )
 
         # Parse
         rationale, action = self.extract_action(
@@ -819,7 +834,9 @@ class JsonAgent(ReactAgent):
 
         # Execute
         console.print(Rule("Agent thoughts:", align="left"), Text(rationale))
-        console.print(Panel(Text(f"Calling tool: '{tool_name}' with arguments: {arguments}")))
+        console.print(
+            Panel(Text(f"Calling tool: '{tool_name}' with arguments: {arguments}"))
+        )
         if tool_name == "final_answer":
             if isinstance(arguments, dict):
                 if "answer" in arguments:
@@ -856,9 +873,7 @@ class JsonAgent(ReactAgent):
 
 class CodeAgent(ReactAgent):
     """
-    This agent that solves the given task step by step, using the ReAct framework:
-    While the objective is not reached, the agent will perform a cycle of thinking and acting.
-    The tool calls will be formulated by the LLM in code format, then parsed and executed.
+    In this agent, the tool calls will be formulated by the LLM in code format, then parsed and executed.
     """
 
     def __init__(
@@ -893,13 +908,19 @@ class CodeAgent(ReactAgent):
             additional_authorized_imports if additional_authorized_imports else []
         )
         if use_e2b_executor and len(self.managed_agents) > 0:
-            raise Exception(f"You passed both {use_e2b_executor=} and some managed agents. Managed agents is not yet supported with remote code execution.")
+            raise Exception(
+                f"You passed both {use_e2b_executor=} and some managed agents. Managed agents is not yet supported with remote code execution."
+            )
 
         all_tools = {**self.toolbox.tools, **self.managed_agents}
         if use_e2b_executor:
-            self.python_executor = E2BExecutor(self.additional_authorized_imports, list(all_tools.values()))
+            self.python_executor = E2BExecutor(
+                self.additional_authorized_imports, list(all_tools.values())
+            )
         else:
-            self.python_executor = LocalPythonInterpreter(self.additional_authorized_imports, all_tools)
+            self.python_executor = LocalPythonInterpreter(
+                self.additional_authorized_imports, all_tools
+            )
         self.authorized_imports = list(
             set(BASE_BUILTIN_MODULES) | set(self.additional_authorized_imports)
         )
@@ -924,10 +945,16 @@ class CodeAgent(ReactAgent):
         log_entry.agent_memory = agent_memory.copy()
 
         if self.verbose:
-            console.print(Group(
-                Rule("[italic]Calling LLM engine with these last messages:", align="left", style="orange"),
-                Text(str(self.prompt_messages[-2:]))
-            ))
+            console.print(
+                Group(
+                    Rule(
+                        "[italic]Calling LLM engine with these last messages:",
+                        align="left",
+                        style="orange",
+                    ),
+                    Text(str(self.prompt_messages[-2:])),
+                )
+            )
 
         try:
             additional_args = (
@@ -943,10 +970,16 @@ class CodeAgent(ReactAgent):
             raise AgentGenerationError(f"Error in generating llm_engine output: {e}.")
 
         if self.verbose:
-            console.print(Group(
-                Rule("[italic]Output message of the LLM:", align="left", style="orange"),
-                Syntax(llm_output, lexer="markdown", theme="github-dark")
-            ))
+            console.print(
+                Group(
+                    Rule(
+                        "[italic]Output message of the LLM:",
+                        align="left",
+                        style="orange",
+                    ),
+                    Syntax(llm_output, lexer="markdown", theme="github-dark"),
+                )
+            )
 
         # Parse
         try:
@@ -971,13 +1004,16 @@ class CodeAgent(ReactAgent):
 
         # Execute
         if self.verbose:
-            console.print(Group(
-                Rule("[italic]Agent thoughts", align="left"),
-                Text(rationale)
-            ))
+            console.print(
+                Group(Rule("[italic]Agent thoughts", align="left"), Text(rationale))
+            )
 
-        console.print(Panel(
-            Syntax(code_action, lexer="python", theme="github-dark"), title="[bold]Agent is executing the code below:", title_align="left")
+        console.print(
+            Panel(
+                Syntax(code_action, lexer="python", theme="github-dark"),
+                title="[bold]Agent is executing the code below:",
+                title_align="left",
+            )
         )
 
         try:
@@ -985,13 +1021,18 @@ class CodeAgent(ReactAgent):
                 code_action,
             )
             if len(execution_logs) > 0:
-                console.print(Group(Text("Execution logs:", style="bold"), Text(execution_logs)))
+                console.print(
+                    Group(Text("Execution logs:", style="bold"), Text(execution_logs))
+                )
             observation = "Execution logs:\n" + execution_logs
             if output is not None:
-                truncated_output = truncate_content(
-                    str(output)
+                truncated_output = truncate_content(str(output))
+                console.print(
+                    Group(
+                        Text("Last output from code snippet:", style="bold"),
+                        Text(truncated_output),
+                    )
                 )
-                console.print(Group(Text("Last output from code snippet:", style="bold"), Text(truncated_output)))
                 observation += "Last output from code snippet:\n" + truncate_content(
                     str(output)
                 )
@@ -1003,10 +1044,14 @@ class CodeAgent(ReactAgent):
             raise AgentExecutionError(error_msg)
         for line in code_action.split("\n"):
             if line[: len("final_answer")] == "final_answer":
-                console.print(Group(Text("Final answer:", style="bold"), Text(str(output), style="bold green")))
+                console.print(
+                    Group(
+                        Text("Final answer:", style="bold"),
+                        Text(str(output), style="bold green"),
+                    )
+                )
                 log_entry.action_output = output
                 return output
-
 
 
 class ManagedAgent:
@@ -1015,32 +1060,22 @@ class ManagedAgent:
         agent,
         name,
         description,
-        additional_prompting=None,
-        provide_run_summary=False,
+        additional_prompting: Optional[str] = None,
+        provide_run_summary: bool = False,
+        managed_agent_prompt: Optional[str] = None,
     ):
         self.agent = agent
         self.name = name
         self.description = description
         self.additional_prompting = additional_prompting
         self.provide_run_summary = provide_run_summary
+        self.managed_agent_prompt = (
+            managed_agent_prompt if managed_agent_prompt else MANAGED_AGENT_PROMPT
+        )
 
     def write_full_task(self, task):
-        full_task = f"""You're a helpful agent named '{self.name}'.
-You have been submitted this task by your manager.
----
-Task:
-{task}
----
-You're helping your manager solve a wider task: so make sure to not provide a one-line answer, but give as much information as possible to give them a clear understanding of the answer.
-
-Your final_answer WILL HAVE to contain these parts:
-### 1. Task outcome (short version):
-### 2. Task outcome (extremely detailed version):
-### 3. Additional context (if relevant):
-
-Put all these in your final_answer tool, everything that you do not pass as an argument to final_answer will be lost.
-And even if your task resolution is not successful, please return as much context as possible, so that your manager can act upon this feedback.
-{{additional_prompting}}"""
+        """Adds additional prompting for the managed agent, like 'add more detail in your answer'."""
+        full_task = self.managed_agent_prompt.format(name=self.name, task=task)
         if self.additional_prompting:
             full_task = full_task.replace(
                 "\n{{additional_prompting}}", self.additional_prompting

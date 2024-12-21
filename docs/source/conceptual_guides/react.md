@@ -21,14 +21,15 @@ This agent has a planning step, then generates python code to execute all its ac
 
 ## React agents
 
-This is the go-to agent to solve reasoning tasks, since the ReAct framework ([Yao et al., 2022](https://huggingface.co/papers/2210.03629)) makes it really efficient to think on the basis of its previous observations.
+This is the go-to agent to solve reasoning tasks.
 
-We implement two versions of JsonAgent: 
-- [`JsonAgent`] generates tool calls as a JSON in its output.
-- [`CodeAgent`] is a new type of JsonAgent that generates its tool calls as blobs of code, which works really well for LLMs that have strong coding performance.
+The ReAct framework ([Yao et al., 2022](https://huggingface.co/papers/2210.03629)) is currently the main approach to building agents.
 
-> [!TIP]
-> Read [Open-source LLMs as LangChain Agents](https://huggingface.co/blog/open-source-llms-as-agents) blog post to learn more about ReAct agents.
+The name is based on the concatenation of two words, "Reason" and "Act." Indeed, agents following this architecture will solve their task in as many steps as needed, each step consisting of a Reasoning step, then an Action step where it formulates tool calls that will bring it closer to solving the task at hand.
+
+React process involves keeping a memory of past steps.
+
+Here is a video overview of how that works:
 
 <div class="flex justify-center">
     <img
@@ -42,3 +43,11 @@ We implement two versions of JsonAgent:
 </div>
 
 ![Framework of a React Agent](https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/blog/open-source-llms-as-agents/ReAct.png)
+
+We implement two versions of JsonAgent: 
+- [`JsonAgent`] generates tool calls as a JSON in its output.
+- [`CodeAgent`] is a new type of JsonAgent that generates its tool calls as blobs of code, which works really well for LLMs that have strong coding performance.
+
+> [!TIP]
+> Read [Open-source LLMs as LangChain Agents](https://huggingface.co/blog/open-source-llms-as-agents) blog post to learn more about ReAct agents.
+

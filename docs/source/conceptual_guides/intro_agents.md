@@ -37,6 +37,14 @@ Then it can get more agentic.
 - If you use an LLM output to determine which function is run and with which arguments, that's tool calling.
 - If you use an LLM output to determine if you should keep iterating in a while loop, you get a multi-step agent.
 
+| Agency Level | Description | How that's called | Example Pattern |
+|-------------|-------------|-------------|-----------------|
+| No Agency | LLM output has no impact on program flow | Simple Processor | `process_llm_output(llm_response)` |
+| Basic Agency | LLM output determines basic control flow | Router | `if llm_decision(): path_a() else: path_b()` |
+| Higher Agency | LLM output determines function execution | Tool Caller | `run_function(llm_chosen_tool, llm_chosen_args)` |
+| High Agency | LLM output controls iteration and program continuation | Multi-step Agent | `while llm_should_continue(): execute_next_step()` |
+| High Agency | One agentic workflow can start another agentic workflow | Multi-Agent | `if llm_trigger(): execute_agent()` |
+
 Since the system’s versatility goes in lockstep with the level of agency that you give to the LLM, agentic systems can perform much broader tasks than any classic program.
 
 Programs are not just tools anymore, confined to an ultra-specialized task : they are agents.
@@ -83,11 +91,11 @@ But wait, since we give room to LLMs in decisions, surely they will make mistake
 
 These will not be that straightforward to implement correctly, especially not together. That's why we decided that we needed to build a few abstractions to help people use these.
 
-### Most important feature: Code agent
+### Code agents
 
-[Multiple](https://huggingface.co/papers/2402.01030) [research](https://huggingface.co/papers/2411.01747) [papers](https://huggingface.co/papers/2401.00812) have shown that having the LLM write its actions (the tool calls) in code is much better than the current standard format JSON.
+[Multiple](https://huggingface.co/papers/2402.01030) [research](https://huggingface.co/papers/2411.01747) [papers](https://huggingface.co/papers/2401.00812) have shown that having the LLM write its actions (the tool calls) in code is much better than the current standard format for tool calling, which is across the industry different shades of "writing actions as a JSON of tools names and arguments to use".
 
-Why is that? Well, because we crafted our code languages specifically to be great at expressing actions performed by a computer. If JSON snippets was a better way, this package would have been written in JSON snippets and the devil would be having a great time laughing at us.
+Why is code better? Well, because we crafted our code languages specifically to be great at expressing actions performed by a computer. If JSON snippets was a better way, this package would have been written in JSON snippets and the devil would be laughing at us.
 
 Code is just a better way to express actions on a computer. It has better:
 - **Composability:** could you nest JSON actions within each other, or define a set of JSON actions to re-use later, the same way you could just define a python function?
@@ -95,10 +103,4 @@ Code is just a better way to express actions on a computer. It has better:
 - **Generality:** code is built to express simply anything you can do have a computer do.
 - **Representation in LLM training corpuses:** why not leverage this benediction of the sky that plenty of quality actions have already been included in LLM training corpuses?
 
-So we shoul use code as the main expression type for agent actions.
-
-Few existing framework build on this idea to make code agents first-class citizens. We focused on it!
-
-Especially, since code execution can be a security concern (arbitrary code execution!), we provide options at runtime:
-- a secure python interpreter to run code more safely in your environment
-- a sandboxed environment.
+This is why we put emphasis on proposing code agents, in this case python agents, which meant putting higher effort on building python interpreters.

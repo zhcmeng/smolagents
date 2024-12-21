@@ -1,12 +1,13 @@
 import docker
-from typing import List, Optional 
+from typing import List, Optional
 import warnings
 import socket
 
 from agents.tools import Tool
 
+
 class DockerPythonInterpreter:
-    def __init__(self): 
+    def __init__(self):
         self.container = None
         try:
             self.client = docker.from_env()
@@ -15,14 +16,14 @@ class DockerPythonInterpreter:
             raise RuntimeError(
                 "Could not connect to Docker daemon. Please ensure Docker is installed and running."
             )
-        
-        try:            
+
+        try:
             self.container = self.client.containers.run(
                 "pyrunner:latest",
-                ports={'65432/tcp': 65432},
+                ports={"65432/tcp": 65432},
                 detach=True,
                 remove=True,
-           )
+            )
         except docker.errors.DockerException as e:
             raise RuntimeError(f"Failed to create Docker container: {e}")
 
@@ -30,7 +31,7 @@ class DockerPythonInterpreter:
         """Cleanup: Stop and remove container when object is destroyed"""
         if self.container:
             try:
-                self.container.kill() # can consider .stop(), but this is faster
+                self.container.kill()  # can consider .stop(), but this is faster
             except Exception as e:
                 warnings.warn(f"Failed to stop Docker container: {e}")
 
@@ -39,7 +40,7 @@ class DockerPythonInterpreter:
         Execute Python code in the container and return stdout and stderr
         """
 
-        if tools != None:        
+        if tools != None:
             tool_instance = tools[0]()
 
             import_code = f"""
@@ -56,10 +57,10 @@ web_search = getattr(module, class_name)()
 
         try:
             # Connect to the server running inside the container
-            with socket.create_connection(('localhost', 65432)) as sock:
-                sock.sendall(code.encode('utf-8'))
+            with socket.create_connection(("localhost", 65432)) as sock:
+                sock.sendall(code.encode("utf-8"))
                 output = sock.recv(4096)
-                return output.decode('utf-8')
+                return output.decode("utf-8")
 
         except Exception as e:
             return f"Error executing code: {str(e)}"

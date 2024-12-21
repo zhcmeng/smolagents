@@ -19,7 +19,6 @@ import re
 from typing import Tuple, Dict, Union
 import ast
 from rich.console import Console
-import ast
 import inspect
 import types
 
@@ -46,6 +45,8 @@ BASE_BUILTIN_MODULES = [
     "statistics",
     "unicodedata",
 ]
+
+
 def parse_json_blob(json_blob: str) -> Dict[str, str]:
     try:
         first_accolade_index = json_blob.find("{")
@@ -141,9 +142,9 @@ class ImportFinder(ast.NodeVisitor):
             base_package = node.module.split(".")[0]
             self.packages.add(base_package)
 
+
 import ast
-import builtins
-from typing import Set, Dict, List
+from typing import Dict
 
 
 def get_method_source(method):
@@ -158,16 +159,19 @@ def is_same_method(method1, method2):
     try:
         source1 = get_method_source(method1)
         source2 = get_method_source(method2)
-        
+
         # Remove method decorators if any
-        source1 = '\n'.join(line for line in source1.split('\n') 
-                           if not line.strip().startswith('@'))
-        source2 = '\n'.join(line for line in source2.split('\n') 
-                           if not line.strip().startswith('@'))
-        
+        source1 = "\n".join(
+            line for line in source1.split("\n") if not line.strip().startswith("@")
+        )
+        source2 = "\n".join(
+            line for line in source2.split("\n") if not line.strip().startswith("@")
+        )
+
         return source1 == source2
     except (TypeError, OSError):
         return False
+
 
 def is_same_item(item1, item2):
     """Compare two class items (methods or attributes) for equality."""
@@ -176,29 +180,34 @@ def is_same_item(item1, item2):
     else:
         return item1 == item2
 
+
 def instance_to_source(instance, base_cls=None):
     """Convert an instance to its class source code representation."""
     cls = instance.__class__
     class_name = cls.__name__
-    
+
     # Start building class lines
     class_lines = []
     if base_cls:
         class_lines.append(f"class {class_name}({base_cls.__name__}):")
     else:
         class_lines.append(f"class {class_name}:")
-    
+
     # Add docstring if it exists and differs from base
     if cls.__doc__ and (not base_cls or cls.__doc__ != base_cls.__doc__):
         class_lines.append(f'    """{cls.__doc__}"""')
-    
+
     # Add class-level attributes
     class_attrs = {
-        name: value for name, value in cls.__dict__.items()
-        if not name.startswith('__') and not callable(value) and 
-        not (base_cls and hasattr(base_cls, name) and getattr(base_cls, name) == value)
+        name: value
+        for name, value in cls.__dict__.items()
+        if not name.startswith("__")
+        and not callable(value)
+        and not (
+            base_cls and hasattr(base_cls, name) and getattr(base_cls, name) == value
+        )
     }
-    
+
     for name, value in class_attrs.items():
         if isinstance(value, str):
             if "\n" in value:
@@ -206,39 +215,44 @@ def instance_to_source(instance, base_cls=None):
             else:
                 class_lines.append(f'    {name} = "{value}"')
         else:
-            class_lines.append(f'    {name} = {repr(value)}')
-    
+            class_lines.append(f"    {name} = {repr(value)}")
+
     if class_attrs:
         class_lines.append("")
-        
+
     # Add methods
     methods = {
-        name: func for name, func in cls.__dict__.items()
-        if callable(func) and
-        not (base_cls and hasattr(base_cls, name) and 
-             getattr(base_cls, name).__code__.co_code == func.__code__.co_code)
+        name: func
+        for name, func in cls.__dict__.items()
+        if callable(func)
+        and not (
+            base_cls
+            and hasattr(base_cls, name)
+            and getattr(base_cls, name).__code__.co_code == func.__code__.co_code
+        )
     }
-    
+
     for name, method in methods.items():
         method_source = inspect.getsource(method)
         # Clean up the indentation
-        method_lines = method_source.split('\n')
+        method_lines = method_source.split("\n")
         first_line = method_lines[0]
         indent = len(first_line) - len(first_line.lstrip())
         method_lines = [line[indent:] for line in method_lines]
-        method_source = '\n'.join(['    ' + line if line.strip() else line 
-                                    for line in method_lines])
+        method_source = "\n".join(
+            ["    " + line if line.strip() else line for line in method_lines]
+        )
         class_lines.append(method_source)
         class_lines.append("")
-    
+
     # Find required imports using ImportFinder
     import_finder = ImportFinder()
-    import_finder.visit(ast.parse('\n'.join(class_lines)))
+    import_finder.visit(ast.parse("\n".join(class_lines)))
     required_imports = import_finder.packages
-    
+
     # Build final code with imports
     final_lines = []
-    
+
     # Add base class import if needed
     if base_cls:
         final_lines.append(f"from {base_cls.__module__} import {base_cls.__name__}")
@@ -246,13 +260,14 @@ def instance_to_source(instance, base_cls=None):
     # Add discovered imports
     for package in required_imports:
         final_lines.append(f"import {package}")
-    
+
     if final_lines:  # Add empty line after imports
         final_lines.append("")
 
     # Add the class code
     final_lines.extend(class_lines)
-    
-    return '\n'.join(final_lines)
+
+    return "\n".join(final_lines)
+
 
 __all__ = []

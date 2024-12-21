@@ -182,5 +182,4 @@ agent = CodeAgent(
 result = agent.run(
     "How long would a cheetah at full speed take to run the length of Pont Alexandre III?",
 )
-print("RESULT:", result)
 ```

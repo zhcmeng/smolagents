@@ -19,7 +19,24 @@ Agents is a library that enables you to run powerful agents in a few lines of co
 It is:
 - lightweight
 - understandable (we kept abstractions to the minimum)
-- the only library with first-class support for Code Agents, i.e. agents that write their actions in code! Head to [./conceptual_guides/intro_agents.md] to learn more.
+- the only library with first-class support for Code Agents, i.e. agents that write their actions in code!
+
+Here is a demo:
+
+## How lightweight is it?
+
+We strived to keep abstractions to a strict minimum.
+You could go lower and code it all yourself, but some of this stuff is non-trivial. For instance, if you define a format for tool expression, you have to specify the same format in your system prompt, your parser, and your possibke error logging to let the LLM correct itself.
+
+
+## Code agents?
+
+We can let LLMs powering agentic systems write their actions in code. This approach is demonstrated to work better than the current industry practice of letting the LLM output a dictionary of the tools it wants to calls: [uses 30% fewer steps](https://huggingface.co/papers/2402.01030) (thus 30% fewer LLM calls)
+and [reaches higher performance on difficult benchmarks](https://huggingface.co/papers/2411.01747). Head to [./conceptual_guides/intro_agents.md] to learn more on that.
+
+Especially, since code execution can be a security concern (arbitrary code execution!), we provide options at runtime:
+  - a secure python interpreter to run code more safely in your environment
+  - a sandboxed environment.
 
 <div class="mt-10">
   <div class="w-full flex flex-col space-y-4 md:space-y-0 md:grid md:grid-cols-2 md:gap-y-4 md:gap-x-5">

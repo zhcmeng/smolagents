@@ -15,20 +15,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import ast
-import base64
-import builtins
 import importlib
 import inspect
-import io
 import json
 import os
-import re
 import tempfile
 import textwrap
 from functools import lru_cache, wraps
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Union, Set
-import math
+from typing import Callable, Dict, List, Optional, Union
 
 from huggingface_hub import (
     create_repo,
@@ -37,7 +32,7 @@ from huggingface_hub import (
     metadata_update,
     upload_folder,
 )
-from huggingface_hub.utils import RepositoryNotFoundError, build_hf_headers, get_session
+from huggingface_hub.utils import RepositoryNotFoundError
 from packaging import version
 
 from transformers.utils import (
@@ -46,7 +41,6 @@ from transformers.utils import (
     get_json_schema,
     is_accelerate_available,
     is_torch_available,
-    is_vision_available,
 )
 from transformers.dynamic_module_utils import get_imports
 from .types import ImageType, handle_agent_input_types, handle_agent_output_types
@@ -66,6 +60,7 @@ if is_accelerate_available():
 
 
 TOOL_CONFIG_FILE = "tool_config.json"
+
 
 def get_repo_type(repo_id, repo_type=None, **hub_kwargs):
     if repo_type is not None:
@@ -240,7 +235,7 @@ class Tool:
             method_checker = MethodChecker(set())
             method_checker.visit(forward_node)
             if len(method_checker.errors) > 0:
-                raise(ValueError("\n".join(method_checker.errors)))
+                raise (ValueError("\n".join(method_checker.errors)))
 
             forward_source_code = inspect.getsource(self.forward)
             tool_code = textwrap.dedent(f"""
@@ -253,16 +248,17 @@ class Tool:
                 output_type = "{self.output_type}"
             """).strip()
             import re
+
             def add_self_argument(source_code: str) -> str:
                 """Add 'self' as first argument to a function definition if not present."""
-                pattern = r'def forward\(((?!self)[^)]*)\)'
-                
+                pattern = r"def forward\(((?!self)[^)]*)\)"
+
                 def replacement(match):
                     args = match.group(1).strip()
                     if args:  # If there are other arguments
-                        return f'def forward(self, {args})'
-                    return 'def forward(self)'
-                    
+                        return f"def forward(self, {args})"
+                    return "def forward(self)"
+
                 return re.sub(pattern, replacement, source_code)
 
             forward_source_code = forward_source_code.replace(self.name, "forward")
@@ -270,10 +266,14 @@ class Tool:
             forward_source_code = forward_source_code.replace("@tool", "").strip()
             tool_code += "\n\n" + textwrap.indent(forward_source_code, "    ")
 
-        else: # If the tool was not created by the @tool decorator, it was made by subclassing Tool
-            if type(self).__name__ in ["SpaceToolWrapper", "LangChainToolWrapper", "GradioToolWrapper"]:
+        else:  # If the tool was not created by the @tool decorator, it was made by subclassing Tool
+            if type(self).__name__ in [
+                "SpaceToolWrapper",
+                "LangChainToolWrapper",
+                "GradioToolWrapper",
+            ]:
                 raise ValueError(
-                    f"Cannot save objects created with from_space, from_langchain or from_gradio, as this would create errors."
+                    "Cannot save objects created with from_space, from_langchain or from_gradio, as this would create errors."
                 )
 
             validate_tool_attributes(self.__class__)
@@ -286,14 +286,16 @@ class Tool:
         # Save app file
         app_file = os.path.join(output_dir, "app.py")
         with open(app_file, "w", encoding="utf-8") as f:
-            f.write(textwrap.dedent(f"""
+            f.write(
+                textwrap.dedent(f"""
             from agents import launch_gradio_demo
             from tool import {class_name}
 
             tool = {class_name}()
 
             launch_gradio_demo(tool)
-            """).lstrip())
+            """).lstrip()
+            )
 
         # Save requirements file
         requirements_file = os.path.join(output_dir, "requirements.txt")
@@ -570,6 +572,7 @@ class Tool:
 
             def sanitize_argument_for_prediction(self, arg):
                 from gradio_client.utils import is_http_url_like
+
                 if isinstance(arg, ImageType):
                     temp_file = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
                     arg.save(temp_file.name)
@@ -732,9 +735,7 @@ def launch_gradio_demo(tool: Tool):
         new_component = input_gradio_component_class(label=input_name)
         gradio_inputs.append(new_component)
 
-    output_gradio_componentclass = TYPE_TO_COMPONENT_CLASS_MAPPING[
-        tool.output_type
-    ]
+    output_gradio_componentclass = TYPE_TO_COMPONENT_CLASS_MAPPING[tool.output_type]
     gradio_output = output_gradio_componentclass(label="Output")
 
     gr.Interface(
@@ -893,7 +894,7 @@ def tool(tool_function: Callable) -> Tool:
         parameters["description"],
         parameters["parameters"]["properties"],
         parameters["return"]["type"],
-        function=tool_function
+        function=tool_function,
     )
     original_signature = inspect.signature(tool_function)
     new_parameters = [

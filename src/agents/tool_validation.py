@@ -2,14 +2,14 @@ import ast
 import inspect
 import importlib.util
 import builtins
-from pathlib import Path
-from typing import List, Set, Dict
+from typing import Set
 import textwrap
 from .utils import BASE_BUILTIN_MODULES
 
 _BUILTIN_NAMES = set(vars(builtins))
 
 IMPORTED_PACKAGES = BASE_BUILTIN_MODULES
+
 
 def is_installed_package(module_name: str) -> bool:
     """
@@ -20,15 +20,16 @@ def is_installed_package(module_name: str) -> bool:
         spec = importlib.util.find_spec(module_name)
         if spec is None:
             return False  # If we can't find the module, assume it's local
-        
+
         # If the module is found and has a file path, check if it's in site-packages
-        if spec.origin and 'site-packages' not in spec.origin:
+        if spec.origin and "site-packages" not in spec.origin:
             # Check if it's a .py file in the current directory or subdirectories
-            return not spec.origin.endswith('.py')
+            return not spec.origin.endswith(".py")
 
         return False
     except ImportError:
         return False  # If there's an import error, assume it's local
+
 
 class MethodChecker(ast.NodeVisitor):
     """
@@ -36,6 +37,7 @@ class MethodChecker(ast.NodeVisitor):
     - only uses defined names
     - contains no local imports (e.g. numpy is ok but local_script is not)
     """
+
     def __init__(self, class_attributes: Set[str], check_imports: bool = True):
         self.undefined_names = set()
         self.imports = {}
@@ -53,22 +55,26 @@ class MethodChecker(ast.NodeVisitor):
             self.arg_names.add(node.kwarg.arg)
         if node.vararg:
             self.arg_names.add(node.vararg.arg)
-        
+
     def visit_Import(self, node):
         for name in node.names:
             actual_name = name.asname or name.name
             if not is_installed_package(actual_name) and self.check_imports:
-                self.errors.append(f"Package not found in importlib, might be a local install: '{actual_name}'")
+                self.errors.append(
+                    f"Package not found in importlib, might be a local install: '{actual_name}'"
+                )
             self.imports[actual_name] = name.name
-            
+
     def visit_ImportFrom(self, node):
         module = node.module or ""
         for name in node.names:
             actual_name = name.asname or name.name
             if not is_installed_package(module) and self.check_imports:
-                self.errors.append(f"Package not found in importlib, might be a local install: '{module}'")
+                self.errors.append(
+                    f"Package not found in importlib, might be a local install: '{module}'"
+                )
             self.from_imports[actual_name] = (module, name.name)
-            
+
     def visit_Assign(self, node):
         for target in node.targets:
             if isinstance(target, ast.Name):
@@ -136,9 +142,10 @@ class MethodChecker(ast.NodeVisitor):
                 or node.func.id in self.imports
                 or node.func.id in self.from_imports
                 or node.func.id in self.assigned_names
-            ):         
+            ):
                 self.errors.append(f"Name '{node.func.id}' is undefined.")
         self.generic_visit(node)
+
 
 def validate_tool_attributes(cls, check_imports: bool = True) -> None:
     """
@@ -163,11 +170,15 @@ def validate_tool_attributes(cls, check_imports: bool = True) -> None:
         raise ValueError("Source code must define a class")
 
     # Check that __init__ method takes no arguments
-    if not cls.__init__.__qualname__ == 'Tool.__init__':
+    if not cls.__init__.__qualname__ == "Tool.__init__":
         sig = inspect.signature(cls.__init__)
-        non_self_params = list([arg_name for arg_name in sig.parameters.keys() if arg_name != "self"])
+        non_self_params = list(
+            [arg_name for arg_name in sig.parameters.keys() if arg_name != "self"]
+        )
         if len(non_self_params) > 0:
-            errors.append(f"This tool has additional args specified in __init__(self): {non_self_params}. Make sure it does not, all values should be hardcoded!")
+            errors.append(
+                f"This tool has additional args specified in __init__(self): {non_self_params}. Make sure it does not, all values should be hardcoded!"
+            )
 
     class_node = tree.body[0]
 
@@ -193,15 +204,19 @@ def validate_tool_attributes(cls, check_imports: bool = True) -> None:
                     self.class_attributes.add(target.id)
 
             # Check if the assignment is more complex than simple literals
-            if not all(isinstance(val, (ast.Str, ast.Num, ast.Constant, ast.Dict, ast.List, ast.Set))
-                      for val in ast.walk(node.value)):
+            if not all(
+                isinstance(
+                    val, (ast.Str, ast.Num, ast.Constant, ast.Dict, ast.List, ast.Set)
+                )
+                for val in ast.walk(node.value)
+            ):
                 for target in node.targets:
                     if isinstance(target, ast.Name):
                         self.complex_attributes.add(target.id)
-    
+
     class_level_checker = ClassLevelChecker()
     class_level_checker.visit(class_node)
-    
+
     if class_level_checker.complex_attributes:
         errors.append(
             f"Complex attributes should be defined in __init__, not as class attributes: "
@@ -211,7 +226,9 @@ def validate_tool_attributes(cls, check_imports: bool = True) -> None:
     # Run checks on all methods
     for node in class_node.body:
         if isinstance(node, ast.FunctionDef):
-            method_checker = MethodChecker(class_level_checker.class_attributes, check_imports=check_imports)
+            method_checker = MethodChecker(
+                class_level_checker.class_attributes, check_imports=check_imports
+            )
             method_checker.visit(node)
             errors += [f"- {node.name}: {error}" for error in method_checker.errors]
 

@@ -18,6 +18,7 @@ import re
 
 from ..tools import Tool
 
+
 class DuckDuckGoSearchTool(Tool):
     name = "web_search"
     description = """Performs a web search based on your query (think a Google search) then returns the top search results as a list of dict elements.

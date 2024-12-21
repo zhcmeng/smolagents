@@ -21,19 +21,18 @@ from io import BytesIO
 from PIL import Image
 
 from e2b_code_interpreter import Sandbox
-from typing import Dict, List, Callable, Tuple, Any
+from typing import List, Tuple, Any
 from .tool_validation import validate_tool_attributes
 from .utils import instance_to_source, BASE_BUILTIN_MODULES
 from .tools import Tool
-from .types import AgentImage
 
 load_dotenv()
 
 
-class E2BExecutor():
+class E2BExecutor:
     def __init__(self, additional_imports: List[str], tools: List[Tool]):
         self.custom_tools = {}
-        self.sbx = Sandbox() # "qywp2ctmu2q7jzprcf4j")
+        self.sbx = Sandbox()  # "qywp2ctmu2q7jzprcf4j")
         # TODO: validate installing agents package or not
         # print("Installing agents package on remote executor...")
         # self.sbx.commands.run(
@@ -42,7 +41,9 @@ class E2BExecutor():
         # )
         # print("Installation of agents package finished.")
         if len(additional_imports) > 0:
-            execution = self.sbx.commands.run("pip install " + " ".join(additional_imports))
+            execution = self.sbx.commands.run(
+                "pip install " + " ".join(additional_imports)
+            )
             if execution.error:
                 raise Exception(f"Error installing dependencies: {execution.error}")
             else:
@@ -56,7 +57,9 @@ class E2BExecutor():
             tool_code += f"\n{tool.name} = {tool.__class__.__name__}()\n"
             tool_codes.append(tool_code)
 
-        tool_definition_code = "\n".join([f"import {module}" for module in BASE_BUILTIN_MODULES])
+        tool_definition_code = "\n".join(
+            [f"import {module}" for module in BASE_BUILTIN_MODULES]
+        )
         tool_definition_code += textwrap.dedent("""
 class Tool:
     def __call__(self, *args, **kwargs):
@@ -75,7 +78,7 @@ class Tool:
             code,
         )
         if execution.error:
-            logs = 'Executing code yielded an error:'
+            logs = "Executing code yielded an error:"
             logs += execution.error.name
             logs += execution.error.value
             logs += execution.error.traceback
@@ -90,14 +93,28 @@ class Tool:
         else:
             for result in execution.results:
                 if result.is_main_result:
-                    for attribute_name in ['jpeg', 'png']:
+                    for attribute_name in ["jpeg", "png"]:
                         if getattr(result, attribute_name) is not None:
                             image_output = getattr(result, attribute_name)
-                            decoded_bytes = base64.b64decode(image_output.encode('utf-8'))
+                            decoded_bytes = base64.b64decode(
+                                image_output.encode("utf-8")
+                            )
                             return Image.open(BytesIO(decoded_bytes)), execution_logs
-                    for attribute_name in ['chart', 'data', 'html', 'javascript', 'json', 'latex', 'markdown', 'pdf', 'svg', 'text']:
+                    for attribute_name in [
+                        "chart",
+                        "data",
+                        "html",
+                        "javascript",
+                        "json",
+                        "latex",
+                        "markdown",
+                        "pdf",
+                        "svg",
+                        "text",
+                    ]:
                         if getattr(result, attribute_name) is not None:
                             return getattr(result, attribute_name), execution_logs
             raise ValueError("No main result returned by executor!")
+
 
 __all__ = ["E2BExecutor"]

@@ -39,13 +39,14 @@ if TYPE_CHECKING:
 
 else:
     import sys
+
     _file = globals()["__file__"]
     import_structure = define_import_structure(_file)
-    import_structure[""]= {"__version__": __version__}
+    import_structure[""] = {"__version__": __version__}
     sys.modules[__name__] = _LazyModule(
         __name__,
         _file,
         import_structure,
         module_spec=__spec__,
-        extra_objects={"__version__": __version__}
+        extra_objects={"__version__": __version__},
     )

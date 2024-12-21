@@ -491,10 +491,28 @@ Here is my new/updated plan of action to solve the task:
 {plan_update}
 ```"""
 
+MANAGED_AGENT_PROMPT = """You're a helpful agent named '{name}'.
+You have been submitted this task by your manager.
+---
+Task:
+{task}
+---
+You're helping your manager solve a wider task: so make sure to not provide a one-line answer, but give as much information as possible to give them a clear understanding of the answer.
+
+Your final_answer WILL HAVE to contain these parts:
+### 1. Task outcome (short version):
+### 2. Task outcome (extremely detailed version):
+### 3. Additional context (if relevant):
+
+Put all these in your final_answer tool, everything that you do not pass as an argument to final_answer will be lost.
+And even if your task resolution is not successful, please return as much context as possible, so that your manager can act upon this feedback.
+{{additional_prompting}}"""
+
 __all__ = [
     "USER_PROMPT_PLAN_UPDATE",
     "PLAN_UPDATE_FINAL_PLAN_REDACTION",
     "ONESHOT_CODE_SYSTEM_PROMPT",
     "CODE_SYSTEM_PROMPT",
     "JSON_SYSTEM_PROMPT",
+    "MANAGED_AGENT_PROMPT",
 ]

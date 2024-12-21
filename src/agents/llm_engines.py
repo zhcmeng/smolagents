@@ -58,11 +58,13 @@ llama_role_conversions = {
     MessageRole.TOOL_RESPONSE: MessageRole.USER,
 }
 
+
 def remove_stop_sequences(content: str, stop_sequences: List[str]) -> str:
     for stop_seq in stop_sequences:
         if content[-len(stop_seq) :] == stop_seq:
             content = content[: -len(stop_seq)]
     return content
+
 
 def get_clean_message_list(
     message_list: List[Dict[str, str]], role_conversions: Dict[str, str] = {}
@@ -204,7 +206,6 @@ class HfApiEngine(HfEngine):
         grammar: Optional[str] = None,
         max_tokens: int = 1500,
     ) -> str:
-        # Get clean message list
         messages = get_clean_message_list(
             messages, role_conversions=llama_role_conversions
         )
@@ -235,7 +236,9 @@ class TransformersEngine(HfEngine):
         super().__init__()
         if model_id is None:
             model_id = "HuggingFaceTB/SmolLM2-1.7B-Instruct"
-            logger.warning(f"`model_id`not provided, using this default tokenizer for token counts: '{model_id}'")
+            logger.warning(
+                f"`model_id`not provided, using this default tokenizer for token counts: '{model_id}'"
+            )
         try:
             self.tokenizer = AutoTokenizer.from_pretrained(model_id)
         except Exception as e:
@@ -254,7 +257,6 @@ class TransformersEngine(HfEngine):
         grammar: Optional[str] = None,
         max_tokens: int = 1500,
     ) -> str:
-        # Get clean message list
         messages = get_clean_message_list(
             messages, role_conversions=llama_role_conversions
         )

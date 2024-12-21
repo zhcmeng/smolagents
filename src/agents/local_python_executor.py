@@ -46,6 +46,7 @@ ERRORS = {
 PRINT_OUTPUTS, MAX_LEN_OUTPUT = "", 50000
 OPERATIONS_COUNT, MAX_OPERATIONS = 0, 10000000
 
+
 def custom_print(*args):
     return None
 
@@ -103,6 +104,8 @@ BASE_PYTHON_TOOLS = {
     "issubclass": issubclass,
     "type": type,
 }
+
+
 class BreakException(Exception):
     pass
 
@@ -1043,7 +1046,7 @@ def evaluate_python_code(
         raise InterpreterError(msg)
 
 
-class LocalPythonInterpreter():
+class LocalPythonInterpreter:
     def __init__(self, additional_authorized_imports: List[str], tools: Dict):
         self.custom_tools = {}
         self.state = {}
@@ -1068,5 +1071,6 @@ class LocalPythonInterpreter():
         )
         logs = self.state["print_outputs"]
         return output, logs
+
 
 __all__ = ["evaluate_python_code", "LocalPythonInterpreter"]

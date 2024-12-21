@@ -232,7 +232,9 @@ Action:
 
     def test_additional_args_added_to_task(self):
         agent = CodeAgent(tools=[], llm_engine=fake_code_llm)
-        output = agent.run("What is 2 multiplied by 3.6452?", additional_instruction="Remember this.")
+        output = agent.run(
+            "What is 2 multiplied by 3.6452?", additional_instruction="Remember this."
+        )
         assert "Remember this" in agent.task
         assert "Remember this" in str(agent.prompt_messages)
 

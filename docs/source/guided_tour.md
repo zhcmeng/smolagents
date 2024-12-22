@@ -13,74 +13,22 @@ specific language governing permissions and limitations under the License.
 rendered properly in your Markdown viewer.
 
 -->
-# Agents and tools
+# Agents - Guided tour
 
 [[open-in-colab]]
 
-### What is an agent?
+This visit of your framework should take about 15 minutes. It will show you how to build an agent, how to run it, and how to customize it to make it work better for your use-case. For more in-depth use, you will then want to check out our tutorials like [Building good agents](./tutorials/building_good_agents).
 
-Large Language Models (LLMs) trained to perform [causal language modeling](./tasks/language_modeling) can tackle a wide range of tasks, but they often struggle with basic tasks like logic, calculation, and search. When prompted in domains in which they do not perform well, they often fail to generate the answer we expect them to.
-
-One approach to overcome this weakness is to create an *agent*.
-
-An agent is a system that uses an LLM as its engine, and it has access to functions called *tools*.
-
-These *tools* are functions for performing a task, and they contain all necessary description for the agent to properly use them.
-
-For example, here is how a Code agent with access to a `web_search` tool would work its way through the following question.
-
-```py3
-agent.run(
-"""How many more blocks (also denoted as layers) are there in BERT base encoder than in the encoder from the architecture proposed in Attention is All You Need?"""
-)
-```
-```text
-=====New task=====
-How many more blocks (also denoted as layers) are there in BERT base encoder than in the encoder from the architecture proposed in Attention is All You Need?
-====Agent is executing the code below:
-bert_blocks = web_search(query="number of blocks in BERT base encoder")
-print("BERT blocks:", bert_blocks)
-====
-Print outputs:
-BERT blocks: twelve encoder blocks
-
-====Agent is executing the code below:
-attention_layer = web_search(query="number of layers in Attention is All You Need")
-print("Attention layers:", attention_layer)
-====
-Print outputs:
-Attention layers: Encoder: The encoder is composed of a stack of N = 6 identical layers. Each layer has two sub-layers. The first is a multi-head self-attention mechanism, and the second is a simple, position- 2 Page 3 Figure 1: The Transformer - model architecture.
-
-====Agent is executing the code below:
-bert_blocks = 12
-attention_layers = 6
-diff = bert_blocks - attention_layers
-print("Difference in blocks:", diff)
-final_answer(diff)
-====
-
-Print outputs:
-Difference in blocks: 6
-
-Final answer: 6
-```
-
-### How can I build an agent?
+### Building your agent
 
 To initialize an agent, you need these arguments:
 
-- an LLM to power your agent - the agent is not exactly the LLM, it’s more like the agent is a program that uses an LLM as its engine.
-- a system prompt: what the LLM engine will be prompted with to generate its output
-- a toolbox from which the agent pick tools to execute
-- a parser to extract from the LLM output which tools are to call and with which arguments
+- An LLM to power your agent - because the agent is different from a simple LLM, it is a system that uses a LLM as its engine.
+- A toolbox from which the agent pick tools to execute
+- A system prompt: what the LLM engine will be prompted with to generate its output
 
-Upon initialization of the agent system, the tool attributes are used to generate a tool description, then baked into the agent’s `system_prompt` to let it know which tools it can use and why.
+Upon initialization of the agent system, the `system_prompt` is built automatically by turning the description extracted from the tools into a predefined system prompt template.
 
-To start with, please install the `agents` extras in order to install all default dependencies.
-
-```bash
-pip install agents
-```
 
 Build your LLM engine by defining a `llm_engine` method which accepts a list of [messages](./chat_templating) and returns text. This callable also needs to accept a `stop` argument that indicates when to stop generating.
 
@@ -149,24 +97,17 @@ agent.run("Why does Mike not know many people in New York?", audio="https://hugg
 ```
 
 
-The prompt and output parser were automatically defined, but you can easily inspect them by calling the `system_prompt_template` on your agent.
-
-```python
-print(agent.system_prompt_template)
-```
-
 It's important to explain as clearly as possible the task you want to perform.
-Every [`~Agent.run`] operation is independent, and since an agent is powered by an LLM, minor variations in your prompt might yield completely different results.
-You can also run an agent consecutively for different tasks: each time the attributes `agent.task` and `agent.logs` will be re-initialized.
-
+Since an agent is powered by an LLM, minor variations in your task formulation might yield completely different results.
+You can also run an agent consecutively for different tasks: if you leave the default option of `True` for the flag `reset` when calling `agent.run(task)`, the agent's memory will be erased before starting the new task.
 
 #### Code execution
 
 A Python interpreter executes the code on a set of inputs passed along with your tools.
-This should be safe because the only functions that can be called are the tools you provided (especially if it's only tools by Hugging Face) and the print function, so you're already limited in what can be executed.
+This should be safe because the only functions that can be called are the tools you provided (especially if it's only tools by Hugging Face) and a set of predefined safe functions like `print` or functions from the `math` module, so you're already limited in what can be executed.
 
 The Python interpreter also doesn't allow imports by default outside of a safe list, so all the most obvious attacks shouldn't be an issue.
-You can still authorize additional imports by passing the authorized modules as a list of strings in argument `additional_authorized_imports` upon initialization of your [`CodeAgent`] or [`CodeAgent`]:
+You can authorize additional imports by passing the authorized modules as a list of strings in argument `additional_authorized_imports` upon initialization of your [`CodeAgent`] or [`CodeAgent`]:
 
 ```py
 from agents import CodeAgent
@@ -187,6 +128,12 @@ The execution will stop at any code trying to perform an illegal operation or if
 
 An agent, or rather the LLM that drives the agent, generates an output based on the system prompt. The system prompt can be customized and tailored to the intended task. For example, check the system prompt for the [`CodeAgent`] (below version is slightly simplified).
 
+The prompt and output parser were automatically defined, but you can easily inspect them by calling the `system_prompt_template` on your agent.
+
+```python
+print(agent.system_prompt_template)
+```
+Here is what you get:
 ```text
 You will be given a task to solve as best you can.
 You have access to the following tools:
@@ -375,17 +322,16 @@ manager_agent.run("Who is the CEO of Hugging Face?")
 > For an in-depth example of an efficient multi-agent implementation, see [how we pushed our multi-agent system to the top of the GAIA leaderboard](https://huggingface.co/blog/beating-gaia).
 
 
-## Display your agent run in a cool Gradio interface
+## Talk with your agent in a cool Gradio interface
 
-You can leverage `gradio.Chatbot` to display your agent's thoughts using `stream_to_gradio`, here is an example:
+You can use `GradioUI` to interactively submit tasks to your agent and observe its thought and execution process, here is an example:
 
 ```py
-import gradio as gr
-from transformers import (
+from agents import (
     load_tool,
     CodeAgent,
     HfApiEngine,
-    stream_to_gradio,
+    GradioUI
 )
 
 # Import tool from Hub
@@ -396,32 +342,8 @@ llm_engine = HfApiEngine(model_id)
 # Initialize the agent with the image generation tool
 agent = CodeAgent(tools=[image_generation_tool], llm_engine=llm_engine)
 
-
-def interact_with_agent(task):
-    messages = []
-    messages.append(gr.ChatMessage(role="user", content=task))
-    yield messages
-    for msg in stream_to_gradio(agent, task):
-        messages.append(msg)
-        yield messages + [
-            gr.ChatMessage(role="assistant", content="⏳ Task not finished yet!")
-        ]
-    yield messages
-
-
-with gr.Blocks() as demo:
-    text_input = gr.Textbox(lines=1, label="Chat Message", value="Make me a picture of the Statue of Liberty.")
-    submit = gr.Button("Run illustrator agent!")
-    chatbot = gr.Chatbot(
-        label="Agent",
-        type="messages",
-        avatar_images=(
-            None,
-            "https://em-content.zobj.net/source/twitter/53/robot-face_1f916.png",
-        ),
-    )
-    submit.click(interact_with_agent, [text_input], [chatbot])
-
-if __name__ == "__main__":
-    demo.launch()
+GradioUI(agent).launch()
 ```
+
+Under the hood, when the user types a new answer, the agent is launched with `agent.run(user_request, reset=False)`.
+The `reset=False` flag means the agent's memory is not flushed before launching this new task, which lets the conversation go on.

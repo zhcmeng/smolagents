@@ -25,22 +25,44 @@ limitations under the License.
 </p>
 
 <h3 align="center">
-<p>Run agents!
+<p>Run agents!</p>
 </h3>
 
-W
+# Agents
 
-<div class="flex justify-center">
-    <img
-        class="block dark:hidden"
-        src="https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/transformers/Agent_ManimCE.gif"
-    />
-    <img
-        class="hidden dark:block"
-        src="https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/transformers/Agent_ManimCE.gif"
-    />
-</div>
+Agents is a library that enables you to run powerful agents in a few lines of code!
+It is:
+- lightweight
+- understandable (we kept abstractions to the minimum)
+- the only library with first-class support for Code Agents, i.e. agents that write their actions in code!
 
-To run Docker, run `docker build -t pyrunner:latest .`
+Quick demo:
+First install the package.
+```bash
+pip install agents
+```
+Then define your agent, give it the tools it needs and run it!
+```py
+from agents import CodeAgent, WebSearchTool
 
-This will use the Local Dockerfile to create your Docker image!
+agent = CodeAgent(tools=[WebSearchTool()])
+
+agent.run("What time would the world's fastest car take to travel from New York to San Francisco?")
+```
+
+> TODO: Add video
+
+## Code agents?
+
+We built agents where the LLM engine writes its actions in code. This approach is demonstrated to work better than the current industry practice of letting the LLM output a dictionary of the tools it wants to calls: [uses 30% fewer steps](https://huggingface.co/papers/2402.01030) (thus 30% fewer LLM calls)
+and [reaches higher performance on difficult benchmarks](https://huggingface.co/papers/2411.01747). Head to [./conceptual_guides/intro_agents.md] to learn more on that.
+
+Especially, since code execution can be a security concern (arbitrary code execution!), we provide options at runtime:
+  - a secure python interpreter to run code more safely in your environment
+  - a sandboxed environment.
+
+## How lightweight is it?
+
+We strived to keep abstractions to a strict minimum, with the main code in `agents.py` being roughly 1,000 lines of code, and still being quite complete, with several types of agents implemented: `CodeAgent` writing its actions in code snippets, `JsonAgent`, `ToolCallingAgent`...
+
+Many people ask: why use a framework at all? Well, because a big part of this stuff is non-trivial. For instance, the code agent has to keep a consistent format for code throughout its system prompt, its parser, the execution. Its variables have to be properly handled throughout. So our framework handles this complexity for you.

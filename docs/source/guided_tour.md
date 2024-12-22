@@ -25,12 +25,10 @@ To initialize an agent, you need these arguments:
 
 - An LLM to power your agent - because the agent is different from a simple LLM, it is a system that uses a LLM as its engine.
 - A toolbox from which the agent pick tools to execute
-- A system prompt: what the LLM engine will be prompted with to generate its output
 
-Upon initialization of the agent system, the `system_prompt` is built automatically by turning the description extracted from the tools into a predefined system prompt template.
+Upon initialization of the agent system, a system prompt (attribute `system_prompt`) is built automatically by turning the description extracted from the tools into a predefined system prompt template. But you can customize it!
 
-
-Build your LLM engine by defining a `llm_engine` method which accepts a list of [messages](./chat_templating) and returns text. This callable also needs to accept a `stop` argument that indicates when to stop generating.
+For defining your llm, you can make a `llm_engine` method which accepts a list of [messages](./chat_templating) and returns text. This callable also needs to accept a `stop` argument that indicates when to stop generating.
 
 ```python
 from huggingface_hub import login, InferenceClient

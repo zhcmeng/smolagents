@@ -2,8 +2,8 @@
   sections:
   - local: index
     title: 🤗 Agents
-  - local: quicktour
-    title: ⏱️ Quick tour
+  - local: guided_tour
+    title: Guided tour
 - title: Tutorials
   sections:
   - local: tutorials/building_good_agents

@@ -15,33 +15,15 @@ rendered properly in your Markdown viewer.
 
 # Agents
 
-Agents is a library that enables you to run powerful agents in a few lines of code!
-It is:
-- lightweight
-- understandable (we kept abstractions to the minimum)
-- the only library with first-class support for Code Agents, i.e. agents that write their actions in code!
+This library is the simplest framework out there to build powerful agents!
 
-Here is a demo:
+In particular, it has first-class support for Code Agents, i.e. agents that write their actions in code (as opposed to "agents being used to write code", which many good libraries do).
 
-## How lightweight is it?
-
-We strived to keep abstractions to a strict minimum.
-You could go lower and code it all yourself, but some of this stuff is non-trivial. For instance, if you define a format for tool expression, you have to specify the same format in your system prompt, your parser, and your possibke error logging to let the LLM correct itself.
-
-
-## Code agents?
-
-We can let LLMs powering agentic systems write their actions in code. This approach is demonstrated to work better than the current industry practice of letting the LLM output a dictionary of the tools it wants to calls: [uses 30% fewer steps](https://huggingface.co/papers/2402.01030) (thus 30% fewer LLM calls)
-and [reaches higher performance on difficult benchmarks](https://huggingface.co/papers/2411.01747). Head to [./conceptual_guides/intro_agents.md] to learn more on that.
-
-Especially, since code execution can be a security concern (arbitrary code execution!), we provide options at runtime:
-  - a secure python interpreter to run code more safely in your environment
-  - a sandboxed environment.
 
 <div class="mt-10">
   <div class="w-full flex flex-col space-y-4 md:space-y-0 md:grid md:grid-cols-2 md:gap-y-4 md:gap-x-5">
-    <a class="!no-underline border dark:border-gray-700 p-5 rounded-lg shadow hover:shadow-lg" href="./tutorials/tools"
-      ><div class="w-full text-center bg-gradient-to-br from-blue-400 to-blue-500 rounded-lg py-1.5 font-semibold mb-5 text-white text-lg leading-relaxed">Tutorials</div>
+    <a class="!no-underline border dark:border-gray-700 p-5 rounded-lg shadow hover:shadow-lg" href="./guided_tour"
+      ><div class="w-full text-center bg-gradient-to-br from-blue-400 to-blue-500 rounded-lg py-1.5 font-semibold mb-5 text-white text-lg leading-relaxed">Guided tour</div>
       <p class="text-gray-700">Learn the basics and become familiar with using Agents. Start here if you are using Agents for the first time!</p>
     </a>
     <a class="!no-underline border dark:border-gray-700 p-5 rounded-lg shadow hover:shadow-lg" href="./examples/text_to_sql"
@@ -53,8 +35,8 @@ Especially, since code execution can be a security concern (arbitrary code execu
       <p class="text-gray-700">High-level explanations for building a better understanding of important topics to build better functioning agents.</p>
    </a>
     <a class="!no-underline border dark:border-gray-700 p-5 rounded-lg shadow hover:shadow-lg" href="./tutorials/building_good_agents"
-      ><div class="w-full text-center bg-gradient-to-br from-purple-400 to-purple-500 rounded-lg py-1.5 font-semibold mb-5 text-white text-lg leading-relaxed">Reference</div>
-      <p class="text-gray-700">General, horizontal tutorials.</p>
+      ><div class="w-full text-center bg-gradient-to-br from-purple-400 to-purple-500 rounded-lg py-1.5 font-semibold mb-5 text-white text-lg leading-relaxed">Tutorials</div>
+      <p class="text-gray-700">Horizontal tutorials that cover important aspects of building agents.</p>
     </a>
   </div>
 </div>

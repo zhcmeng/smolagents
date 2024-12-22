@@ -15,19 +15,14 @@ rendered properly in your Markdown viewer.
 -->
 # ReAct agents
 
-## One shot agent
-
-This agent has a planning step, then generates python code to execute all its actions at once. It natively handles different input and output types for its tools, thus it is the recommended choice for multimodal tasks.
-
-## React agents
-
-This is the go-to agent to solve reasoning tasks.
-
 The ReAct framework ([Yao et al., 2022](https://huggingface.co/papers/2210.03629)) is currently the main approach to building agents.
 
 The name is based on the concatenation of two words, "Reason" and "Act." Indeed, agents following this architecture will solve their task in as many steps as needed, each step consisting of a Reasoning step, then an Action step where it formulates tool calls that will bring it closer to solving the task at hand.
 
 React process involves keeping a memory of past steps.
+
+> [!TIP]
+> Read [Open-source LLMs as LangChain Agents](https://huggingface.co/blog/open-source-llms-as-agents) blog post to learn more about ReAct agents.
 
 Here is a video overview of how that works:
 
@@ -49,5 +44,4 @@ We implement two versions of JsonAgent:
 - [`CodeAgent`] is a new type of JsonAgent that generates its tool calls as blobs of code, which works really well for LLMs that have strong coding performance.
 
 > [!TIP]
-> Read [Open-source LLMs as LangChain Agents](https://huggingface.co/blog/open-source-llms-as-agents) blog post to learn more about ReAct agents.
-
+> We also provide an option to run agents in one-shot: just pass `oneshot=True` when launching the agent, like `agent.run(your_task, oneshot=True)`

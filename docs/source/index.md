@@ -17,7 +17,15 @@ rendered properly in your Markdown viewer.
 
 This library is the simplest framework out there to build powerful agents! By the way, wtf are "agents"? We provide our definition [in this page](conceptual_guides/intro_agents), whe're you'll also find tips for when to use them or not (spoilers: you'll often be better off without agents).
 
-Amongst other things, this library provides first-class support for Code Agents, i.e. agents that write their actions in code (as opposed to "agents being used to write code", which many good libraries already do), [read more here](tutorials/secure_code_execution).
+This library offers:
+
+✨ **Simplicity**: the logic for agents fits in ~thousand lines of code. We kept abstractions to their minimal shape above raw code!
+
+🌐 **Support for any LLM**: it supports models hosted on the Hub loaded in their `transformers` version or through our inference API, but also models from OpenAI, Anthropic... it's really easy to power an agent with any LLM.
+
+🧑‍💻 **First-class support for Code Agents**, i.e. agents that write their actions in code (as opposed to "agents being used to write code"), [read more here](tutorials/secure_code_execution).
+
+🤗 **Hub integrations**: you can share and load tools to/from the Hub, and more is to come!
 
 <div class="mt-10">
   <div class="w-full flex flex-col space-y-4 md:space-y-0 md:grid md:grid-cols-2 md:gap-y-4 md:gap-x-5">

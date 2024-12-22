@@ -94,10 +94,7 @@ messages = [
   {"role": "user", "content": "No need to help, take it easy."},
 ]
 
-HfApiEngine()(messages, stop_sequences=["conversation"])
-```
-```text
-"That's very kind of you to say! It's always nice to have a relaxed "
+HfApiEngine()(messages)
 ```
 
 [[autodoc]] HfApiEngine

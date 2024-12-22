@@ -29,10 +29,16 @@ limitations under the License.
 </h3>
 
 Agents is a library that enables you to run powerful agents in a few lines of code!
-It is:
-- lightweight
-- understandable (we kept abstractions to the minimum)
-- the only library with first-class support for Code Agents, i.e. agents that write their actions in code!
+
+This library offers:
+
+✨ **Simplicity**: the logic for agents fits in ~thousand lines of code. We kept abstractions to their minimal shape above raw code!
+
+🌐 **Support for any LLM**: it supports models hosted on the Hub loaded in their `transformers` version or through our inference API, but also models from OpenAI, Anthropic... it's really easy to power an agent with any LLM.
+
+🧑‍💻 **First-class support for Code Agents**, i.e. agents that write their actions in code (as opposed to "agents being used to write code"), [read more here](tutorials/secure_code_execution).
+
+🤗 **Hub integrations**: you can share and load tools to/from the Hub, and more is to come!
 
 Quick demo:
 First install the package.

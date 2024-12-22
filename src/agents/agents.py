@@ -33,6 +33,7 @@ from .monitoring import Monitor
 from .prompts import (
     CODE_SYSTEM_PROMPT,
     JSON_SYSTEM_PROMPT,
+    TOOL_CALLING_SYSTEM_PROMPT,
     PLAN_UPDATE_FINAL_PLAN_REDACTION,
     SYSTEM_PROMPT_FACTS,
     SYSTEM_PROMPT_FACTS_UPDATE,
@@ -829,6 +830,119 @@ class JsonAgent(ReactAgent):
             tool_name, arguments = self.tool_parser(action)
         except Exception as e:
             raise AgentParsingError(f"Could not parse the given action: {e}.")
+
+        log_entry.tool_call = ToolCall(tool_name=tool_name, tool_arguments=arguments)
+
+        # Execute
+        console.print(Rule("Agent thoughts:", align="left"), Text(rationale))
+        console.print(
+            Panel(Text(f"Calling tool: '{tool_name}' with arguments: {arguments}"))
+        )
+        if tool_name == "final_answer":
+            if isinstance(arguments, dict):
+                if "answer" in arguments:
+                    answer = arguments["answer"]
+                else:
+                    answer = arguments
+            else:
+                answer = arguments
+            if (
+                isinstance(answer, str) and answer in self.state.keys()
+            ):  # if the answer is a state variable, return the value
+                answer = self.state[answer]
+            log_entry.action_output = answer
+            return answer
+        else:
+            if arguments is None:
+                arguments = {}
+            observation = self.execute_tool_call(tool_name, arguments)
+            observation_type = type(observation)
+            if observation_type in [AgentImage, AgentAudio]:
+                if observation_type == AgentImage:
+                    observation_name = "image.png"
+                elif observation_type == AgentAudio:
+                    observation_name = "audio.mp3"
+                # TODO: observation naming could allow for different names of same type
+
+                self.state[observation_name] = observation
+                updated_information = f"Stored '{observation_name}' in memory."
+            else:
+                updated_information = str(observation).strip()
+            log_entry.observations = updated_information
+            return None
+
+class ToolCallingAgent(ReactAgent):
+    """
+    In this agent, the tool calls will be formulated and parsed using the underlying library, before execution.
+    """
+
+    def __init__(
+        self,
+        tools: List[Tool],
+        llm_engine: Optional[Callable] = None,
+        system_prompt: Optional[str] = None,
+        tool_description_template: Optional[str] = None,
+        planning_interval: Optional[int] = None,
+        **kwargs,
+    ):
+        if llm_engine is None:
+            llm_engine = HfApiEngine()
+        if system_prompt is None:
+            system_prompt = TOOL_CALLING_SYSTEM_PROMPT
+        if tool_description_template is None:
+            tool_description_template = DEFAULT_TOOL_DESCRIPTION_TEMPLATE
+        super().__init__(
+            tools=tools,
+            llm_engine=llm_engine,
+            system_prompt=system_prompt,
+            tool_description_template=tool_description_template,
+            planning_interval=planning_interval,
+            **kwargs,
+        )
+
+    def step(self, log_entry: ActionStep) -> Union[None, Any]:
+        """
+        Perform one step in the ReAct framework: the agent thinks, acts, and observes the result.
+        Returns None if the step is not final.
+        """
+        agent_memory = self.write_inner_memory_from_logs()
+
+        self.prompt_messages = agent_memory
+
+        # Add new step in logs
+        log_entry.agent_memory = agent_memory.copy()
+
+        if self.verbose:
+            console.print(
+                Group(
+                    Rule(
+                        "[italic]Calling LLM engine with this last message:",
+                        align="left",
+                        style="orange",
+                    ),
+                    Text(str(self.prompt_messages[-1])),
+                )
+            )
+
+        try:
+            llm_output = self.llm_engine(
+                self.prompt_messages,
+            )
+            log_entry.llm_output = llm_output
+        except Exception as e:
+            raise AgentGenerationError(f"Error in generating llm_engine output: {e}.")
+
+        if self.verbose:
+            console.print(
+                Group(
+                    Rule(
+                        "[italic]Output message of the LLM:",
+                        align="left",
+                        style="orange",
+                    ),
+                    Text(llm_output),
+                )
+            )
 
         log_entry.tool_call = ToolCall(tool_name=tool_name, tool_arguments=arguments)
 

@@ -52,26 +52,31 @@ Programs are not just tools anymore, confined to an ultra-specialized task : the
 
 ### When to use an agentic system ?
 
-Given the definition above, agents are useful when you need an LLM to help you determine the workflow of an app.
-You should regularize to not use any agentic behaviour.
+Agents are useful when you need an LLM to help you determine the workflow of an app.
 
-For intance, let's say you're making an app that handles customer requests on a surfing trip website.
+It's advise to regularize towards not using any agentic behaviour.
+Ask yourself: do I really need flexibility in the workflow to efficiently solve the task at hand? If a fixed workflow would work, you might as well build it all in good old no-AI code for 100% robustness. Agents are useful when the ficed workflow is not enough.
 
-If you know in advance that the requests will have to be classified in either of 2 buckets according to deterministic criteria, and you have a predefined workflow for each of these 2 cases, then this means you can make a fixed workflow.
-For instance, if you let the user click a button to determine their query, and it goes into either of these:
+Let's take an example: say you're making an app that handles customer requests on a surfing trip website.
+
+You could know in advance that the requests will have to be classified in either of 2 buckets according to deterministic criteria, and you have a predefined workflow for each of these 2 cases.
+For instance, this is if you let the user click a button to determine their query, and it goes into either of these buckets:
 1. Want some knowledge on the trips. Then you give them access to a search bar to search your knowledge base
 2. Wants to talk to sales. Then you let them type in a contact form.
 
-If that deterministic workflow fits all queries, by all means just hardcode verything: this will give you a 100% reliable system with no risk of error introduced by letting unpredictable LLMs meddle in your workflow.
+If that deterministic workflow fits all queries, by all means just code verything: this will give you a 100% reliable system with no risk of error introduced by letting unpredictable LLMs meddle in your workflow.
 
-But what if the workflow can't be determined that well in advance? Say, 10% or 20% of users requests won't fit properly into your rigid categories, and risk being mishandled by the program?
+But what if the workflow can't be determined that well in advance? Say, 10% or 20% of users requests do not fit properly into your rigid categories, and are thus not handled properly by your program?
 
 Let's say, a user wants to ask : "I can come on Monday, but I forgot my passport so risk being delayed to Wednesday, is it possible to take me and my stuff to surf on Tuesday morning, with a concellation insurance?"
 This question into play many factors: availability of employees, weather, travelling distance, knowledge about cancellation policies...
-Probably none of the predetermined criteria above won't work properly.
+Probably none of the predetermined criteria above won't work properly on this question.
 
-That percentage of "won't fit in a predetermined workflow" means that you need more flexibility: making your system agentic will provide it that flexibility. In our example, you could just make a multi-step agent that has access to a weather API tool, a google maps API to compute travel distance, an employee availability dashboard and a RAG system on your knowledge base.
+If these cases where the predetermined workflow falls short are frequent, that means you need more flexibility: making your system agentic will provide it that flexibility. In our example, you could just make a multi-step agent that has access to a weather API tool, a google maps API to compute travel distance, an employee availability dashboard and a RAG system on your knowledge base.
 
+Actually, most real-life tasks do not fit in a pre-determined workflow. This is why until today, our programs where always focused on infinitely narrow tasks, like "compute the sum of these numbers" or "find the shortest path in this graph". 
+
+Agentic systems are a great way to introduce the vast world of real-world tasks to programs!
 
 ### Why {Agents}?
 

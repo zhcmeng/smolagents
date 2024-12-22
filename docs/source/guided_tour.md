@@ -17,7 +17,7 @@ rendered properly in your Markdown viewer.
 
 [[open-in-colab]]
 
-This visit of your framework should take about 15 minutes. It will show you how to build an agent, how to run it, and how to customize it to make it work better for your use-case. For more in-depth use, you will then want to check out our tutorials like [Building good agents](./tutorials/building_good_agents).
+This visit of your framework should take about 15 minutes. It will show you how to build an agent, how to run it, and how to customize it to make it work better for your use-case. For more in-depth usage, you will then want to check out our tutorials like [Building good agents](./tutorials/building_good_agents).
 
 ### Building your agent
 

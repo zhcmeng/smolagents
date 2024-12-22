@@ -25,10 +25,8 @@ limitations under the License.
 </p>
 
 <h3 align="center">
-<p>Run agents!</p>
+<p>Agents - build great agents!</p>
 </h3>
-
-# Agents
 
 Agents is a library that enables you to run powerful agents in a few lines of code!
 It is:

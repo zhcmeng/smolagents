@@ -15,10 +15,9 @@ rendered properly in your Markdown viewer.
 
 # Agents
 
-This library is the simplest framework out there to build powerful agents!
+This library is the simplest framework out there to build powerful agents! By the way, wtf are "agents"? We provide our definition [in this page](conceptual_guides/intro_agents), whe're you'll also find tips for when to use them or not (spoilers: you'll often be better off without agents).
 
-In particular, it has first-class support for Code Agents, i.e. agents that write their actions in code (as opposed to "agents being used to write code", which many good libraries do).
-
+Amongst other things, this library provides first-class support for Code Agents, i.e. agents that write their actions in code (as opposed to "agents being used to write code", which many good libraries already do), [read more here](tutorials/secure_code_execution).
 
 <div class="mt-10">
   <div class="w-full flex flex-col space-y-4 md:space-y-0 md:grid md:grid-cols-2 md:gap-y-4 md:gap-x-5">
@@ -32,7 +31,7 @@ In particular, it has first-class support for Code Agents, i.e. agents that writ
     </a>
     <a class="!no-underline border dark:border-gray-700 p-5 rounded-lg shadow hover:shadow-lg" href="./conceptual_guides/intro_agents"
       ><div class="w-full text-center bg-gradient-to-br from-pink-400 to-pink-500 rounded-lg py-1.5 font-semibold mb-5 text-white text-lg leading-relaxed">Conceptual guides</div>
-      <p class="text-gray-700">High-level explanations for building a better understanding of important topics to build better functioning agents.</p>
+      <p class="text-gray-700">High-level explanations for building a better understanding of important topics.</p>
    </a>
     <a class="!no-underline border dark:border-gray-700 p-5 rounded-lg shadow hover:shadow-lg" href="./tutorials/building_good_agents"
       ><div class="w-full text-center bg-gradient-to-br from-purple-400 to-purple-500 rounded-lg py-1.5 font-semibold mb-5 text-white text-lg leading-relaxed">Tutorials</div>

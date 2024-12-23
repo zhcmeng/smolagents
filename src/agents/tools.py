@@ -24,7 +24,6 @@ import textwrap
 from functools import lru_cache, wraps
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Union
-
 from huggingface_hub import (
     create_repo,
     get_collection,
@@ -34,7 +33,7 @@ from huggingface_hub import (
 )
 from huggingface_hub.utils import RepositoryNotFoundError
 from packaging import version
-
+import logging
 from transformers.utils import (
     TypeHintParsingException,
     cached_file,
@@ -43,11 +42,11 @@ from transformers.utils import (
     is_torch_available,
 )
 from transformers.dynamic_module_utils import get_imports
+
 from .types import ImageType, handle_agent_input_types, handle_agent_output_types
 from .utils import instance_to_source
 from .tool_validation import validate_tool_attributes, MethodChecker
 
-import logging
 
 logger = logging.getLogger(__name__)
 
@@ -395,6 +394,9 @@ class Tool:
             token (`str`, *optional*):
                 The token to identify you on hf.co. If unset, will use the token generated when running
                 `huggingface-cli login` (stored in `~/.huggingface`).
+            trust_remote_code(`str`, *optional*, defaults to False):
+                This flags marks that you understand the risk of running remote code and that you trust this tool.
+                If not setting this to True, loading the tool from Hub will fail.
             kwargs (additional keyword arguments, *optional*):
                 Additional keyword arguments that will be split in two: all arguments relevant to the Hub (such as
                 `cache_dir`, `revision`, `subfolder`) will be used when downloading the files for your tool, and the
@@ -802,12 +804,6 @@ def load_tool(
         tool_class = getattr(tools_module, tool_class_name)
         return tool_class(model_repo_id, token=token, **kwargs)
     else:
-        logger.warning_once(
-            f"You're loading a tool from the Hub from {model_repo_id}. Please make sure this is a source that you "
-            f"trust as the code within that tool will be executed on your machine. Always verify the code of "
-            f"the tools that you load. We recommend specifying a `revision` to ensure you're loading the "
-            f"code that you have checked."
-        )
         return Tool.from_hub(
             task_or_repo_id,
             model_repo_id=model_repo_id,

@@ -23,8 +23,6 @@ from rich.panel import Panel
 from rich.rule import Rule
 from rich.text import Text
 
-from transformers.utils import is_torch_available
-
 from .utils import console, parse_code_blob, parse_json_tool_call, truncate_content
 from .types import AgentAudio, AgentImage
 from .default_tools.base import FinalAnswerTool
@@ -217,11 +215,6 @@ class BaseAgent:
         if isinstance(tools, Toolbox):
             self._toolbox = tools
             if add_base_tools:
-                if not is_torch_available():
-                    raise ImportError(
-                        "Using the base tools requires torch to be installed."
-                    )
-
                 self._toolbox.add_base_tools(
                     add_python_interpreter=(self.__class__ == JsonAgent)
                 )
@@ -398,21 +391,17 @@ class MultiStepAgent(BaseAgent):
         tools: List[Tool],
         llm_engine: Optional[Callable] = None,
         system_prompt: Optional[str] = None,
-        tool_description_template: Optional[str] = None,
         grammar: Optional[Dict[str, str]] = None,
         planning_interval: Optional[int] = None,
         **kwargs,
     ):
         if system_prompt is None:
             system_prompt = CODE_SYSTEM_PROMPT
-        if tool_description_template is None:
-            tool_description_template = DEFAULT_TOOL_DESCRIPTION_TEMPLATE
 
         super().__init__(
             tools=tools,
             llm_engine=llm_engine,
             system_prompt=system_prompt,
-            tool_description_template=tool_description_template,
             grammar=grammar,
             **kwargs,
         )
@@ -775,7 +764,6 @@ class JsonAgent(MultiStepAgent):
         tools: List[Tool],
         llm_engine: Optional[Callable] = None,
         system_prompt: Optional[str] = None,
-        tool_description_template: Optional[str] = None,
         grammar: Optional[Dict[str, str]] = None,
         planning_interval: Optional[int] = None,
         **kwargs,
@@ -784,13 +772,10 @@ class JsonAgent(MultiStepAgent):
             llm_engine = HfApiEngine()
         if system_prompt is None:
             system_prompt = JSON_SYSTEM_PROMPT
-        if tool_description_template is None:
-            tool_description_template = DEFAULT_TOOL_DESCRIPTION_TEMPLATE
         super().__init__(
             tools=tools,
             llm_engine=llm_engine,
             system_prompt=system_prompt,
-            tool_description_template=tool_description_template,
             grammar=grammar,
             planning_interval=planning_interval,
             **kwargs,
@@ -896,7 +881,6 @@ class ToolCallingAgent(MultiStepAgent):
         tools: List[Tool],
         llm_engine: Optional[Callable] = None,
         system_prompt: Optional[str] = None,
-        tool_description_template: Optional[str] = None,
         planning_interval: Optional[int] = None,
         **kwargs,
     ):
@@ -904,13 +888,10 @@ class ToolCallingAgent(MultiStepAgent):
             llm_engine = HfApiEngine()
         if system_prompt is None:
             system_prompt = TOOL_CALLING_SYSTEM_PROMPT
-        if tool_description_template is None:
-            tool_description_template = DEFAULT_TOOL_DESCRIPTION_TEMPLATE
         super().__init__(
             tools=tools,
             llm_engine=llm_engine,
             system_prompt=system_prompt,
-            tool_description_template=tool_description_template,
             planning_interval=planning_interval,
             **kwargs,
         )
@@ -986,7 +967,6 @@ class CodeAgent(MultiStepAgent):
         tools: List[Tool],
         llm_engine: Optional[Callable] = None,
         system_prompt: Optional[str] = None,
-        tool_description_template: Optional[str] = None,
         grammar: Optional[Dict[str, str]] = None,
         additional_authorized_imports: Optional[List[str]] = None,
         planning_interval: Optional[int] = None,
@@ -997,13 +977,10 @@ class CodeAgent(MultiStepAgent):
             llm_engine = HfApiEngine()
         if system_prompt is None:
             system_prompt = CODE_SYSTEM_PROMPT
-        if tool_description_template is None:
-            tool_description_template = DEFAULT_TOOL_DESCRIPTION_TEMPLATE
         super().__init__(
             tools=tools,
             llm_engine=llm_engine,
             system_prompt=system_prompt,
-            tool_description_template=tool_description_template,
             grammar=grammar,
             planning_interval=planning_interval,
             **kwargs,
@@ -1092,7 +1069,9 @@ class CodeAgent(MultiStepAgent):
             raise AgentParsingError(error_msg)
 
         log_entry.tool_call = ToolCall(
-            tool_name="python_interpreter", tool_arguments=code_action
+            name="python_interpreter",
+            arguments=code_action,
+            id=f"call_{len(self.logs)}",
         )
 
         # Execute

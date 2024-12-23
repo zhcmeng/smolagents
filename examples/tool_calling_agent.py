@@ -3,7 +3,7 @@ from agents import tool, HfApiEngine, OpenAIEngine, AnthropicEngine
 
 # Choose which LLM engine to use!
 llm_engine = OpenAIEngine("gpt-4o")
-llm_engine = AnthropicEngine()
+llm_engine = AnthropicEngine("claude-3-5-sonnet-20240620")
 llm_engine = HfApiEngine("meta-llama/Llama-3.3-70B-Instruct")
 
 @tool

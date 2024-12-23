@@ -150,7 +150,7 @@ final_answer(res)
 """
 
 
-def fake_code_llm_oneshot(messages, stop_sequences=None, grammar=None) -> str:
+def fake_code_llm_single_step(messages, stop_sequences=None, grammar=None) -> str:
     return """
 Thought: I should multiply 2 by 3.6452. special_marker
 Code:
@@ -173,11 +173,11 @@ print(result)
 
 
 class AgentTests(unittest.TestCase):
-    def test_fake_oneshot_code_agent(self):
+    def test_fake_single_step_code_agent(self):
         agent = CodeAgent(
-            tools=[PythonInterpreterTool()], llm_engine=fake_code_llm_oneshot
+            tools=[PythonInterpreterTool()], llm_engine=fake_code_llm_single_step
         )
-        output = agent.run("What is 2 multiplied by 3.6452?", oneshot=True)
+        output = agent.run("What is 2 multiplied by 3.6452?", single_step=True)
         assert isinstance(output, str)
         assert output == "7.2904"
 

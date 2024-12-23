@@ -27,7 +27,7 @@ contains the API docs for the underlying classes.
 
 ## Agents
 
-Our agents inherit from [`ReactAgent`], which means they can act in multiple steps, each step consisting of one thought, then one tool call and execution. Read more in [this conceptual guide](../conceptual_guides/react).
+Our agents inherit from [`MultiStepAgent`], which means they can act in multiple steps, each step consisting of one thought, then one tool call and execution. Read more in [this conceptual guide](../conceptual_guides/react).
 
 We provide two types of agents, based on the main [`Agent`] class.
   - [`JsonAgent`] writes its tool calls in JSON.
@@ -40,7 +40,7 @@ We provide two types of agents, based on the main [`Agent`] class.
 
 ### React agents
 
-[[autodoc]] ReactAgent
+[[autodoc]] MultiStepAgent
 
 [[autodoc]] JsonAgent
 

@@ -143,10 +143,6 @@ class ImportFinder(ast.NodeVisitor):
             self.packages.add(base_package)
 
 
-import ast
-from typing import Dict
-
-
 def get_method_source(method):
     """Get source code for a method, including bound methods."""
     if isinstance(method, types.MethodType):

@@ -51,7 +51,7 @@ def download_prompt(prompt_or_repo_id, agent_name, mode="run"):
         return f.read()
 
 
-ONESHOT_CODE_SYSTEM_PROMPT = """You will be given a task to solve, your job is to come up with a series of simple commands in Python that will perform the task.
+SINGLE_STEP_CODE_SYSTEM_PROMPT = """You will be given a task to solve, your job is to come up with a series of simple commands in Python that will perform the task.
 To help you, I will give you access to a set of tools that you can use. Each tool is a Python function and has a description explaining the task it performs, the inputs it expects and the outputs it returns.
 You should first explain which tool you will use to perform the task and for what reason, then write the code in Python.
 Each instruction in Python should be a simple assignment. You can print intermediate results if it makes sense to do so.
@@ -618,7 +618,7 @@ And even if your task resolution is not successful, please return as much contex
 __all__ = [
     "USER_PROMPT_PLAN_UPDATE",
     "PLAN_UPDATE_FINAL_PLAN_REDACTION",
-    "ONESHOT_CODE_SYSTEM_PROMPT",
+    "SINGLE_STEP_CODE_SYSTEM_PROMPT",
     "CODE_SYSTEM_PROMPT",
     "JSON_SYSTEM_PROMPT",
     "MANAGED_AGENT_PROMPT",

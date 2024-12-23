@@ -17,7 +17,7 @@
   - local: conceptual_guides/intro_agents
     title: 🤖 An introduction to agentic systems
   - local: conceptual_guides/react
-    title: 🤔 ReAct agents
+    title: 🤔 How do Multi-step agents work?
 - title: Examples
   sections:
   - local: examples/text_to_sql

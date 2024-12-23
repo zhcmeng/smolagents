@@ -114,6 +114,7 @@ AUTHORIZED_TYPES = [
     "image",
     "audio",
     "any",
+    "object",
 ]
 
 CONVERSION_DICT = {"str": "string", "int": "integer", "float": "number"}

@@ -40,7 +40,8 @@ This library offers:
 
 🤗 **Hub integrations**: you can share and load tools to/from the Hub, and more is to come!
 
-Quick demo:
+## Quick demo
+
 First install the package.
 ```bash
 pip install agents

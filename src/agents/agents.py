@@ -89,8 +89,9 @@ class AgentGenerationError(AgentError):
 
 @dataclass
 class ToolCall:
-    tool_name: str
-    tool_arguments: Any
+    name: str
+    arguments: Any
+    id: str
 
 
 class AgentStep:
@@ -306,26 +307,49 @@ class BaseAgent:
                     }
                     memory.append(thought_message)
 
-                if step_log.tool_call is not None and summary_mode:
+                if step_log.tool_call is not None:
                     tool_call_message = {
                         "role": MessageRole.ASSISTANT,
-                        "content": f"[STEP {i} TOOL CALL]: "
-                        + str(step_log.tool_call).strip(),
+                        "content": str(
+                            [
+                                {
+                                    "id": step_log.tool_call.id,
+                                    "type": "function",
+                                    "function": {
+                                        "name": step_log.tool_call.name,
+                                        "arguments": step_log.tool_call.arguments,
+                                    },
+                                }
+                            ]
+                        ),
                     }
                     memory.append(tool_call_message)
 
-                if step_log.error is not None or step_log.observations is not None:
+                if step_log.tool_call is None and step_log.error is not None:
+                    message_content = (
+                        "Error:\n"
+                        + str(step_log.error)
+                        + "\nNow let's retry: take care not to repeat previous errors! If you have retried several times, try a completely different approach.\n"
+                    )
+                    tool_response_message = {
+                        "role": MessageRole.ASSISTANT,
+                        "content": message_content,
+                    }
+                if step_log.tool_call is not None and (
+                    step_log.error is not None or step_log.observations is not None
+                ):
                     if step_log.error is not None:
                         message_content = (
-                            f"[OUTPUT OF STEP {i}] -> Error:\n"
+                            "Error:\n"
                             + str(step_log.error)
                             + "\nNow let's retry: take care not to repeat previous errors! If you have retried several times, try a completely different approach.\n"
                         )
                     elif step_log.observations is not None:
-                        message_content = f"[OUTPUT OF STEP {i}] -> Observation:\n{step_log.observations}"
+                        message_content = f"Observation:\n{step_log.observations}"
                     tool_response_message = {
                         "role": MessageRole.TOOL_RESPONSE,
-                        "content": message_content,
+                        "content": f"Call id: {(step_log.tool_call.id if getattr(step_log.tool_call, 'id') else 'call_0')}\n"
+                        + message_content,
                     }
                     memory.append(tool_response_message)
 
@@ -362,7 +386,7 @@ class BaseAgent:
         raise NotImplementedError
 
 
-class ReactAgent(BaseAgent):
+class MultiStepAgent(BaseAgent):
     """
     This agent that solves the given task step by step, using the ReAct framework:
     While the objective is not reached, the agent will perform a cycle of thinking and acting.
@@ -474,7 +498,7 @@ class ReactAgent(BaseAgent):
         task: str,
         stream: bool = False,
         reset: bool = True,
-        oneshot: bool = False,
+        single_step: bool = False,
         **kwargs,
     ):
         """
@@ -484,7 +508,7 @@ class ReactAgent(BaseAgent):
             task (`str`): The task to perform.
             stream (`bool`): Wether to run in a streaming way.
             reset (`bool`): Wether to reset the conversation or keep it going from previous run.
-            oneshot (`bool`): Should the agent run in one shot or multi-step fashion?
+            single_step (`bool`): Should the agent run in one shot or multi-step fashion?
 
         Example:
         ```py
@@ -516,7 +540,7 @@ class ReactAgent(BaseAgent):
         console.print(Group(Rule("[bold]New task", characters="="), Text(self.task)))
         self.logs.append(TaskStep(task=self.task))
 
-        if oneshot:
+        if single_step:
             step_start_time = time.time()
             step_log = ActionStep(start_time=step_start_time)
             step_log.end_time = time.time()
@@ -548,7 +572,7 @@ class ReactAgent(BaseAgent):
                     self.planning_step(
                         task, is_first_step=(iteration == 0), iteration=iteration
                     )
-                console.rule("[bold]New step")
+                console.rule(f"[bold]Step {iteration}")
 
                 # Run one step!
                 final_answer = self.step(step_log)
@@ -594,7 +618,7 @@ class ReactAgent(BaseAgent):
                     self.planning_step(
                         task, is_first_step=(iteration == 0), iteration=iteration
                     )
-                console.rule("[bold]New step")
+                console.rule(f"[bold]Step {iteration}")
 
                 # Run one step!
                 final_answer = self.step(step_log)
@@ -741,7 +765,7 @@ Now begin!""",
             )
 
 
-class JsonAgent(ReactAgent):
+class JsonAgent(MultiStepAgent):
     """
     In this agent, the tool calls will be formulated by the LLM in JSON format, then parsed and executed.
     """
@@ -784,18 +808,6 @@ class JsonAgent(ReactAgent):
         # Add new step in logs
         log_entry.agent_memory = agent_memory.copy()
 
-        if self.verbose:
-            console.print(
-                Group(
-                    Rule(
-                        "[italic]Calling LLM engine with this last message:",
-                        align="left",
-                        style="orange",
-                    ),
-                    Text(str(self.prompt_messages[-1])),
-                )
-            )
-
         try:
             additional_args = (
                 {"grammar": self.grammar} if self.grammar is not None else {}
@@ -827,25 +839,27 @@ class JsonAgent(ReactAgent):
         )
 
         try:
-            tool_name, arguments = self.tool_parser(action)
+            tool_name, tool_arguments = self.tool_parser(action)
         except Exception as e:
             raise AgentParsingError(f"Could not parse the given action: {e}.")
 
-        log_entry.tool_call = ToolCall(tool_name=tool_name, tool_arguments=arguments)
+        log_entry.tool_call = ToolCall(
+            tool_name=tool_name, tool_arguments=tool_arguments
+        )
 
         # Execute
         console.print(Rule("Agent thoughts:", align="left"), Text(rationale))
         console.print(
-            Panel(Text(f"Calling tool: '{tool_name}' with arguments: {arguments}"))
+            Panel(Text(f"Calling tool: '{tool_name}' with arguments: {tool_arguments}"))
         )
         if tool_name == "final_answer":
-            if isinstance(arguments, dict):
-                if "answer" in arguments:
-                    answer = arguments["answer"]
+            if isinstance(tool_arguments, dict):
+                if "answer" in tool_arguments:
+                    answer = tool_arguments["answer"]
                 else:
-                    answer = arguments
+                    answer = tool_arguments
             else:
-                answer = arguments
+                answer = tool_arguments
             if (
                 isinstance(answer, str) and answer in self.state.keys()
             ):  # if the answer is a state variable, return the value
@@ -853,9 +867,9 @@ class JsonAgent(ReactAgent):
             log_entry.action_output = answer
             return answer
         else:
-            if arguments is None:
-                arguments = {}
-            observation = self.execute_tool_call(tool_name, arguments)
+            if tool_arguments is None:
+                tool_arguments = {}
+            observation = self.execute_tool_call(tool_name, tool_arguments)
             observation_type = type(observation)
             if observation_type in [AgentImage, AgentAudio]:
                 if observation_type == AgentImage:
@@ -871,9 +885,10 @@ class JsonAgent(ReactAgent):
             log_entry.observations = updated_information
             return None
 
-class ToolCallingAgent(ReactAgent):
+
+class ToolCallingAgent(MultiStepAgent):
     """
-    In this agent, the tool calls will be formulated and parsed using the underlying library, before execution.
+    This agent uses JSON-like tool calls, but to the difference of JsonAgents, it makes use of the underlying librarie's tool calling facilities.
     """
 
     def __init__(
@@ -912,53 +927,29 @@ class ToolCallingAgent(ReactAgent):
         # Add new step in logs
         log_entry.agent_memory = agent_memory.copy()
 
-        if self.verbose:
-            console.print(
-                Group(
-                    Rule(
-                        "[italic]Calling LLM engine with this last message:",
-                        align="left",
-                        style="orange",
-                    ),
-                    Text(str(self.prompt_messages[-1])),
-                )
-            )
-
         try:
-            llm_output = self.llm_engine(
-                self.prompt_messages,
+            tool_name, tool_arguments, tool_call_id = self.llm_engine.get_tool_call(
+                self.prompt_messages, available_tools=list(self.toolbox._tools.values())
             )
-            log_entry.llm_output = llm_output
         except Exception as e:
             raise AgentGenerationError(f"Error in generating llm_engine output: {e}.")
 
-        if self.verbose:
-            console.print(
-                Group(
-                    Rule(
-                        "[italic]Output message of the LLM:",
-                        align="left",
-                        style="orange",
-                    ),
-                    Text(llm_output),
-                )
-            )
-
-        log_entry.tool_call = ToolCall(tool_name=tool_name, tool_arguments=arguments)
+        log_entry.tool_call = ToolCall(
+            name=tool_name, arguments=tool_arguments, id=tool_call_id
+        )
 
         # Execute
-        console.print(Rule("Agent thoughts:", align="left"), Text(rationale))
         console.print(
-            Panel(Text(f"Calling tool: '{tool_name}' with arguments: {arguments}"))
+            Panel(Text(f"Calling tool: '{tool_name}' with arguments: {tool_arguments}"))
         )
         if tool_name == "final_answer":
-            if isinstance(arguments, dict):
-                if "answer" in arguments:
-                    answer = arguments["answer"]
+            if isinstance(tool_arguments, dict):
+                if "answer" in tool_arguments:
+                    answer = tool_arguments["answer"]
                 else:
-                    answer = arguments
+                    answer = tool_arguments
             else:
-                answer = arguments
+                answer = tool_arguments
             if (
                 isinstance(answer, str) and answer in self.state.keys()
             ):  # if the answer is a state variable, return the value
@@ -966,9 +957,9 @@ class ToolCallingAgent(ReactAgent):
             log_entry.action_output = answer
             return answer
         else:
-            if arguments is None:
-                arguments = {}
-            observation = self.execute_tool_call(tool_name, arguments)
+            if tool_arguments is None:
+                tool_arguments = {}
+            observation = self.execute_tool_call(tool_name, tool_arguments)
             observation_type = type(observation)
             if observation_type in [AgentImage, AgentAudio]:
                 if observation_type == AgentImage:
@@ -985,7 +976,7 @@ class ToolCallingAgent(ReactAgent):
             return None
 
 
-class CodeAgent(ReactAgent):
+class CodeAgent(MultiStepAgent):
     """
     In this agent, the tool calls will be formulated by the LLM in code format, then parsed and executed.
     """
@@ -1057,18 +1048,6 @@ class CodeAgent(ReactAgent):
 
         # Add new step in logs
         log_entry.agent_memory = agent_memory.copy()
-
-        if self.verbose:
-            console.print(
-                Group(
-                    Rule(
-                        "[italic]Calling LLM engine with these last messages:",
-                        align="left",
-                        style="orange",
-                    ),
-                    Text(str(self.prompt_messages[-2:])),
-                )
-            )
 
         try:
             additional_args = (
@@ -1220,7 +1199,7 @@ __all__ = [
     "AgentError",
     "BaseAgent",
     "ManagedAgent",
-    "ReactAgent",
+    "MultiStepAgent",
     "CodeAgent",
     "JsonAgent",
     "Toolbox",

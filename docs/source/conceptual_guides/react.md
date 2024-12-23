@@ -13,7 +13,7 @@ specific language governing permissions and limitations under the License.
 rendered properly in your Markdown viewer.
 
 -->
-# ReAct agents
+# How do multi-step agents work?
 
 The ReAct framework ([Yao et al., 2022](https://huggingface.co/papers/2210.03629)) is currently the main approach to building agents.
 
@@ -22,7 +22,7 @@ The name is based on the concatenation of two words, "Reason" and "Act." Indeed,
 React process involves keeping a memory of past steps.
 
 > [!TIP]
-> Read [Open-source LLMs as LangChain Agents](https://huggingface.co/blog/open-source-llms-as-agents) blog post to learn more about ReAct agents.
+> Read [Open-source LLMs as LangChain Agents](https://huggingface.co/blog/open-source-llms-as-agents) blog post to learn more about multi-step agents.
 
 Here is a video overview of how that works:
 
@@ -44,4 +44,4 @@ We implement two versions of JsonAgent:
 - [`CodeAgent`] is a new type of JsonAgent that generates its tool calls as blobs of code, which works really well for LLMs that have strong coding performance.
 
 > [!TIP]
-> We also provide an option to run agents in one-shot: just pass `oneshot=True` when launching the agent, like `agent.run(your_task, oneshot=True)`
+> We also provide an option to run agents in one-shot: just pass `single_step=True` when launching the agent, like `agent.run(your_task, single_step=True)`

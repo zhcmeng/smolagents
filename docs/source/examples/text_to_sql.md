@@ -122,14 +122,14 @@ def sql_engine(query: str) -> str:
 
 Now let us create an agent that leverages this tool.
 
-We use the ReactCodeAgent, which is transformers.agents’ main agent class: an agent that writes actions in code and can iterate on previous output according to the ReAct framework.
+We use the CodeAgent, which is transformers.agents’ main agent class: an agent that writes actions in code and can iterate on previous output according to the ReAct framework.
 
 The llm_engine is the LLM that powers the agent system. HfEngine allows you to call LLMs using HF’s Inference API, either via Serverless or Dedicated endpoint, but you could also use any proprietary API.
 
 ```py
-from transformers.agents import ReactCodeAgent, HfApiEngine
+from transformers.agents import CodeAgent, HfApiEngine
 
-agent = ReactCodeAgent(
+agent = CodeAgent(
     tools=[sql_engine],
     llm_engine=HfApiEngine("meta-llama/Meta-Llama-3-8B-Instruct"),
 )
@@ -185,7 +185,7 @@ Since this request is a bit harder than the previous one, we’ll switch the LLM
 ```py
 sql_engine.description = updated_description
 
-agent = ReactCodeAgent(
+agent = CodeAgent(
     tools=[sql_engine],
     llm_engine=HfApiEngine("Qwen/Qwen2.5-72B-Instruct"),
 )

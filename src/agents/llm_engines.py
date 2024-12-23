@@ -16,14 +16,14 @@
 # limitations under the License.
 from copy import deepcopy
 from enum import Enum
-from typing import Dict, List, Optional
-
-from huggingface_hub import InferenceClient
-
+from typing import Dict, List, Optional, Tuple
 from transformers import AutoTokenizer, Pipeline
 import logging
 import os
 from openai import OpenAI
+from huggingface_hub import InferenceClient
+
+from agents import Tool
 
 logger = logging.getLogger(__name__)
 
@@ -50,13 +50,37 @@ class MessageRole(str, Enum):
         return [r.value for r in cls]
 
 
-openai_role_conversions = {
+llama_role_conversions = {
+    MessageRole.TOOL_CALL: MessageRole.ASSISTANT,
     MessageRole.TOOL_RESPONSE: MessageRole.USER,
 }
 
-llama_role_conversions = {
-    MessageRole.TOOL_RESPONSE: MessageRole.USER,
-}
+
+def get_json_schema(tool: Tool) -> Dict:
+    return {
+        "type": "function",
+        "function": {
+            "name": tool.name,
+            "description": tool.description,
+            "parameters": {
+                "type": "object",
+                "properties": tool.inputs,
+                "required": list(tool.inputs.keys()),
+            },
+        },
+    }
+
+
+def get_json_schema_anthropic(tool: Tool) -> Dict:
+    return {
+        "name": tool.name,
+        "description": tool.description,
+        "input_schema": {
+            "type": "object",
+            "properties": tool.inputs,
+            "required": list(tool.inputs.keys()),
+        },
+    }
 
 
 def remove_stop_sequences(content: str, stop_sequences: List[str]) -> str:
@@ -78,8 +102,8 @@ def get_clean_message_list(
     final_message_list = []
     message_list = deepcopy(message_list)  # Avoid modifying the original list
     for message in message_list:
-        if not set(message.keys()) == {"role", "content"}:
-            raise ValueError("Message should contain only 'role' and 'content' keys!")
+        # if not set(message.keys()) == {"role", "content"}:
+        #     raise ValueError("Message should contain only 'role' and 'content' keys!")
 
         role = message["role"]
         if role not in MessageRole.roles():
@@ -206,6 +230,7 @@ class HfApiEngine(HfEngine):
         grammar: Optional[str] = None,
         max_tokens: int = 1500,
     ) -> str:
+        """Generates a text completion for the given message list"""
         messages = get_clean_message_list(
             messages, role_conversions=llama_role_conversions
         )
@@ -219,7 +244,7 @@ class HfApiEngine(HfEngine):
                 max_tokens=max_tokens,
             )
         else:
-            response = self.client.chat_completion(
+            response = self.client.chat.completions.create(
                 messages, stop=stop_sequences, max_tokens=max_tokens
             )
 
@@ -227,6 +252,25 @@ class HfApiEngine(HfEngine):
         self.last_input_token_count = response.usage.prompt_tokens
         self.last_output_token_count = response.usage.completion_tokens
         return response
+
+    def get_tool_call(
+        self,
+        messages: List[Dict[str, str]],
+        available_tools: List[Tool],
+    ):
+        """Generates a tool call for the given message list"""
+        messages = get_clean_message_list(
+            messages, role_conversions=llama_role_conversions
+        )
+        response = self.client.chat.completions.create(
+            messages=messages,
+            tools=[get_json_schema(tool) for tool in available_tools],
+            tool_choice="auto",
+        )
+        tool_call = response.choices[0].message.tool_calls[0]
+        self.last_input_token_count = response.usage.prompt_tokens
+        self.last_output_token_count = response.usage.completion_tokens
+        return tool_call.function.name, tool_call.function.arguments, tool_call.id
 
 
 class TransformersEngine(HfEngine):
@@ -305,6 +349,8 @@ class OpenAIEngine:
             base_url=base_url,
             api_key=api_key,
         )
+        self.last_input_token_count = 0
+        self.last_output_token_count = 0
 
     def __call__(
         self,
@@ -328,6 +374,26 @@ class OpenAIEngine:
         self.last_output_token_count = response.usage.completion_tokens
         return response.choices[0].message.content
 
+    def get_tool_call(
+        self,
+        messages: List[Dict[str, str]],
+        available_tools: List[Tool],
+    ):
+        """Generates a tool call for the given message list"""
+        messages = get_clean_message_list(
+            messages, role_conversions=llama_role_conversions
+        )
+        response = self.client.chat.completions.create(
+            model=self.model_name,
+            messages=messages,
+            tools=[get_json_schema(tool) for tool in available_tools],
+            tool_choice="required",
+        )
+        tool_call = response.choices[0].message.tool_calls[0]
+        self.last_input_token_count = response.usage.prompt_tokens
+        self.last_output_token_count = response.usage.completion_tokens
+        return tool_call.function.name, tool_call.function.arguments, tool_call.id
+
 
 class AnthropicEngine:
     def __init__(self, model_name="claude-3-5-sonnet-20240620", use_bedrock=False):
@@ -345,17 +411,19 @@ class AnthropicEngine:
             self.client = Anthropic(
                 api_key=os.getenv("ANTHROPIC_API_KEY"),
             )
+        self.last_input_token_count = 0
+        self.last_output_token_count = 0
 
-    def __call__(
+    def separate_messages_system_prompt(
         self,
-        messages: List[Dict[str, str]],
-        stop_sequences: Optional[List[str]] = None,
-        grammar: Optional[str] = None,
-        max_tokens: int = 1500,
-    ) -> str:
-        messages = get_clean_message_list(
-            messages, role_conversions=openai_role_conversions
-        )
+        messages: List[
+            Dict[
+                str,
+                str,
+            ]
+        ],
+    ) -> Tuple[List[Dict[str, str]], str]:
+        """Gets the system prompt and the rest of messages as separate elements."""
         index_system_message, system_prompt = None, None
         for index, message in enumerate(messages):
             if message["role"] == MessageRole.SYSTEM:
@@ -370,7 +438,21 @@ class AnthropicEngine:
         if len(filtered_messages) == 0:
             print("Error, no user message:", messages)
             assert False
+        return filtered_messages, system_prompt
 
+    def __call__(
+        self,
+        messages: List[Dict[str, str]],
+        stop_sequences: Optional[List[str]] = None,
+        grammar: Optional[str] = None,
+        max_tokens: int = 1500,
+    ) -> str:
+        messages = get_clean_message_list(
+            messages, role_conversions=llama_role_conversions
+        )
+        filtered_messages, system_prompt = self.separate_messages_system_prompt(
+            messages
+        )
         response = self.client.messages.create(
             model=self.model_name,
             system=system_prompt,
@@ -384,6 +466,32 @@ class AnthropicEngine:
             if content_block.type == "text":
                 full_response_text += content_block.text
         return full_response_text
+
+    def get_tool_call(
+        self,
+        messages: List[Dict[str, str]],
+        available_tools: List[Tool],
+        max_tokens: int = 1500,
+    ):
+        """Generates a tool call for the given message list"""
+        messages = get_clean_message_list(
+            messages, role_conversions=llama_role_conversions
+        )
+        filtered_messages, system_prompt = self.separate_messages_system_prompt(
+            messages
+        )
+        response = self.client.messages.create(
+            model=self.model_name,
+            system=system_prompt,
+            messages=filtered_messages,
+            tools=[get_json_schema_anthropic(tool) for tool in available_tools],
+            tool_choice={"type": "any"},
+            max_tokens=max_tokens,
+        )
+        tool_call = response.content[0]
+        self.last_input_token_count = response.usage.input_tokens
+        self.last_output_token_count = response.usage.output_tokens
+        return tool_call.name, tool_call.input, tool_call.id
 
 
 __all__ = [

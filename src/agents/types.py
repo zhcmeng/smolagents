@@ -17,7 +17,7 @@ import pathlib
 import tempfile
 import uuid
 from io import BytesIO
-
+import requests
 import numpy as np
 
 from transformers.utils import (
@@ -224,7 +224,12 @@ class AgentAudio(AgentType, str):
             return self._tensor
 
         if self._path is not None:
-            tensor, self.samplerate = sf.read(self._path)
+            if "://" in str(self._path):
+                response = requests.get(self._path)
+                response.raise_for_status()
+                tensor, self.samplerate = sf.read(BytesIO(response.content))
+            else:
+                tensor, self.samplerate = sf.read(self._path)
             self._tensor = torch.tensor(tensor)
             return self._tensor
 

@@ -91,7 +91,7 @@ model_download_tool = load_tool(
 )
 ```
 
-### Import a Space as a tool 🚀
+### Import a Space as a tool
 
 You can directly import a Space from the Hub as a tool using the [`Tool.from_space`] method!
 
@@ -103,7 +103,8 @@ For instance, let's import the [FLUX.1-dev](https://huggingface.co/black-forest-
 image_generation_tool = Tool.from_space(
     "black-forest-labs/FLUX.1-schnell",
     name="image_generator",
-    description="Generate an image from a prompt")
+    description="Generate an image from a prompt"
+)
 
 image_generation_tool("A sunny beach")
 ```

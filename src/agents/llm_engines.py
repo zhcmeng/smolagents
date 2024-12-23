@@ -237,20 +237,20 @@ class HfApiEngine(HfEngine):
 
         # Send messages to the Hugging Face Inference API
         if grammar is not None:
-            response = self.client.chat_completion(
+            output = self.client.chat_completion(
                 messages,
                 stop=stop_sequences,
                 response_format=grammar,
                 max_tokens=max_tokens,
             )
         else:
-            response = self.client.chat.completions.create(
+            output = self.client.chat.completions.create(
                 messages, stop=stop_sequences, max_tokens=max_tokens
             )
 
-        response = response.choices[0].message.content
-        self.last_input_token_count = response.usage.prompt_tokens
-        self.last_output_token_count = response.usage.completion_tokens
+        response = output.choices[0].message.content
+        self.last_input_token_count = output.usage.prompt_tokens
+        self.last_output_token_count = output.usage.completion_tokens
         return response
 
     def get_tool_call(

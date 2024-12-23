@@ -17,18 +17,16 @@ rendered properly in your Markdown viewer.
 
 [[open-in-colab]]
 
-This visit of your framework should take about 15 minutes. It will show you how to build an agent, how to run it, and how to customize it to make it work better for your use-case. For more in-depth usage, you will then want to check out our tutorials like [Building good agents](./tutorials/building_good_agents).
+In this guided visit, you will learn how to build an agent, how to run it, and how to customize it to make it work better for your use-case.
 
 ### Building your agent
 
-To initialize an agent, you need these arguments:
+To initialize a minimal agent, you need at least these two arguments:
 
 - An LLM to power your agent - because the agent is different from a simple LLM, it is a system that uses a LLM as its engine.
-- A toolbox from which the agent pick tools to execute
+- A list of tools from which the agent pick tools to execute
 
-Upon initialization of the agent system, a system prompt (attribute `system_prompt`) is built automatically by turning the description extracted from the tools into a predefined system prompt template. But you can customize it!
-
-For defining your llm, you can make a `llm_engine` method which accepts a list of [messages](./chat_templating) and returns text. This callable also needs to accept a `stop` argument that indicates when to stop generating.
+For defining your llm, you can make a `llm_engine` method which accepts a list of [messages](./chat_templating) and returns text. This callable also needs to accept a `stop_sequences` argument that indicates when to stop generating.
 
 ```python
 from huggingface_hub import login, InferenceClient
@@ -51,10 +49,14 @@ You could use any `llm_engine` method as long as:
 
 Additionally, `llm_engine` can also take a `grammar` argument. In the case where you specify a `grammar` upon agent initialization, this argument will be passed to the calls to llm_engine, with the `grammar` that you defined upon initialization, to allow [constrained generation](https://huggingface.co/docs/text-generation-inference/conceptual/guidance) in order to force properly-formatted agent outputs.
 
+For convenience, we provide pre-built classes for your llm engine:
+- [`TransformersEngine`] takes a pre-initialized `transformers` pipeline to run inference on your local machine using `transformers`.
+- [`HfApiEngine`] leverages a `huggingface_hub.InferenceClient` under the hood.
+- We also provide [`OpenAIEngine`] and [`AnthropicEngine`] but you could use anything!
+
 You will also need a `tools` argument which accepts a list of `Tools` - it can be an empty list. You can also add the default toolbox on top of your `tools` list by defining the optional argument `add_base_tools=True`.
 
-Now you can create an agent, like [`CodeAgent`], and run it. You can also create a [`TransformersEngine`] with a pre-initialized pipeline to run inference on your local machine using `transformers`.
-For convenience, since agentic behaviours generally require strong models that are harder to run locally for now, we also provide the [`HfApiEngine`] class that initializes a `huggingface_hub.InferenceClient` under the hood. 
+Once you have these two arguments, `tools` and `llm_engine`,  you can create an agent and run it. 
 
 ```python
 from agents import CodeAgent, HfApiEngine
@@ -63,12 +65,10 @@ llm_engine = HfApiEngine(model=model_id)
 agent = CodeAgent(tools=[], llm_engine=llm_engine, add_base_tools=True)
 
 agent.run(
-    "Could you translate this sentence from French, say it out loud and return the audio.",
-    sentence="Où est la boulangerie la plus proche?",
+    "Could you give me the 118th number in the Fibonacci sequence?",
 )
 ```
 
-This will be handy in case of emergency baguette need!
 You can even leave the argument `llm_engine` undefined, and an [`HfApiEngine`] will be created by default.
 
 ```python
@@ -77,23 +77,22 @@ from agents import CodeAgent
 agent = CodeAgent(tools=[], add_base_tools=True)
 
 agent.run(
-    "Could you translate this sentence from French, say it out loud and give me the audio.",
-    sentence="Où est la boulangerie la plus proche?",
+    "Could you give me the 118th number in the Fibonacci sequence?",
+    additional_detail="We adopt the convention where the first two numbers are 0 and 1."
 )
 ```
 
-Note that we used an additional `sentence` argument: you can pass text as additional arguments to the model.
+Note that we used an additional `additional_detail` argument: you can additional kwargs to `agent.run()`, they will be baked into the prompt as text.
 
-You can also use this to indicate the path to local or remote files for the model to use:
+You can use this to indicate the path to local or remote files for the model to use:
 
 ```py
-from agents import CodeAgent
+from agents import CodeAgent, Tool, SpeechToTextTool
 
-agent = CodeAgent(tools=[], llm_engine=llm_engine, add_base_tools=True)
+agent = CodeAgent(tools=[SpeechToTextTool()], add_base_tools=True)
 
 agent.run("Why does Mike not know many people in New York?", audio="https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/transformers/recording.mp3")
 ```
-
 
 It's important to explain as clearly as possible the task you want to perform.
 Since an agent is powered by an LLM, minor variations in your task formulation might yield completely different results.
@@ -117,14 +116,18 @@ This gives you at the end of the agent run:
 ```text
 'Hugging Face – Blog'
 ```
-The execution will stop at any code trying to perform an illegal operation or if there is a regular Python error with the code generated by the agent.
+The execution will stop at any code trying to perform an illegal operation or if there is a regular Python error with the code generated by the agent. You can also use E2B code executor instead of a local Python interpreter by passing `use_e2b_executor=True` upon agent initialization.
 
 > [!WARNING]
 > The LLM can generate arbitrary code that will then be executed: do not add any unsafe imports!
 
 ### The system prompt
 
-An agent, or rather the LLM that drives the agent, generates an output based on the system prompt. The system prompt can be customized and tailored to the intended task. For example, check the system prompt for the [`CodeAgent`] (below version is slightly simplified).
+Upon initialization of the agent system, a system prompt (attribute `system_prompt`) is built automatically by turning the description extracted from the tools into a predefined system prompt template.
+
+But you can customize it!
+
+Let's see how it works. For example, check the system prompt for the [`CodeAgent`] (below version is slightly simplified).
 
 The prompt and output parser were automatically defined, but you can easily inspect them by calling the `system_prompt_template` on your agent.
 
@@ -207,6 +210,7 @@ Transformers comes with a default toolbox for empowering agents, that you can ad
 
 - **DuckDuckGo web search***: performs a web search using DuckDuckGo browser.
 - **Python code interpreter**: runs your the LLM generated Python code in a secure environment. This tool will only be added to [`JsonAgent`] if you initialize it with `add_base_tools=True`, since code-based agent can already natively execute Python code
+- **Transcriber**: a speech-to-text pipeline built on Whisper-Turbo that transcribes an audio to text.
 
 You can manually use a tool by calling the [`load_tool`] function and a task to perform.
 
@@ -216,7 +220,6 @@ from transformers import load_tool
 search_tool = load_tool("web_search")
 print(search_tool("Who's the current president of Russia?"))
 ```
-
 
 ### Create a new tool
 
@@ -320,7 +323,7 @@ manager_agent.run("Who is the CEO of Hugging Face?")
 > For an in-depth example of an efficient multi-agent implementation, see [how we pushed our multi-agent system to the top of the GAIA leaderboard](https://huggingface.co/blog/beating-gaia).
 
 
-## Talk with your agent in a cool Gradio interface
+## Talk with your agent and visualize its thoughts in a cool Gradio interface
 
 You can use `GradioUI` to interactively submit tasks to your agent and observe its thought and execution process, here is an example:
 
@@ -345,3 +348,10 @@ GradioUI(agent).launch()
 
 Under the hood, when the user types a new answer, the agent is launched with `agent.run(user_request, reset=False)`.
 The `reset=False` flag means the agent's memory is not flushed before launching this new task, which lets the conversation go on.
+
+## Next steps
+
+For more in-depth usage, you will then want to check out our tutorials:
+- [the explanation of how our code agents work](./tutorials/secure_code_execution)
+- [this guide on how to build good agents](./tutorials/building_good_agents).
+- [the in-depth guide for tool usage](./tutorials/building_good_agents).

@@ -24,17 +24,16 @@ from transformers.utils.import_utils import define_import_structure
 
 if TYPE_CHECKING:
     from .agents import *
-    from .default_tools.base import *
-    from .default_tools.search import *
+    from .default_tools import *
     from .gradio_ui import *
     from .llm_engines import *
     from .local_python_executor import *
+    from .e2b_executor import *
     from .monitoring import *
     from .prompts import *
     from .tools import *
     from .types import *
     from .utils import *
-    from .default_tools.search import *
 
 
 else:

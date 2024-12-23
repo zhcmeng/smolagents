@@ -25,7 +25,7 @@ from rich.text import Text
 
 from .utils import console, parse_code_blob, parse_json_tool_call, truncate_content
 from .types import AgentAudio, AgentImage
-from .default_tools.base import FinalAnswerTool
+from .default_tools import FinalAnswerTool
 from .llm_engines import HfApiEngine, MessageRole
 from .monitoring import Monitor
 from .prompts import (

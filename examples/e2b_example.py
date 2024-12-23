@@ -1,9 +1,8 @@
 from agents import Tool, CodeAgent
 from agents.default_tools.search import VisitWebpageTool
 from dotenv import load_dotenv
-load_dotenv()
 
-LAUNCH_GRADIO = False
+load_dotenv()
 
 class GetCatImageTool(Tool):
     name="get_cat_image"
@@ -23,6 +22,8 @@ class GetCatImageTool(Tool):
         response = requests.get(self.url)
 
         return Image.open(BytesIO(response.content))
+
+LAUNCH_GRADIO = False
 
 get_cat_image = GetCatImageTool()
 

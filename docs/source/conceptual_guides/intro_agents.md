@@ -108,4 +108,8 @@ Code is just a better way to express actions on a computer. It has better:
 - **Generality:** code is built to express simply anything you can do have a computer do.
 - **Representation in LLM training corpuses:** why not leverage this benediction of the sky that plenty of quality actions have already been included in LLM training corpuses?
 
-This is why we put emphasis on proposing code agents, in this case python agents, which meant putting higher effort on building python interpreters.
+This is illustrated on the figure below, taken from [Executable Code Actions Elicit Better LLM Agents](https://huggingface.co/papers/2402.01030).
+
+<img src="https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/transformers/code_vs_json_actions.png">
+
+This is why we put emphasis on proposing code agents, in this case python agents, which meant putting higher effort on building secure python interpreters.

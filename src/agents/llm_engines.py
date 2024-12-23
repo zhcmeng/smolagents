@@ -50,7 +50,7 @@ class MessageRole(str, Enum):
         return [r.value for r in cls]
 
 
-llama_role_conversions = {
+tool_role_conversions = {
     MessageRole.TOOL_CALL: MessageRole.ASSISTANT,
     MessageRole.TOOL_RESPONSE: MessageRole.USER,
 }
@@ -232,7 +232,7 @@ class HfApiEngine(HfEngine):
     ) -> str:
         """Generates a text completion for the given message list"""
         messages = get_clean_message_list(
-            messages, role_conversions=llama_role_conversions
+            messages, role_conversions=tool_role_conversions
         )
 
         # Send messages to the Hugging Face Inference API
@@ -260,7 +260,7 @@ class HfApiEngine(HfEngine):
     ):
         """Generates a tool call for the given message list"""
         messages = get_clean_message_list(
-            messages, role_conversions=llama_role_conversions
+            messages, role_conversions=tool_role_conversions
         )
         response = self.client.chat.completions.create(
             messages=messages,
@@ -302,7 +302,7 @@ class TransformersEngine(HfEngine):
         max_tokens: int = 1500,
     ) -> str:
         messages = get_clean_message_list(
-            messages, role_conversions=llama_role_conversions
+            messages, role_conversions=tool_role_conversions
         )
 
         # Get LLM output
@@ -360,7 +360,7 @@ class OpenAIEngine:
         max_tokens: int = 1500,
     ) -> str:
         messages = get_clean_message_list(
-            messages, role_conversions=openai_role_conversions
+            messages, role_conversions=tool_role_conversions
         )
 
         response = self.client.chat.completions.create(
@@ -381,7 +381,7 @@ class OpenAIEngine:
     ):
         """Generates a tool call for the given message list"""
         messages = get_clean_message_list(
-            messages, role_conversions=llama_role_conversions
+            messages, role_conversions=tool_role_conversions
         )
         response = self.client.chat.completions.create(
             model=self.model_name,
@@ -448,7 +448,7 @@ class AnthropicEngine:
         max_tokens: int = 1500,
     ) -> str:
         messages = get_clean_message_list(
-            messages, role_conversions=llama_role_conversions
+            messages, role_conversions=tool_role_conversions
         )
         filtered_messages, system_prompt = self.separate_messages_system_prompt(
             messages
@@ -475,7 +475,7 @@ class AnthropicEngine:
     ):
         """Generates a tool call for the given message list"""
         messages = get_clean_message_list(
-            messages, role_conversions=llama_role_conversions
+            messages, role_conversions=tool_role_conversions
         )
         filtered_messages, system_prompt = self.separate_messages_system_prompt(
             messages
@@ -496,7 +496,7 @@ class AnthropicEngine:
 
 __all__ = [
     "MessageRole",
-    "llama_role_conversions",
+    "tool_role_conversions",
     "get_clean_message_list",
     "HfEngine",
     "TransformersEngine",

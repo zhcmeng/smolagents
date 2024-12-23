@@ -40,7 +40,7 @@ class DockerPythonInterpreter:
         Execute Python code in the container and return stdout and stderr
         """
 
-        if tools != None:
+        if tools is not None:
             tool_instance = tools[0]()
 
             import_code = f"""

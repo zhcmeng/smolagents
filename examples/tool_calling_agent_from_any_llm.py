@@ -1,11 +1,9 @@
 from smolagents.agents import ToolCallingAgent
-from smolagents import tool, HfApiEngine, OpenAIEngine, AnthropicEngine, TransformersEngine, LiteLLMEngine
+from smolagents import tool, HfApiEngine, TransformersEngine, LiteLLMEngine
 
 # Choose which LLM engine to use!
-# llm_engine = OpenAIEngine("gpt-4o")
-# llm_engine = AnthropicEngine("claude-3-5-sonnet-20240620")
-# llm_engine = HfApiEngine("meta-llama/Llama-3.3-70B-Instruct")
-# llm_engine = TransformersEngine("meta-llama/Llama-3.2-2B-Instruct")
+llm_engine = HfApiEngine("meta-llama/Llama-3.3-70B-Instruct")
+llm_engine = TransformersEngine("meta-llama/Llama-3.2-2B-Instruct")
 llm_engine = LiteLLMEngine("gpt-4o")
 
 @tool

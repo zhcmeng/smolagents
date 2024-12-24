@@ -61,12 +61,12 @@ class E2BExecutor:
             [f"import {module}" for module in BASE_BUILTIN_MODULES]
         )
         tool_definition_code += textwrap.dedent("""
-class Tool:
-    def __call__(self, *args, **kwargs):
-        return self.forward(*args, **kwargs)
+        class Tool:
+            def __call__(self, *args, **kwargs):
+                return self.forward(*args, **kwargs)
 
-    def forward(self, *args, **kwargs):
-        pass # to be implemented in child class
+            def forward(self, *args, **kwargs):
+                pass # to be implemented in child class
         """)
         tool_definition_code += "\n\n".join(tool_codes)
 

@@ -15,7 +15,13 @@
 
 import unittest
 
-from smolagents import AgentImage, AgentError, CodeAgent, ToolCallingAgent, stream_to_gradio
+from smolagents import (
+    AgentImage,
+    AgentError,
+    CodeAgent,
+    ToolCallingAgent,
+    stream_to_gradio,
+)
 
 
 class MonitoringTester(unittest.TestCase):

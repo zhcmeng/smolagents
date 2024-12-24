@@ -182,7 +182,9 @@ class AgentTests(unittest.TestCase):
         assert output == "7.2904"
 
     def test_fake_json_agent(self):
-        agent = ToolCallingAgent(tools=[PythonInterpreterTool()], llm_engine=fake_json_llm)
+        agent = ToolCallingAgent(
+            tools=[PythonInterpreterTool()], llm_engine=fake_json_llm
+        )
         output = agent.run("What is 2 multiplied by 3.6452?")
         assert isinstance(output, str)
         assert output == "7.2904"

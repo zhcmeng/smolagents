@@ -16,15 +16,19 @@
 # limitations under the License.
 from copy import deepcopy
 from enum import Enum
-from typing import Dict, List, Optional, Tuple
-from transformers import AutoTokenizer, AutoModelForCausalLM, StoppingCriteria, StoppingCriteriaList
+from typing import Dict, List, Optional
+from transformers import (
+    AutoTokenizer,
+    AutoModelForCausalLM,
+    StoppingCriteria,
+    StoppingCriteriaList,
+)
 
 import litellm
 import logging
 import os
 import random
 
-from openai import OpenAI
 from huggingface_hub import InferenceClient
 
 from .tools import Tool
@@ -69,21 +73,12 @@ def get_json_schema(tool: Tool) -> Dict:
             "description": tool.description,
             "parameters": {
                 "type": "object",
-                "properties": {k: {k2: v2.replace("any", "object") for k2, v2 in v.items()} for k, v in tool.inputs.items()},
+                "properties": {
+                    k: {k2: v2.replace("any", "object") for k2, v2 in v.items()}
+                    for k, v in tool.inputs.items()
+                },
                 "required": list(tool.inputs.keys()),
             },
-        },
-    }
-
-
-def get_json_schema_anthropic(tool: Tool) -> Dict:
-    return {
-        "name": tool.name,
-        "description": tool.description,
-        "input_schema": {
-            "type": "object",
-            "properties": tool.inputs,
-            "required": list(tool.inputs.keys()),
         },
     }
 
@@ -395,176 +390,7 @@ class TransformersEngine(HfEngine):
         return tool_name, tool_input, call_id
 
 
-class OpenAIEngine:
-    def __init__(
-        self,
-        model_id: Optional[str] = None,
-        api_key: Optional[str] = None,
-        base_url: Optional[str] = None,
-    ):
-        """Creates a LLM Engine that follows OpenAI format.
-
-        Args:
-           model_id (`str`, *optional*): the model name to use.
-           api_key (`str`, *optional*): your API key.
-           base_url (`str`, *optional*): the URL to use if using a different inference service than OpenAI, for instance "https://api-inference.huggingface.co/v1/".
-        """
-        if model_id is None:
-            model_id = "gpt-4o"
-        if api_key is None:
-            api_key = os.getenv("OPENAI_API_KEY")
-        self.model_id = model_id
-        self.client = OpenAI(
-            base_url=base_url,
-            api_key=api_key,
-        )
-        self.last_input_token_count = 0
-        self.last_output_token_count = 0
-
-    def __call__(
-        self,
-        messages: List[Dict[str, str]],
-        stop_sequences: Optional[List[str]] = None,
-        grammar: Optional[str] = None,
-        max_tokens: int = 1500,
-    ) -> str:
-        messages = get_clean_message_list(
-            messages, role_conversions=tool_role_conversions
-        )
-
-        response = self.client.chat.completions.create(
-            model=self.model_id,
-            messages=messages,
-            stop=stop_sequences,
-            temperature=0.5,
-            max_tokens=max_tokens,
-        )
-        self.last_input_token_count = response.usage.prompt_tokens
-        self.last_output_token_count = response.usage.completion_tokens
-        return response.choices[0].message.content
-
-    def get_tool_call(
-        self,
-        messages: List[Dict[str, str]],
-        available_tools: List[Tool],
-        stop_sequences: Optional[List[str]] = None,
-    ):
-        """Generates a tool call for the given message list. This method is used only by `ToolCallingAgent`."""
-        messages = get_clean_message_list(
-            messages, role_conversions=tool_role_conversions
-        )
-        response = self.client.chat.completions.create(
-            model=self.model_id,
-            messages=messages,
-            tools=[get_json_schema(tool) for tool in available_tools],
-            tool_choice="required",
-        )
-        tool_call = response.choices[0].message.tool_calls[0]
-        self.last_input_token_count = response.usage.prompt_tokens
-        self.last_output_token_count = response.usage.completion_tokens
-        return tool_call.function.name, tool_call.function.arguments, tool_call.id
-
-
-class AnthropicEngine:
-    def __init__(self, model_id="claude-3-5-sonnet-20240620", use_bedrock=False):
-        from anthropic import Anthropic, AnthropicBedrock
-
-        self.model_id = model_id
-        if use_bedrock:
-            self.model_id = "anthropic.claude-3-5-sonnet-20240620-v1:0"
-            self.client = AnthropicBedrock(
-                aws_access_key=os.getenv("AWS_BEDROCK_ID"),
-                aws_secret_key=os.getenv("AWS_BEDROCK_KEY"),
-                aws_region="us-east-1",
-            )
-        else:
-            self.client = Anthropic(
-                api_key=os.getenv("ANTHROPIC_API_KEY"),
-            )
-        self.last_input_token_count = 0
-        self.last_output_token_count = 0
-
-    def separate_messages_system_prompt(
-        self,
-        messages: List[
-            Dict[
-                str,
-                str,
-            ]
-        ],
-    ) -> Tuple[List[Dict[str, str]], str]:
-        """Gets the system prompt and the rest of messages as separate elements."""
-        index_system_message, system_prompt = None, None
-        for index, message in enumerate(messages):
-            if message["role"] == MessageRole.SYSTEM:
-                index_system_message = index
-                system_prompt = message["content"]
-        if system_prompt is None:
-            raise Exception("No system prompt found!")
-
-        filtered_messages = [
-            message for i, message in enumerate(messages) if i != index_system_message
-        ]
-        if len(filtered_messages) == 0:
-            print("Error, no user message:", messages)
-            assert False
-        return filtered_messages, system_prompt
-
-    def __call__(
-        self,
-        messages: List[Dict[str, str]],
-        stop_sequences: Optional[List[str]] = None,
-        grammar: Optional[str] = None,
-        max_tokens: int = 1500,
-    ) -> str:
-        messages = get_clean_message_list(
-            messages, role_conversions=tool_role_conversions
-        )
-        filtered_messages, system_prompt = self.separate_messages_system_prompt(
-            messages
-        )
-        response = self.client.messages.create(
-            model=self.model_id,
-            system=system_prompt,
-            messages=filtered_messages,
-            stop_sequences=stop_sequences,
-            temperature=0.5,
-            max_tokens=max_tokens,
-        )
-        full_response_text = ""
-        for content_block in response.content:
-            if content_block.type == "text":
-                full_response_text += content_block.text
-        return full_response_text
-
-    def get_tool_call(
-        self,
-        messages: List[Dict[str, str]],
-        available_tools: List[Tool],
-        stop_sequences: Optional[List[str]] = None,
-        max_tokens: int = 1500,
-    ):
-        """Generates a tool call for the given message list. This method is used only by `ToolCallingAgent`."""
-        messages = get_clean_message_list(
-            messages, role_conversions=tool_role_conversions
-        )
-        filtered_messages, system_prompt = self.separate_messages_system_prompt(
-            messages
-        )
-        response = self.client.messages.create(
-            model=self.model_id,
-            system=system_prompt,
-            messages=filtered_messages,
-            tools=[get_json_schema_anthropic(tool) for tool in available_tools],
-            tool_choice={"type": "any"},
-            max_tokens=max_tokens,
-        )
-        tool_call = response.content[0]
-        self.last_input_token_count = response.usage.input_tokens
-        self.last_output_token_count = response.usage.output_tokens
-        return tool_call.name, tool_call.input, tool_call.id
-
-class LiteLLMEngine():
+class LiteLLMEngine:
     def __init__(self, model_id="anthropic/claude-3-5-sonnet-20240620"):
         self.model_id = model_id
         # IMPORTANT - Set this to TRUE to add the function to the prompt for Non OpenAI LLMs
@@ -594,12 +420,12 @@ class LiteLLMEngine():
         return response.choices[0].message.content
 
     def get_tool_call(
-            self,
-            messages: List[Dict[str, str]],
-            available_tools: List[Tool],
-            stop_sequences: Optional[List[str]] = None,
-            max_tokens: int = 1500,
-        ):
+        self,
+        messages: List[Dict[str, str]],
+        available_tools: List[Tool],
+        stop_sequences: Optional[List[str]] = None,
+        max_tokens: int = 1500,
+    ):
         messages = get_clean_message_list(
             messages, role_conversions=tool_role_conversions
         )
@@ -624,7 +450,5 @@ __all__ = [
     "HfEngine",
     "TransformersEngine",
     "HfApiEngine",
-    "OpenAIEngine",
-    "AnthropicEngine",
     "LiteLLMEngine",
 ]

@@ -23,6 +23,7 @@ dependencies = [
     "python-dotenv>=1.0.1",
     "e2b-code-interpreter>=1.0.3",
     "torch>=2.5.1",
+    "litellm>=1.55.10",
 ]
 
 [project.optional-dependencies]

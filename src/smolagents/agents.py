@@ -40,7 +40,6 @@ from .llm_engines import MessageRole
 from .monitoring import Monitor
 from .prompts import (
     CODE_SYSTEM_PROMPT,
-    JSON_SYSTEM_PROMPT,
     TOOL_CALLING_SYSTEM_PROMPT,
     PLAN_UPDATE_FINAL_PLAN_REDACTION,
     SYSTEM_PROMPT_FACTS,
@@ -171,7 +170,6 @@ class MultiStepAgent:
         grammar: Optional[Dict[str, str]] = None,
         managed_agents: Optional[Dict] = None,
         step_callbacks: Optional[List[Callable]] = None,
-        monitor_metrics: bool = True,
         planning_interval: Optional[int] = None,
     ):
         if system_prompt is None:
@@ -210,15 +208,9 @@ class MultiStepAgent:
         self.logs = []
         self.task = None
         self.verbose = verbose
-
-        # Initialize step callbacks
+        self.monitor = Monitor(self.llm_engine)
         self.step_callbacks = step_callbacks if step_callbacks is not None else []
-
-        # Initialize Monitor if monitor_metrics is True
-        self.monitor = None
-        if monitor_metrics:
-            self.monitor = Monitor(self.llm_engine)
-            self.step_callbacks.append(self.monitor.update_metrics)
+        self.step_callbacks.append(self.monitor.update_metrics)
 
     @property
     def toolbox(self) -> Toolbox:
@@ -712,7 +704,6 @@ Now begin!""",
             )
 
 
-
 class ToolCallingAgent(MultiStepAgent):
     """
     This agent uses JSON-like tool calls, using method `llm_engine.get_tool_call` to leverage the LLM engine's tool calling capabilities.
@@ -755,7 +746,9 @@ class ToolCallingAgent(MultiStepAgent):
                 stop_sequences=["Observation:"],
             )
         except Exception as e:
-            raise AgentGenerationError(f"Error in generating tool call with llm_engine:\n{e}")
+            raise AgentGenerationError(
+                f"Error in generating tool call with llm_engine:\n{e}"
+            )
 
         log_entry.tool_call = ToolCall(
             name=tool_name, arguments=tool_arguments, id=tool_call_id

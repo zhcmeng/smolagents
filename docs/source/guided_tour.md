@@ -52,7 +52,7 @@ Additionally, `llm_engine` can also take a `grammar` argument. In the case where
 For convenience, we provide pre-built classes for your llm engine:
 - [`TransformersEngine`] takes a pre-initialized `transformers` pipeline to run inference on your local machine using `transformers`.
 - [`HfApiEngine`] leverages a `huggingface_hub.InferenceClient` under the hood.
-- We also provide [`OpenAIEngine`] and [`AnthropicEngine`] but you could use anything!
+- We also provide [`LiteLLMEngine`], which lets you call 100+ different models through [LiteLLM](https://docs.litellm.ai/)!
 
 You will also need a `tools` argument which accepts a list of `Tools` - it can be an empty list. You can also add the default toolbox on top of your `tools` list by defining the optional argument `add_base_tools=True`.
 

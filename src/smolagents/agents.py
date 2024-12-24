@@ -23,10 +23,20 @@ from rich.panel import Panel
 from rich.rule import Rule
 from rich.text import Text
 
-from .utils import console, parse_code_blob, parse_json_tool_call, truncate_content
+from .utils import (
+    console,
+    parse_code_blob,
+    parse_json_tool_call,
+    truncate_content,
+    AgentError,
+    AgentParsingError,
+    AgentExecutionError,
+    AgentGenerationError,
+    AgentMaxIterationsError,
+)
 from .types import AgentAudio, AgentImage
 from .default_tools import FinalAnswerTool
-from .llm_engines import HfApiEngine, MessageRole
+from .llm_engines import MessageRole
 from .monitoring import Monitor
 from .prompts import (
     CODE_SYSTEM_PROMPT,
@@ -50,39 +60,6 @@ from .tools import (
     get_tool_description_with_args,
     Toolbox,
 )
-
-
-class AgentError(Exception):
-    """Base class for other agent-related exceptions"""
-
-    def __init__(self, message):
-        super().__init__(message)
-        self.message = message
-        console.print(f"[bold red]{message}[/bold red]")
-
-
-class AgentParsingError(AgentError):
-    """Exception raised for errors in parsing in the agent"""
-
-    pass
-
-
-class AgentExecutionError(AgentError):
-    """Exception raised for errors in execution in the agent"""
-
-    pass
-
-
-class AgentMaxIterationsError(AgentError):
-    """Exception raised for errors in execution in the agent"""
-
-    pass
-
-
-class AgentGenerationError(AgentError):
-    """Exception raised for errors in generation in the agent"""
-
-    pass
 
 
 @dataclass
@@ -171,7 +148,9 @@ def format_prompt_with_managed_agents_descriptions(
     else:
         return prompt_template.replace(agent_descriptions_placeholder, "")
 
+
 YELLOW_HEX = "#ffdd00"
+
 
 class MultiStepAgent:
     """
@@ -182,7 +161,7 @@ class MultiStepAgent:
     def __init__(
         self,
         tools: Union[List[Tool], Toolbox],
-        llm_engine: Optional[Callable[[List[Dict[str, str]]], str]] = None,
+        llm_engine: Callable[[List[Dict[str, str]]], str],
         system_prompt: Optional[str] = None,
         tool_description_template: Optional[str] = None,
         max_iterations: int = 6,
@@ -195,8 +174,6 @@ class MultiStepAgent:
         monitor_metrics: bool = True,
         planning_interval: Optional[int] = None,
     ):
-        if llm_engine is None:
-            llm_engine = HfApiEngine()
         if system_prompt is None:
             system_prompt = CODE_SYSTEM_PROMPT
         if tool_parser is None:
@@ -222,14 +199,14 @@ class MultiStepAgent:
             self._toolbox = tools
             if add_base_tools:
                 self._toolbox.add_base_tools(
-                    add_python_interpreter=(self.__class__ == JsonAgent)
+                    add_python_interpreter=(self.__class__ == ToolCallingAgent)
                 )
         else:
             self._toolbox = Toolbox(tools, add_base_tools=add_base_tools)
         self._toolbox.add_tool(FinalAnswerTool())
 
         self.system_prompt = self.initialize_system_prompt()
-        self.prompt_messages = None
+        self.input_messages = None
         self.logs = []
         self.task = None
         self.verbose = verbose
@@ -384,23 +361,23 @@ class MultiStepAgent:
         """
         This method provides a final answer to the task, based on the logs of the agent's interactions.
         """
-        self.prompt_messages = [
+        self.input_messages = [
             {
                 "role": MessageRole.SYSTEM,
                 "content": "An agent tried to answer a user query but it got stuck and failed to do so. You are tasked with providing an answer instead. Here is the agent's memory:",
             }
         ]
-        self.prompt_messages += self.write_inner_memory_from_logs()[1:]
-        self.prompt_messages += [
+        self.input_messages += self.write_inner_memory_from_logs()[1:]
+        self.input_messages += [
             {
                 "role": MessageRole.USER,
                 "content": f"Based on the above, please provide an answer to the following user request:\n{task}",
             }
         ]
         try:
-            return self.llm_engine(self.prompt_messages)
+            return self.llm_engine(self.input_messages)
         except Exception as e:
-            error_msg = f"Error in generating final LLM output: {e}."
+            error_msg = f"Error in generating final LLM output:\n{e}"
             console.print(f"[bold red]{error_msg}[/bold red]")
             return error_msg
 
@@ -490,16 +467,20 @@ class MultiStepAgent:
         system_prompt_step = SystemPromptStep(system_prompt=self.system_prompt)
 
         if reset:
-            self.token_count = 0
             self.logs = []
             self.logs.append(system_prompt_step)
+            self.monitor.reset()
         else:
             if len(self.logs) > 0:
                 self.logs[0] = system_prompt_step
             else:
                 self.logs.append(system_prompt_step)
 
-        console.print(Group(Rule("[bold]New run", characters="═", style=YELLOW_HEX), Text(self.task)))
+        console.print(
+            Group(
+                Rule("[bold]New run", characters="═", style=YELLOW_HEX), Text(self.task)
+            )
+        )
         self.logs.append(TaskStep(task=self.task))
 
         if single_step:
@@ -534,7 +515,9 @@ class MultiStepAgent:
                     self.planning_step(
                         task, is_first_step=(iteration == 0), iteration=iteration
                     )
-                console.print(Rule(f"[bold]Step {iteration}", characters="━", style=YELLOW_HEX))
+                console.print(
+                    Rule(f"[bold]Step {iteration}", characters="━", style=YELLOW_HEX)
+                )
 
                 # Run one step!
                 final_answer = self.step(step_log)
@@ -580,7 +563,9 @@ class MultiStepAgent:
                     self.planning_step(
                         task, is_first_step=(iteration == 0), iteration=iteration
                     )
-                console.print(Rule(f"[bold]Step {iteration}", characters="━", style=YELLOW_HEX))
+                console.print(
+                    Rule(f"[bold]Step {iteration}", characters="━", style=YELLOW_HEX)
+                )
 
                 # Run one step!
                 final_answer = self.step(step_log)
@@ -727,138 +712,20 @@ Now begin!""",
             )
 
 
-class JsonAgent(MultiStepAgent):
-    """
-    In this agent, the tool calls will be formulated by the LLM in JSON format, then parsed and executed.
-    """
-
-    def __init__(
-        self,
-        tools: List[Tool],
-        llm_engine: Optional[Callable] = None,
-        system_prompt: Optional[str] = None,
-        grammar: Optional[Dict[str, str]] = None,
-        planning_interval: Optional[int] = None,
-        **kwargs,
-    ):
-        if llm_engine is None:
-            llm_engine = HfApiEngine()
-        if system_prompt is None:
-            system_prompt = JSON_SYSTEM_PROMPT
-        super().__init__(
-            tools=tools,
-            llm_engine=llm_engine,
-            system_prompt=system_prompt,
-            grammar=grammar,
-            planning_interval=planning_interval,
-            **kwargs,
-        )
-
-    def step(self, log_entry: ActionStep) -> Union[None, Any]:
-        """
-        Perform one step in the ReAct framework: the agent thinks, acts, and observes the result.
-        Returns None if the step is not final.
-        """
-        agent_memory = self.write_inner_memory_from_logs()
-
-        self.prompt_messages = agent_memory
-
-        # Add new step in logs
-        log_entry.agent_memory = agent_memory.copy()
-
-        try:
-            additional_args = (
-                {"grammar": self.grammar} if self.grammar is not None else {}
-            )
-            llm_output = self.llm_engine(
-                self.prompt_messages,
-                stop_sequences=["<end_action>", "Observation:"],
-                **additional_args,
-            )
-            log_entry.llm_output = llm_output
-        except Exception as e:
-            raise AgentGenerationError(f"Error in generating llm_engine output: {e}.")
-
-        if self.verbose:
-            console.print(
-                Group(
-                    Rule(
-                        "[italic]Output message of the LLM:",
-                        align="left",
-                        style="orange",
-                    ),
-                    Text(llm_output),
-                )
-            )
-
-        # Parse
-        rationale, action = self.extract_action(
-            llm_output=llm_output, split_token="Action:"
-        )
-
-        try:
-            tool_name, tool_arguments = self.tool_parser(action)
-        except Exception as e:
-            raise AgentParsingError(f"Could not parse the given action: {e}.")
-
-        log_entry.tool_call = ToolCall(
-            tool_name=tool_name, tool_arguments=tool_arguments
-        )
-
-        # Execute
-        console.print(Rule("Agent thoughts:", align="left"), Text(rationale))
-        console.print(
-            Panel(Text(f"Calling tool: '{tool_name}' with arguments: {tool_arguments}"))
-        )
-        if tool_name == "final_answer":
-            if isinstance(tool_arguments, dict):
-                if "answer" in tool_arguments:
-                    answer = tool_arguments["answer"]
-                else:
-                    answer = tool_arguments
-            else:
-                answer = tool_arguments
-            if (
-                isinstance(answer, str) and answer in self.state.keys()
-            ):  # if the answer is a state variable, return the value
-                answer = self.state[answer]
-            log_entry.action_output = answer
-            return answer
-        else:
-            if tool_arguments is None:
-                tool_arguments = {}
-            observation = self.execute_tool_call(tool_name, tool_arguments)
-            observation_type = type(observation)
-            if observation_type in [AgentImage, AgentAudio]:
-                if observation_type == AgentImage:
-                    observation_name = "image.png"
-                elif observation_type == AgentAudio:
-                    observation_name = "audio.mp3"
-                # TODO: observation naming could allow for different names of same type
-
-                self.state[observation_name] = observation
-                updated_information = f"Stored '{observation_name}' in memory."
-            else:
-                updated_information = str(observation).strip()
-            log_entry.observations = updated_information
-            return None
-
 
 class ToolCallingAgent(MultiStepAgent):
     """
-    This agent uses JSON-like tool calls, but to the difference of JsonAgents, it leverages the underlying librarie's tool calling facilities.
+    This agent uses JSON-like tool calls, using method `llm_engine.get_tool_call` to leverage the LLM engine's tool calling capabilities.
     """
 
     def __init__(
         self,
         tools: List[Tool],
-        llm_engine: Optional[Callable] = None,
+        llm_engine: Callable,
         system_prompt: Optional[str] = None,
         planning_interval: Optional[int] = None,
         **kwargs,
     ):
-        if llm_engine is None:
-            llm_engine = HfApiEngine()
         if system_prompt is None:
             system_prompt = TOOL_CALLING_SYSTEM_PROMPT
         super().__init__(
@@ -876,17 +743,19 @@ class ToolCallingAgent(MultiStepAgent):
         """
         agent_memory = self.write_inner_memory_from_logs()
 
-        self.prompt_messages = agent_memory
+        self.input_messages = agent_memory
 
         # Add new step in logs
         log_entry.agent_memory = agent_memory.copy()
 
         try:
             tool_name, tool_arguments, tool_call_id = self.llm_engine.get_tool_call(
-                self.prompt_messages, available_tools=list(self.toolbox._tools.values())
+                self.input_messages,
+                available_tools=list(self.toolbox._tools.values()),
+                stop_sequences=["Observation:"],
             )
         except Exception as e:
-            raise AgentGenerationError(f"Error in generating llm_engine output: {e}.")
+            raise AgentGenerationError(f"Error in generating tool call with llm_engine:\n{e}")
 
         log_entry.tool_call = ToolCall(
             name=tool_name, arguments=tool_arguments, id=tool_call_id
@@ -938,7 +807,7 @@ class CodeAgent(MultiStepAgent):
     def __init__(
         self,
         tools: List[Tool],
-        llm_engine: Optional[Callable] = None,
+        llm_engine: Callable,
         system_prompt: Optional[str] = None,
         grammar: Optional[Dict[str, str]] = None,
         additional_authorized_imports: Optional[List[str]] = None,
@@ -946,8 +815,6 @@ class CodeAgent(MultiStepAgent):
         use_e2b_executor: bool = False,
         **kwargs,
     ):
-        if llm_engine is None:
-            llm_engine = HfApiEngine()
         if system_prompt is None:
             system_prompt = CODE_SYSTEM_PROMPT
         super().__init__(
@@ -994,7 +861,7 @@ class CodeAgent(MultiStepAgent):
         """
         agent_memory = self.write_inner_memory_from_logs()
 
-        self.prompt_messages = agent_memory.copy()
+        self.input_messages = agent_memory.copy()
 
         # Add new step in logs
         log_entry.agent_memory = agent_memory.copy()
@@ -1004,13 +871,13 @@ class CodeAgent(MultiStepAgent):
                 {"grammar": self.grammar} if self.grammar is not None else {}
             )
             llm_output = self.llm_engine(
-                self.prompt_messages,
+                self.input_messages,
                 stop_sequences=["<end_action>", "Observation:"],
                 **additional_args,
             )
             log_entry.llm_output = llm_output
         except Exception as e:
-            raise AgentGenerationError(f"Error in generating llm_engine output: {e}.")
+            raise AgentGenerationError(f"Error in generating llm_engine output:\n{e}")
 
         if self.verbose:
             console.print(
@@ -1026,17 +893,7 @@ class CodeAgent(MultiStepAgent):
 
         # Parse
         try:
-            rationale, raw_code_action = self.extract_action(
-                llm_output=llm_output, split_token="Code:"
-            )
-        except Exception as e:
-            console.print(
-                f"Error in extracting action, trying to parse the whole output. Error trace: {e}"
-            )
-            rationale, raw_code_action = llm_output, llm_output
-
-        try:
-            code_action = parse_code_blob(raw_code_action)
+            code_action = parse_code_blob(llm_output)
         except Exception as e:
             error_msg = f"Error in code parsing: {e}. Make sure to provide correct code"
             raise AgentParsingError(error_msg)
@@ -1048,11 +905,6 @@ class CodeAgent(MultiStepAgent):
         )
 
         # Execute
-        if self.verbose:
-            console.print(
-                Group(Rule("[italic]Agent thoughts", align="left"), Text(rationale))
-            )
-
         console.print(
             Panel(
                 Syntax(code_action, lexer="python", theme="github-dark"),
@@ -1148,10 +1000,8 @@ class ManagedAgent:
 
 
 __all__ = [
-    "AgentError",
     "ManagedAgent",
     "MultiStepAgent",
     "CodeAgent",
-    "JsonAgent",
     "Toolbox",
 ]

@@ -328,7 +328,7 @@ if __name__ == '__main__':
         if self.socket:
             try:
                 self.socket.close()
-            except:
+            except Exception:
                 pass
 
         if self.container:

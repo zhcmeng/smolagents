@@ -39,9 +39,9 @@ Here is a video overview of how that works:
 
 ![Framework of a React Agent](https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/blog/open-source-llms-as-agents/ReAct.png)
 
-We implement two versions of JsonAgent: 
-- [`JsonAgent`] generates tool calls as a JSON in its output.
-- [`CodeAgent`] is a new type of JsonAgent that generates its tool calls as blobs of code, which works really well for LLMs that have strong coding performance.
+We implement two versions of ToolCallingAgent: 
+- [`ToolCallingAgent`] generates tool calls as a JSON in its output.
+- [`CodeAgent`] is a new type of ToolCallingAgent that generates its tool calls as blobs of code, which works really well for LLMs that have strong coding performance.
 
 > [!TIP]
 > We also provide an option to run agents in one-shot: just pass `single_step=True` when launching the agent, like `agent.run(your_task, single_step=True)`

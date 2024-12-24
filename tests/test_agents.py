@@ -25,7 +25,7 @@ from smolagents.agents import (
     AgentMaxIterationsError,
     ManagedAgent,
     CodeAgent,
-    JsonAgent,
+    ToolCallingAgent,
     Toolbox,
     ToolCall,
 )
@@ -182,7 +182,7 @@ class AgentTests(unittest.TestCase):
         assert output == "7.2904"
 
     def test_fake_json_agent(self):
-        agent = JsonAgent(tools=[PythonInterpreterTool()], llm_engine=fake_json_llm)
+        agent = ToolCallingAgent(tools=[PythonInterpreterTool()], llm_engine=fake_json_llm)
         output = agent.run("What is 2 multiplied by 3.6452?")
         assert isinstance(output, str)
         assert output == "7.2904"
@@ -212,7 +212,7 @@ Action:
             """
             return Image.open(Path(get_tests_dir("fixtures")) / "000000039769.png")
 
-        agent = JsonAgent(
+        agent = ToolCallingAgent(
             tools=[fake_image_generation_tool], llm_engine=fake_json_llm_image
         )
         output = agent.run("Make me an image.")
@@ -262,7 +262,7 @@ Action:
         assert "Evaluation stopped at line 'print = 2' because of" in str(agent.logs)
 
     def test_setup_agent_with_empty_toolbox(self):
-        JsonAgent(llm_engine=fake_json_llm, tools=[])
+        ToolCallingAgent(llm_engine=fake_json_llm, tools=[])
 
     def test_fails_max_iterations(self):
         agent = CodeAgent(
@@ -295,7 +295,7 @@ Action:
 
         # check that add_base_tools will not interfere with existing tools
         with pytest.raises(KeyError) as e:
-            agent = JsonAgent(
+            agent = ToolCallingAgent(
                 tools=toolset_3, llm_engine=fake_json_llm, add_base_tools=True
             )
         assert "already exists in the toolbox" in str(e)

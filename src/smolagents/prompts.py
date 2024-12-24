@@ -152,8 +152,8 @@ Specifically, this json should have an `action` key (name of the tool to use) an
 
 The $ACTION_JSON_BLOB should only contain a SINGLE action, do NOT return a list of multiple actions. It should be formatted in json. Do not try to escape special characters. Here is the template of a valid $ACTION_JSON_BLOB:
 {
-  "action": $TOOL_NAME,
-  "action_input": $INPUT
+  "tool_name": $TOOL_NAME,
+  "tool_arguments": $INPUT
 }<end_action>
 
 Make sure to have the $INPUT as a dictionary in the right format for the tool you are using, and do not put variable names as input if you can find the right values.
@@ -175,15 +175,15 @@ Observation: "image_1.jpg"
 Thought: I need to transform the image that I received in the previous observation to make it green.
 Action:
 {
-  "action": "image_transformer",
-  "action_input": {"image": "image_1.jpg"}
+  "tool_name": "image_transformer",
+  "tool_arguments": {"image": "image_1.jpg"}
 }<end_action>
 
-To provide the final answer to the task, use an action blob with "action": "final_answer" tool. It is the only way to complete the task, else you will be stuck on a loop. So your final output should look like this:
+To provide the final answer to the task, use an action blob with "tool_name": "final_answer" tool. It is the only way to complete the task, else you will be stuck on a loop. So your final output should look like this:
 Action:
 {
-  "action": "final_answer",
-  "action_input": {"answer": "insert your final answer here"}
+  "tool_name": "final_answer",
+  "tool_arguments": {"answer": "insert your final answer here"}
 }<end_action>
 
 
@@ -194,8 +194,8 @@ Task: "Generate an image of the oldest person in this document."
 Thought: I will proceed step by step and use the following tools: `document_qa` to find the oldest person in the document, then `image_generator` to generate an image according to the answer.
 Action:
 {
-  "action": "document_qa",
-  "action_input": {"document": "document.pdf", "question": "Who is the oldest person mentioned?"}
+  "tool_name": "document_qa",
+  "tool_arguments": {"document": "document.pdf", "question": "Who is the oldest person mentioned?"}
 }<end_action>
 Observation: "The oldest person in the document is John Doe, a 55 year old lumberjack living in Newfoundland."
 
@@ -203,16 +203,16 @@ Observation: "The oldest person in the document is John Doe, a 55 year old lumbe
 Thought: I will now generate an image showcasing the oldest person.
 Action:
 {
-  "action": "image_generator",
-  "action_input": {"prompt": "A portrait of John Doe, a 55-year-old man living in Canada."}
+  "tool_name": "image_generator",
+  "tool_arguments": {"prompt": "A portrait of John Doe, a 55-year-old man living in Canada."}
 }<end_action>
 Observation: "image.png"
 
 Thought: I will now return the generated image.
 Action:
 {
-  "action": "final_answer",
-  "action_input": "image.png"
+  "tool_name": "final_answer",
+  "tool_arguments": "image.png"
 }<end_action>
 
 ---
@@ -221,16 +221,16 @@ Task: "What is the result of the following operation: 5 + 3 + 1294.678?"
 Thought: I will use python code evaluator to compute the result of the operation and then return the final answer using the `final_answer` tool
 Action:
 {
-    "action": "python_interpreter",
-    "action_input": {"code": "5 + 3 + 1294.678"}
+    "tool_name": "python_interpreter",
+    "tool_arguments": {"code": "5 + 3 + 1294.678"}
 }<end_action>
 Observation: 1302.678
 
 Thought: Now that I know the result, I will now return it.
 Action:
 {
-  "action": "final_answer",
-  "action_input": "1302.678"
+  "tool_name": "final_answer",
+  "tool_arguments": "1302.678"
 }<end_action>
 
 ---
@@ -239,8 +239,8 @@ Task: "Which city has the highest population , Guangzhou or Shanghai?"
 Thought: I need to get the populations for both cities and compare them: I will use the tool `search` to get the population of both cities.
 Action:
 {
-    "action": "search",
-    "action_input": "Population Guangzhou"
+    "tool_name": "search",
+    "tool_arguments": "Population Guangzhou"
 }<end_action>
 Observation: ['Guangzhou has a population of 15 million inhabitants as of 2021.']
 
@@ -248,16 +248,16 @@ Observation: ['Guangzhou has a population of 15 million inhabitants as of 2021.'
 Thought: Now let's get the population of Shanghai using the tool 'search'.
 Action:
 {
-    "action": "search",
-    "action_input": "Population Shanghai"
+    "tool_name": "search",
+    "tool_arguments": "Population Shanghai"
 }
 Observation: '26 million (2019)'
 
 Thought: Now I know that Shanghai has a larger population. Let's return the result.
 Action:
 {
-  "action": "final_answer",
-  "action_input": "Shanghai"
+  "tool_name": "final_answer",
+  "tool_arguments": "Shanghai"
 }<end_action>
 
 
@@ -291,15 +291,15 @@ Observation: "image_1.jpg"
 
 Action:
 {
-  "action": "image_transformer",
-  "action_input": {"image": "image_1.jpg"}
+  "tool_name": "image_transformer",
+  "tool_arguments": {"image": "image_1.jpg"}
 }
 
-To provide the final answer to the task, use an action blob with "action": "final_answer" tool. It is the only way to complete the task, else you will be stuck on a loop. So your final output should look like this:
+To provide the final answer to the task, use an action blob with "tool_name": "final_answer" tool. It is the only way to complete the task, else you will be stuck on a loop. So your final output should look like this:
 Action:
 {
-  "action": "final_answer",
-  "action_input": {"answer": "insert your final answer here"}
+  "tool_name": "final_answer",
+  "tool_arguments": {"answer": "insert your final answer here"}
 }
 
 
@@ -309,22 +309,22 @@ Task: "Generate an image of the oldest person in this document."
 
 Action:
 {
-  "action": "document_qa",
-  "action_input": {"document": "document.pdf", "question": "Who is the oldest person mentioned?"}
+  "tool_name": "document_qa",
+  "tool_arguments": {"document": "document.pdf", "question": "Who is the oldest person mentioned?"}
 }
 Observation: "The oldest person in the document is John Doe, a 55 year old lumberjack living in Newfoundland."
 
 Action:
 {
-  "action": "image_generator",
-  "action_input": {"prompt": "A portrait of John Doe, a 55-year-old man living in Canada."}
+  "tool_name": "image_generator",
+  "tool_arguments": {"prompt": "A portrait of John Doe, a 55-year-old man living in Canada."}
 }
 Observation: "image.png"
 
 Action:
 {
-  "action": "final_answer",
-  "action_input": "image.png"
+  "tool_name": "final_answer",
+  "tool_arguments": "image.png"
 }
 
 ---
@@ -332,15 +332,15 @@ Task: "What is the result of the following operation: 5 + 3 + 1294.678?"
 
 Action:
 {
-    "action": "python_interpreter",
-    "action_input": {"code": "5 + 3 + 1294.678"}
+    "tool_name": "python_interpreter",
+    "tool_arguments": {"code": "5 + 3 + 1294.678"}
 }
 Observation: 1302.678
 
 Action:
 {
-  "action": "final_answer",
-  "action_input": "1302.678"
+  "tool_name": "final_answer",
+  "tool_arguments": "1302.678"
 }
 
 ---
@@ -348,23 +348,23 @@ Task: "Which city has the highest population , Guangzhou or Shanghai?"
 
 Action:
 {
-    "action": "search",
-    "action_input": "Population Guangzhou"
+    "tool_name": "search",
+    "tool_arguments": "Population Guangzhou"
 }
 Observation: ['Guangzhou has a population of 15 million inhabitants as of 2021.']
 
 
 Action:
 {
-    "action": "search",
-    "action_input": "Population Shanghai"
+    "tool_name": "search",
+    "tool_arguments": "Population Shanghai"
 }
 Observation: '26 million (2019)'
 
 Action:
 {
-  "action": "final_answer",
-  "action_input": "Shanghai"
+  "tool_name": "final_answer",
+  "tool_arguments": "Shanghai"
 }
 
 

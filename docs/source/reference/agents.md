@@ -31,7 +31,7 @@ Our agents inherit from [`MultiStepAgent`], which means they can act in multiple
 
 We provide two types of agents, based on the main [`Agent`] class.
   - [`CodeAgent`] is the default agent, it writes its tool calls in Python code.
-  - [`JsonAgent`] writes its tool calls in JSON.
+  - [`ToolCallingAgent`] writes its tool calls in JSON.
 
 
 ### Classes of agents
@@ -40,7 +40,7 @@ We provide two types of agents, based on the main [`Agent`] class.
 
 [[autodoc]] CodeAgent
 
-[[autodoc]] JsonAgent
+[[autodoc]] ToolCallingAgent
 
 
 ### ManagedAgent

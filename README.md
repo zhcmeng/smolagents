@@ -48,9 +48,9 @@ pip install agents
 ```
 Then define your agent, give it the tools it needs and run it!
 ```py
-from smolagents import CodeAgent, WebSearchTool
+from smolagents import CodeAgent, DuckDuckGoSearchTool, HfApiEngine
 
-agent = CodeAgent(tools=[WebSearchTool()])
+agent = CodeAgent(tools=[DuckDuckGoSearchTool()], llm_engine=HfApiEngine())
 
 agent.run("What time would the world's fastest car take to travel from New York to San Francisco?")
 ```
@@ -68,6 +68,6 @@ Especially, since code execution can be a security concern (arbitrary code execu
 
 ## How lightweight is it?
 
-We strived to keep abstractions to a strict minimum, with the main code in `agents.py` being roughly 1,000 lines of code, and still being quite complete, with several types of agents implemented: `CodeAgent` writing its actions in code snippets, `JsonAgent`, `ToolCallingAgent`...
+We strived to keep abstractions to a strict minimum, with the main code in `agents.py` being roughly 1,000 lines of code, and still being quite complete, with several types of agents implemented: `CodeAgent` writing its actions in code snippets, and the more classic `ToolCallingAgent` that leverage built-in tool calling methods.
 
-Many people ask: why use a framework at all? Well, because a big part of this stuff is non-trivial. For instance, the code agent has to keep a consistent format for code throughout its system prompt, its parser, the execution. Its variables have to be properly handled throughout. So our framework handles this complexity for you.
+Many people ask: why use a framework at all? Well, because a big part of this stuff is non-trivial. For instance, the code agent has to keep a consistent format for code throughout its system prompt, its parser, the execution. So our framework handles this complexity for you. But of course we still encourage you to hack into the source code and use only the bits that you need, to the exclusion of everything else!

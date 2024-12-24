@@ -15,7 +15,7 @@
 
 import unittest
 
-from smolagents import AgentImage, AgentError, CodeAgent, JsonAgent, stream_to_gradio
+from smolagents import AgentImage, AgentError, CodeAgent, ToolCallingAgent, stream_to_gradio
 
 
 class MonitoringTester(unittest.TestCase):
@@ -52,7 +52,7 @@ final_answer('This is the final answer.')
             def __call__(self, prompt, **kwargs):
                 return 'Action:{"action": "final_answer", "action_input": {"answer": "image"}}'
 
-        agent = JsonAgent(
+        agent = ToolCallingAgent(
             tools=[],
             llm_engine=FakeLLMEngine(),
             max_iterations=1,
@@ -131,7 +131,7 @@ final_answer('This is the final answer.')
                 'Action:{"action": "final_answer", "action_input": {"answer": "image"}}'
             )
 
-        agent = JsonAgent(
+        agent = ToolCallingAgent(
             tools=[],
             llm_engine=dummy_llm_engine,
             max_iterations=1,

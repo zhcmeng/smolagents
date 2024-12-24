@@ -69,19 +69,6 @@ agent.run(
 )
 ```
 
-You can even leave the argument `llm_engine` undefined, and an [`HfApiEngine`] will be created by default.
-
-```python
-from smolagents import CodeAgent
-
-agent = CodeAgent(tools=[], add_base_tools=True)
-
-agent.run(
-    "Could you give me the 118th number in the Fibonacci sequence?",
-    additional_detail="We adopt the convention where the first two numbers are 0 and 1."
-)
-```
-
 Note that we used an additional `additional_detail` argument: you can additional kwargs to `agent.run()`, they will be baked into the prompt as text.
 
 You can use this to indicate the path to local or remote files for the model to use:
@@ -89,7 +76,7 @@ You can use this to indicate the path to local or remote files for the model to 
 ```py
 from smolagents import CodeAgent, Tool, SpeechToTextTool
 
-agent = CodeAgent(tools=[SpeechToTextTool()], add_base_tools=True)
+agent = CodeAgent(tools=[SpeechToTextTool()], llm_engine=llm_engine, add_base_tools=True)
 
 agent.run("Why does Mike not know many people in New York?", audio="https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/transformers/recording.mp3")
 ```
@@ -109,7 +96,7 @@ You can authorize additional imports by passing the authorized modules as a list
 ```py
 from smolagents import CodeAgent
 
-agent = CodeAgent(tools=[], additional_authorized_imports=['requests', 'bs4'])
+agent = CodeAgent(tools=[], llm_engine=llm_engine, additional_authorized_imports=['requests', 'bs4'])
 agent.run("Could you get me the title of the page at url 'https://huggingface.co/blog'?")
 ```
 This gives you at the end of the agent run:
@@ -178,11 +165,11 @@ You could improve the system prompt, for example, by adding an explanation of th
 For maximum flexibility, you can overwrite the whole system prompt template by passing your custom prompt as an argument to the `system_prompt` parameter.
 
 ```python
-from smolagents import JsonAgent, PythonInterpreterTool, JSON_SYSTEM_PROMPT
+from smolagents import ToolCallingAgent, PythonInterpreterTool, JSON_SYSTEM_PROMPT
 
 modified_prompt = JSON_SYSTEM_PROMPT
 
-agent = JsonAgent(tools=[PythonInterpreterTool()], system_prompt=modified_prompt)
+agent = ToolCallingAgent(tools=[PythonInterpreterTool()], llm_engine=llm_engine, system_prompt=modified_prompt)
 ```
 
 > [!WARNING]
@@ -209,7 +196,7 @@ When the agent is initialized, the tool attributes are used to generate a tool d
 Transformers comes with a default toolbox for empowering agents, that you can add to your agent upon initialization with argument `add_base_tools = True`:
 
 - **DuckDuckGo web search***: performs a web search using DuckDuckGo browser.
-- **Python code interpreter**: runs your the LLM generated Python code in a secure environment. This tool will only be added to [`JsonAgent`] if you initialize it with `add_base_tools=True`, since code-based agent can already natively execute Python code
+- **Python code interpreter**: runs your the LLM generated Python code in a secure environment. This tool will only be added to [`ToolCallingAgent`] if you initialize it with `add_base_tools=True`, since code-based agent can already natively execute Python code
 - **Transcriber**: a speech-to-text pipeline built on Whisper-Turbo that transcribes an audio to text.
 
 You can manually use a tool by calling the [`load_tool`] function and a task to perform.

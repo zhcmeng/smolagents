@@ -47,6 +47,39 @@ BASE_BUILTIN_MODULES = [
 ]
 
 
+class AgentError(Exception):
+    """Base class for other agent-related exceptions"""
+
+    def __init__(self, message):
+        super().__init__(message)
+        self.message = message
+        console.print(f"[bold red]{message}[/bold red]")
+
+
+class AgentParsingError(AgentError):
+    """Exception raised for errors in parsing in the agent"""
+
+    pass
+
+
+class AgentExecutionError(AgentError):
+    """Exception raised for errors in execution in the agent"""
+
+    pass
+
+
+class AgentMaxIterationsError(AgentError):
+    """Exception raised for errors in execution in the agent"""
+
+    pass
+
+
+class AgentGenerationError(AgentError):
+    """Exception raised for errors in generation in the agent"""
+
+    pass
+
+
 def parse_json_blob(json_blob: str) -> Dict[str, str]:
     try:
         first_accolade_index = json_blob.find("{")
@@ -97,17 +130,25 @@ Code:
 def parse_json_tool_call(json_blob: str) -> Tuple[str, Union[str, None]]:
     json_blob = json_blob.replace("```json", "").replace("```", "")
     tool_call = parse_json_blob(json_blob)
-    if "action" in tool_call and "action_input" in tool_call:
-        return tool_call["action"], tool_call["action_input"]
-    elif "action" in tool_call:
-        return tool_call["action"], None
-    else:
-        missing_keys = [
-            key for key in ["action", "action_input"] if key not in tool_call
-        ]
-        error_msg = f"Missing keys: {missing_keys} in blob {tool_call}"
-        console.print(f"[bold red]{error_msg}[/bold red]")
-        raise ValueError(error_msg)
+    tool_name_key, tool_arguments_key = None, None
+    for possible_tool_name_key in ["action", "tool_name", "tool", "name", "function"]:
+        if possible_tool_name_key in tool_call:
+            tool_name_key = possible_tool_name_key
+    for possible_tool_arguments_key in [
+        "action_input",
+        "tool_arguments",
+        "tool_args",
+        "parameters",
+    ]:
+        if possible_tool_arguments_key in tool_call:
+            tool_arguments_key = possible_tool_arguments_key
+    if tool_name_key is not None:
+        if tool_arguments_key is not None:
+            return tool_call[tool_name_key], tool_call[tool_arguments_key]
+        else:
+            return tool_call[tool_name_key], None
+    error_msg = "No tool name key found in tool call!" + f" Tool call: {json_blob}"
+    raise AgentParsingError(error_msg)
 
 
 MAX_LENGTH_TRUNCATE_CONTENT = 20000
@@ -266,4 +307,4 @@ def instance_to_source(instance, base_cls=None):
     return "\n".join(final_lines)
 
 
-__all__ = []
+__all__ = ["AgentError"]

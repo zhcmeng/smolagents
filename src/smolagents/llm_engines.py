@@ -17,13 +17,17 @@
 from copy import deepcopy
 from enum import Enum
 from typing import Dict, List, Optional, Tuple
-from transformers import AutoTokenizer, Pipeline
+from transformers import AutoTokenizer, AutoModelForCausalLM, StoppingCriteria, StoppingCriteriaList
+
 import logging
 import os
+import random
+
 from openai import OpenAI
 from huggingface_hub import InferenceClient
 
-from smolagents import Tool
+from .tools import Tool
+from .utils import parse_json_tool_call
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +68,7 @@ def get_json_schema(tool: Tool) -> Dict:
             "description": tool.description,
             "parameters": {
                 "type": "object",
-                "properties": tool.inputs,
+                "properties": {k: {k2: v2.replace("any", "object") for k2, v2 in v.items()} for k, v in tool.inputs.items()},
                 "required": list(tool.inputs.keys()),
             },
         },
@@ -91,7 +95,8 @@ def remove_stop_sequences(content: str, stop_sequences: List[str]) -> str:
 
 
 def get_clean_message_list(
-    message_list: List[Dict[str, str]], role_conversions: Dict[str, str] = {}
+    message_list: List[Dict[str, str]],
+    role_conversions: Dict[MessageRole, MessageRole] = {},
 ) -> List[Dict[str, str]]:
     """
     Subsequent messages with the same role will be concatenated to a single message.
@@ -274,25 +279,40 @@ class HfApiEngine(HfEngine):
 
 
 class TransformersEngine(HfEngine):
-    """This engine uses a pre-initialized local text-generation pipeline."""
+    """This engine initializes a model and tokenizer from the given `model_id`."""
 
-    def __init__(self, pipeline: Pipeline, model_id: Optional[str] = None):
+    def __init__(self, model_id: Optional[str] = None):
         super().__init__()
+        default_model_id = "HuggingFaceTB/SmolLM2-1.7B-Instruct"
         if model_id is None:
-            model_id = "HuggingFaceTB/SmolLM2-1.7B-Instruct"
+            model_id = default_model_id
             logger.warning(
                 f"`model_id`not provided, using this default tokenizer for token counts: '{model_id}'"
             )
         try:
             self.tokenizer = AutoTokenizer.from_pretrained(model_id)
+            self.model = AutoModelForCausalLM.from_pretrained(model_id)
         except Exception as e:
             logger.warning(
-                f"Failed to load tokenizer for model {model_id}: {e}. Loading default tokenizer instead."
+                f"Failed to load tokenizer and model for {model_id=}: {e}. Loading default tokenizer and model instead from {model_id=}."
             )
-            self.tokenizer = AutoTokenizer.from_pretrained(
-                "HuggingFaceTB/SmolLM2-1.7B-Instruct"
-            )
-        self.pipeline = pipeline
+            self.tokenizer = AutoTokenizer.from_pretrained(default_model_id)
+            self.model = AutoModelForCausalLM.from_pretrained(default_model_id)
+
+    def make_stopping_criteria(self, stop_sequences: List[str]) -> StoppingCriteriaList:
+        class StopOnTokens(StoppingCriteria):
+            def __init__(self, stop_token_ids):
+                self.stop_token_ids = stop_token_ids
+
+            def __call__(self, input_ids, scores):
+                for stop_ids in self.stop_token_ids:
+                    if input_ids[0][-len(stop_ids) :].tolist() == stop_ids:
+                        return True
+                return False
+
+        stop_token_ids = [self.tokenizer.encode("Observation:")[1:]]  # Remove BOS token
+        stopping_criteria = StoppingCriteriaList([StopOnTokens(stop_token_ids)])
+        return stopping_criteria
 
     def generate(
         self,
@@ -306,45 +326,93 @@ class TransformersEngine(HfEngine):
         )
 
         # Get LLM output
-        if stop_sequences is not None and len(stop_sequences) > 0:
-            stop_strings = stop_sequences
-        else:
-            stop_strings = None
-
-        output = self.pipeline(
+        prompt = self.tokenizer.apply_chat_template(
             messages,
-            stop_strings=stop_strings,
-            max_length=max_tokens,
-            tokenizer=self.pipeline.tokenizer,
+            return_tensors="pt",
+            return_dict=True,
+        )
+        prompt = prompt.to(self.model.device)
+        count_prompt_tokens = prompt["input_ids"].shape[1]
+
+        out = self.model.generate(
+            **prompt,
+            max_new_tokens=max_tokens,
+            stopping_criteria=(
+                self.make_stopping_criteria(stop_sequences) if stop_sequences else None
+            ),
+        )
+        generated_tokens = out[0, count_prompt_tokens:]
+        response = self.tokenizer.decode(generated_tokens, skip_special_tokens=True)
+
+        self.last_input_token_count = count_prompt_tokens
+        self.last_output_token_count = len(generated_tokens)
+
+        if stop_sequences is not None:
+            response = remove_stop_sequences(response, stop_sequences)
+        return response
+
+    def get_tool_call(
+        self,
+        messages: List[Dict[str, str]],
+        available_tools: List[Tool],
+        stop_sequences: Optional[List[str]] = None,
+        max_tokens: int = 500,
+    ) -> str:
+        messages = get_clean_message_list(
+            messages, role_conversions=tool_role_conversions
         )
 
-        response = output[0]["generated_text"][-1]["content"]
-        self.last_input_token_count = len(
-            self.tokenizer.apply_chat_template(messages, tokenize=True)
+        prompt = self.tokenizer.apply_chat_template(
+            messages,
+            tools=[get_json_schema(tool) for tool in available_tools],
+            return_tensors="pt",
+            return_dict=True,
+            add_generation_prompt=True,
         )
-        self.last_output_token_count = len(self.tokenizer.encode(response))
-        return response
+        prompt = prompt.to(self.model.device)
+        count_prompt_tokens = prompt["input_ids"].shape[1]
+
+        out = self.model.generate(
+            **prompt,
+            max_new_tokens=max_tokens,
+            stopping_criteria=(
+                self.make_stopping_criteria(stop_sequences) if stop_sequences else None
+            ),
+        )
+        generated_tokens = out[0, count_prompt_tokens:]
+        response = self.tokenizer.decode(generated_tokens, skip_special_tokens=True)
+
+        self.last_input_token_count = count_prompt_tokens
+        self.last_output_token_count = len(generated_tokens)
+
+        if stop_sequences is not None:
+            response = remove_stop_sequences(response, stop_sequences)
+
+        tool_name, tool_input = parse_json_tool_call(response)
+        call_id = "".join(random.choices("0123456789", k=5))
+
+        return tool_name, tool_input, call_id
 
 
 class OpenAIEngine:
     def __init__(
         self,
-        model_name: Optional[str] = None,
+        model_id: Optional[str] = None,
         api_key: Optional[str] = None,
         base_url: Optional[str] = None,
     ):
         """Creates a LLM Engine that follows OpenAI format.
 
         Args:
-           model_name (`str`, *optional*): the model name to use.
+           model_id (`str`, *optional*): the model name to use.
            api_key (`str`, *optional*): your API key.
            base_url (`str`, *optional*): the URL to use if using a different inference service than OpenAI, for instance "https://api-inference.huggingface.co/v1/".
         """
-        if model_name is None:
-            model_name = "gpt-4o"
+        if model_id is None:
+            model_id = "gpt-4o"
         if api_key is None:
             api_key = os.getenv("OPENAI_API_KEY")
-        self.model_name = model_name
+        self.model_id = model_id
         self.client = OpenAI(
             base_url=base_url,
             api_key=api_key,
@@ -364,7 +432,7 @@ class OpenAIEngine:
         )
 
         response = self.client.chat.completions.create(
-            model=self.model_name,
+            model=self.model_id,
             messages=messages,
             stop=stop_sequences,
             temperature=0.5,
@@ -378,13 +446,14 @@ class OpenAIEngine:
         self,
         messages: List[Dict[str, str]],
         available_tools: List[Tool],
+        stop_sequences: Optional[List[str]] = None,
     ):
         """Generates a tool call for the given message list. This method is used only by `ToolCallingAgent`."""
         messages = get_clean_message_list(
             messages, role_conversions=tool_role_conversions
         )
         response = self.client.chat.completions.create(
-            model=self.model_name,
+            model=self.model_id,
             messages=messages,
             tools=[get_json_schema(tool) for tool in available_tools],
             tool_choice="required",
@@ -396,12 +465,12 @@ class OpenAIEngine:
 
 
 class AnthropicEngine:
-    def __init__(self, model_name="claude-3-5-sonnet-20240620", use_bedrock=False):
+    def __init__(self, model_id="claude-3-5-sonnet-20240620", use_bedrock=False):
         from anthropic import Anthropic, AnthropicBedrock
 
-        self.model_name = model_name
+        self.model_id = model_id
         if use_bedrock:
-            self.model_name = "anthropic.claude-3-5-sonnet-20240620-v1:0"
+            self.model_id = "anthropic.claude-3-5-sonnet-20240620-v1:0"
             self.client = AnthropicBedrock(
                 aws_access_key=os.getenv("AWS_BEDROCK_ID"),
                 aws_secret_key=os.getenv("AWS_BEDROCK_KEY"),
@@ -454,7 +523,7 @@ class AnthropicEngine:
             messages
         )
         response = self.client.messages.create(
-            model=self.model_name,
+            model=self.model_id,
             system=system_prompt,
             messages=filtered_messages,
             stop_sequences=stop_sequences,
@@ -471,6 +540,7 @@ class AnthropicEngine:
         self,
         messages: List[Dict[str, str]],
         available_tools: List[Tool],
+        stop_sequences: Optional[List[str]] = None,
         max_tokens: int = 1500,
     ):
         """Generates a tool call for the given message list. This method is used only by `ToolCallingAgent`."""
@@ -481,7 +551,7 @@ class AnthropicEngine:
             messages
         )
         response = self.client.messages.create(
-            model=self.model_name,
+            model=self.model_id,
             system=system_prompt,
             messages=filtered_messages,
             tools=[get_json_schema_anthropic(tool) for tool in available_tools],
@@ -493,6 +563,36 @@ class AnthropicEngine:
         self.last_output_token_count = response.usage.output_tokens
         return tool_call.name, tool_call.input, tool_call.id
 
+class LiteLLMEngine():
+    def __init__(self, model_id="anthropic/claude-3-5-sonnet-20240620"):
+        self.model_id = model_id
+        import os, litellm
+
+        # IMPORTANT - Set this to TRUE to add the function to the prompt for Non OpenAI LLMs
+        litellm.add_function_to_prompt = True
+    
+    def get_tool_call(
+            self,
+            messages: List[Dict[str, str]],
+            available_tools: List[Tool],
+            stop_sequences: Optional[List[str]] = None,
+            max_tokens: int = 1500,
+        ):
+        from litellm import completion
+        messages = get_clean_message_list(
+            messages, role_conversions=tool_role_conversions
+        )
+        response = completion(
+            model=self.model_id,
+            messages=messages,
+            tools=[get_json_schema(tool) for tool in available_tools],
+            tool_choice="required",
+            max_tokens=max_tokens,
+            stop=stop_sequences,
+        )
+        tool_calls = response.choices[0].message.tool_calls[0]
+        return tool_calls.function.name, tool_calls.function.arguments, tool_calls.id
+
 
 __all__ = [
     "MessageRole",
@@ -503,4 +603,5 @@ __all__ = [
     "HfApiEngine",
     "OpenAIEngine",
     "AnthropicEngine",
+    "LiteLLMEngine",
 ]

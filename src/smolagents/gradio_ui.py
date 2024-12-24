@@ -15,7 +15,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from .types import AgentAudio, AgentImage, AgentText, handle_agent_output_types
-from .agents import BaseAgent, AgentStep, ActionStep
+from .agents import MultiStepAgent, AgentStep, ActionStep
 import gradio as gr
 
 
@@ -83,7 +83,7 @@ def stream_to_gradio(
 class GradioUI:
     """A one-line interface to launch your agent in Gradio"""
 
-    def __init__(self, agent: BaseAgent):
+    def __init__(self, agent: MultiStepAgent):
         self.agent = agent
 
     def interact_with_agent(self, prompt, messages):

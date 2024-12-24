@@ -177,6 +177,7 @@ class MultiStepAgent:
     Agent class that solves the given task step by step, using the ReAct framework:
     While the objective is not reached, the agent will perform a cycle of action (given by the LLM) and observation (obtained from the environment).
     """
+
     def __init__(
         self,
         tools: Union[List[Tool], Toolbox],
@@ -377,7 +378,6 @@ class MultiStepAgent:
                 f"Error: No '{split_token}' token provided in your output.\nYour output:\n{llm_output}\n. Be sure to include an action, prefaced with '{split_token}'!"
             )
         return rationale.strip(), action.strip()
-
 
     def provide_final_answer(self, task) -> str:
         """
@@ -1148,7 +1148,6 @@ class ManagedAgent:
 
 __all__ = [
     "AgentError",
-    "BaseAgent",
     "ManagedAgent",
     "MultiStepAgent",
     "CodeAgent",

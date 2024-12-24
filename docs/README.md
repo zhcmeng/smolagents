@@ -47,7 +47,7 @@ Once you have setup the `doc-builder` and additional packages with the pip insta
 you can generate the documentation by typing the following command:
 
 ```bash
-doc-builder build agents docs/source/ --build_dir ~/tmp/test-build
+doc-builder build smolagents docs/source/ --build_dir ~/tmp/test-build
 ```
 
 You can adapt the `--build_dir` to set any temporary folder that you prefer. This command will create it and generate
@@ -59,7 +59,7 @@ Markdown editor.
 To preview the docs, run the following command:
 
 ```bash
-doc-builder preview agents docs/source/
+doc-builder preview smolagents docs/source/
 ```
 
 The docs will be viewable at [http://localhost:5173](http://localhost:5173). You can also preview the docs once you

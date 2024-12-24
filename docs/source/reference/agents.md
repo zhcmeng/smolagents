@@ -30,21 +30,18 @@ contains the API docs for the underlying classes.
 Our agents inherit from [`MultiStepAgent`], which means they can act in multiple steps, each step consisting of one thought, then one tool call and execution. Read more in [this conceptual guide](../conceptual_guides/react).
 
 We provide two types of agents, based on the main [`Agent`] class.
+  - [`CodeAgent`] is the default agent, it writes its tool calls in Python code.
   - [`JsonAgent`] writes its tool calls in JSON.
-  - [`CodeAgent`] writes its tool calls in Python code.
-
-### BaseAgent
-
-[[autodoc]] BaseAgent
 
 
-### React agents
+### Classes of agents
 
 [[autodoc]] MultiStepAgent
 
+[[autodoc]] CodeAgent
+
 [[autodoc]] JsonAgent
 
-[[autodoc]] CodeAgent
 
 ### ManagedAgent
 

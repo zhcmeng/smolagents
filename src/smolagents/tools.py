@@ -20,6 +20,7 @@ import inspect
 import json
 import os
 import tempfile
+import torch
 import textwrap
 from functools import lru_cache, wraps
 from pathlib import Path
@@ -42,6 +43,7 @@ from transformers.utils import (
     is_torch_available,
 )
 from transformers.dynamic_module_utils import get_imports
+from transformers import AutoProcessor
 
 from .types import ImageType, handle_agent_input_types, handle_agent_output_types
 from .utils import instance_to_source
@@ -753,7 +755,7 @@ def launch_gradio_demo(tool: Tool):
 TOOL_MAPPING = {
     "python_interpreter": "PythonInterpreterTool",
     "web_search": "DuckDuckGoSearchTool",
-    "transcriber": "SpeechToTextTool"
+    "transcriber": "SpeechToTextTool",
 }
 
 
@@ -1004,8 +1006,6 @@ class Toolbox:
             toolbox_description += f"\t{tool.name}: {tool.description}\n"
         return toolbox_description
 
-from transformers import AutoProcessor
-from .types import handle_agent_input_types, handle_agent_output_types
 
 class PipelineTool(Tool):
     """
@@ -1073,7 +1073,9 @@ class PipelineTool(Tool):
 
         if model is None:
             if self.default_checkpoint is None:
-                raise ValueError("This tool does not implement a default checkpoint, you need to pass one.")
+                raise ValueError(
+                    "This tool does not implement a default checkpoint, you need to pass one."
+                )
             model = self.default_checkpoint
         if pre_processor is None:
             pre_processor = model
@@ -1098,15 +1100,21 @@ class PipelineTool(Tool):
         from accelerate import PartialState
 
         if isinstance(self.pre_processor, str):
-            self.pre_processor = self.pre_processor_class.from_pretrained(self.pre_processor, **self.hub_kwargs)
+            self.pre_processor = self.pre_processor_class.from_pretrained(
+                self.pre_processor, **self.hub_kwargs
+            )
 
         if isinstance(self.model, str):
-            self.model = self.model_class.from_pretrained(self.model, **self.model_kwargs, **self.hub_kwargs)
+            self.model = self.model_class.from_pretrained(
+                self.model, **self.model_kwargs, **self.hub_kwargs
+            )
 
         if self.post_processor is None:
             self.post_processor = self.pre_processor
         elif isinstance(self.post_processor, str):
-            self.post_processor = self.post_processor_class.from_pretrained(self.post_processor, **self.hub_kwargs)
+            self.post_processor = self.post_processor_class.from_pretrained(
+                self.post_processor, **self.hub_kwargs
+            )
 
         if self.device is None:
             if self.device_map is not None:
@@ -1149,8 +1157,12 @@ class PipelineTool(Tool):
         import torch
         from accelerate.utils import send_to_device
 
-        tensor_inputs = {k: v for k, v in encoded_inputs.items() if isinstance(v, torch.Tensor)}
-        non_tensor_inputs = {k: v for k, v in encoded_inputs.items() if not isinstance(v, torch.Tensor)}
+        tensor_inputs = {
+            k: v for k, v in encoded_inputs.items() if isinstance(v, torch.Tensor)
+        }
+        non_tensor_inputs = {
+            k: v for k, v in encoded_inputs.items() if not isinstance(v, torch.Tensor)
+        }
 
         encoded_inputs = send_to_device(tensor_inputs, self.device)
         outputs = self.forward({**encoded_inputs, **non_tensor_inputs})
@@ -1158,6 +1170,7 @@ class PipelineTool(Tool):
         decoded_outputs = self.decode(outputs)
 
         return handle_agent_output_types(decoded_outputs, self.output_type)
+
 
 __all__ = [
     "AUTHORIZED_TYPES",

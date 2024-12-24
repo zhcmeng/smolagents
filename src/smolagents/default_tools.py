@@ -18,11 +18,13 @@ import json
 import re
 from dataclasses import dataclass
 from typing import Dict
-import torch
 from huggingface_hub import hf_hub_download, list_spaces
 
 from transformers.utils import is_offline_mode
-from transformers.models.whisper import WhisperProcessor, WhisperForConditionalGeneration
+from transformers.models.whisper import (
+    WhisperProcessor,
+    WhisperForConditionalGeneration,
+)
 
 from .local_python_executor import (
     BASE_BUILTIN_MODULES,
@@ -136,10 +138,6 @@ class UserInputTool(Tool):
         user_input = input(f"{question} => ")
         return user_input
 
-import re
-
-from .tools import Tool
-
 
 class DuckDuckGoSearchTool(Tool):
     name = "web_search"
@@ -221,4 +219,11 @@ class SpeechToTextTool(PipelineTool):
         return self.pre_processor.batch_decode(outputs, skip_special_tokens=True)[0]
 
 
-__all__ = ["PythonInterpreterTool", "FinalAnswerTool", "UserInputTool", "DuckDuckGoSearchTool", "VisitWebpageTool", "SpeechToTextTool"]
+__all__ = [
+    "PythonInterpreterTool",
+    "FinalAnswerTool",
+    "UserInputTool",
+    "DuckDuckGoSearchTool",
+    "VisitWebpageTool",
+    "SpeechToTextTool",
+]

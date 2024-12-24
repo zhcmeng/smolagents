@@ -71,12 +71,12 @@ These types have three specific purposes:
 
 ### AgentText
 
-[[autodoc]] agents.types.AgentText
+[[autodoc]] smolagents.types.AgentText
 
 ### AgentImage
 
-[[autodoc]] agents.types.AgentImage
+[[autodoc]] smolagents.types.AgentImage
 
 ### AgentAudio
 
-[[autodoc]] agents.types.AgentAudio
+[[autodoc]] smolagents.types.AgentAudio

@@ -171,6 +171,7 @@ def format_prompt_with_managed_agents_descriptions(
     else:
         return prompt_template.replace(agent_descriptions_placeholder, "")
 
+YELLOW_HEX = "#ffdd00"
 
 class MultiStepAgent:
     """
@@ -498,7 +499,7 @@ class MultiStepAgent:
             else:
                 self.logs.append(system_prompt_step)
 
-        console.print(Group(Rule("[bold]New task", characters="="), Text(self.task)))
+        console.print(Group(Rule("[bold]New run", characters="═", style=YELLOW_HEX), Text(self.task)))
         self.logs.append(TaskStep(task=self.task))
 
         if single_step:
@@ -533,7 +534,7 @@ class MultiStepAgent:
                     self.planning_step(
                         task, is_first_step=(iteration == 0), iteration=iteration
                     )
-                console.rule(f"[bold]Step {iteration}")
+                console.print(Rule(f"[bold]Step {iteration}", characters="━", style=YELLOW_HEX))
 
                 # Run one step!
                 final_answer = self.step(step_log)
@@ -579,7 +580,7 @@ class MultiStepAgent:
                     self.planning_step(
                         task, is_first_step=(iteration == 0), iteration=iteration
                     )
-                console.rule(f"[bold]Step {iteration}")
+                console.print(Rule(f"[bold]Step {iteration}", characters="━", style=YELLOW_HEX))
 
                 # Run one step!
                 final_answer = self.step(step_log)

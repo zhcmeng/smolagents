@@ -30,13 +30,15 @@ class Monitor:
             self.total_input_token_count = 0
             self.total_output_token_count = 0
 
+    def reset(self):
+        self.step_durations = []
+        self.total_input_token_count = 0
+        self.total_output_token_count = 0
+
     def update_metrics(self, step_log):
         step_duration = step_log.duration
         self.step_durations.append(step_duration)
-        console_outputs = [
-            Text(f"Step {len(self.step_durations)}:", style="bold"),
-            Text(f"- Time taken: {step_duration:.2f} seconds"),
-        ]
+        console_outputs = f"[Step {len(self.step_durations)-1}: Duration {step_duration:.2f} seconds"
 
         if getattr(self.tracked_llm_engine, "last_input_token_count", None) is not None:
             self.total_input_token_count += (
@@ -45,11 +47,9 @@ class Monitor:
             self.total_output_token_count += (
                 self.tracked_llm_engine.last_output_token_count
             )
-            console_outputs += [
-                Text(f"- Input tokens: {self.total_input_token_count:,}"),
-                Text(f"- Output tokens: {self.total_output_token_count:,}"),
-            ]
-        console.print(Group(*console_outputs))
+            console_outputs += f"| Input tokens: {self.total_input_token_count:,} | Output tokens: {self.total_output_token_count:,}"
+        console_outputs += "]"
+        console.print(Text(console_outputs, style="dim"))
 
 
 __all__ = ["Monitor"]

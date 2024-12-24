@@ -83,7 +83,7 @@ def get_repo_type(repo_id, repo_type=None, **hub_kwargs):
 
 def setup_default_tools():
     default_tools = {}
-    main_module = importlib.import_module("agents")
+    main_module = importlib.import_module("smolagents")
 
     for task_name, tool_class_name in TOOL_MAPPING.items():
         tool_class = getattr(main_module, tool_class_name)
@@ -239,7 +239,7 @@ class Tool:
 
             forward_source_code = inspect.getsource(self.forward)
             tool_code = textwrap.dedent(f"""
-            from agents import Tool
+            from smolagents import Tool
 
             class {class_name}(Tool):
                 name = "{self.name}"
@@ -288,7 +288,7 @@ class Tool:
         with open(app_file, "w", encoding="utf-8") as f:
             f.write(
                 textwrap.dedent(f"""
-            from agents import launch_gradio_demo
+            from smolagents import launch_gradio_demo
             from tool import {class_name}
 
             tool = {class_name}()
@@ -800,7 +800,7 @@ def load_tool(
     """
     if task_or_repo_id in TOOL_MAPPING:
         tool_class_name = TOOL_MAPPING[task_or_repo_id]
-        main_module = importlib.import_module("agents")
+        main_module = importlib.import_module("smolagents")
         tools_module = main_module
         tool_class = getattr(tools_module, tool_class_name)
         return tool_class(model_repo_id, token=token, **kwargs)

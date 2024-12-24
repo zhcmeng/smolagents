@@ -22,7 +22,7 @@ How to build into this latter category?
 In this guide, we're going to see best practices for building agents.
 
 > [!TIP]
-> If you're new to `agents`, make sure to first read the [intro to agents](./intro_agents).
+> If you're new to building agents, make sure to first read the [intro to agents](./intro_agents) and the [guided tour of smolagents](../guided_tour).
 
 ### The best agentic systems are the simplest: simplify the workflow as much as you can
 
@@ -56,7 +56,7 @@ For instance, here's a tool that :
 First, here's a poor version:
 ```python
 import datetime
-from agents import tool
+from smolagents import tool
 
 def get_weather_report_at_coordinates(coordinates, date_time):
     # Dummy function, returns a list of [temperature in °C, risk of rain on a scale 0-1, wave height in m]
@@ -166,7 +166,7 @@ Better ways to guide your LLM engine are:
 We provide a model for a supplementary planning step, that an agent can run regularly in-between normal action steps. In this step, there is no tool call, the LLM is simply asked to update a list of facts it knows and to reflect on what steps it should take next based on those facts.
 
 ```py
-from agents import load_tool, CodeAgent, HfApiEngine, DuckDuckGoSearchTool
+from smolagents import load_tool, CodeAgent, HfApiEngine, DuckDuckGoSearchTool
 from dotenv import load_dotenv
 
 load_dotenv()

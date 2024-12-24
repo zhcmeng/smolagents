@@ -59,7 +59,7 @@ You will also need a `tools` argument which accepts a list of `Tools` - it can b
 Once you have these two arguments, `tools` and `llm_engine`,  you can create an agent and run it. 
 
 ```python
-from agents import CodeAgent, HfApiEngine
+from smolagents import CodeAgent, HfApiEngine
 
 llm_engine = HfApiEngine(model=model_id)
 agent = CodeAgent(tools=[], llm_engine=llm_engine, add_base_tools=True)
@@ -72,7 +72,7 @@ agent.run(
 You can even leave the argument `llm_engine` undefined, and an [`HfApiEngine`] will be created by default.
 
 ```python
-from agents import CodeAgent
+from smolagents import CodeAgent
 
 agent = CodeAgent(tools=[], add_base_tools=True)
 
@@ -87,7 +87,7 @@ Note that we used an additional `additional_detail` argument: you can additional
 You can use this to indicate the path to local or remote files for the model to use:
 
 ```py
-from agents import CodeAgent, Tool, SpeechToTextTool
+from smolagents import CodeAgent, Tool, SpeechToTextTool
 
 agent = CodeAgent(tools=[SpeechToTextTool()], add_base_tools=True)
 
@@ -107,7 +107,7 @@ The Python interpreter also doesn't allow imports by default outside of a safe l
 You can authorize additional imports by passing the authorized modules as a list of strings in argument `additional_authorized_imports` upon initialization of your [`CodeAgent`] or [`CodeAgent`]:
 
 ```py
-from agents import CodeAgent
+from smolagents import CodeAgent
 
 agent = CodeAgent(tools=[], additional_authorized_imports=['requests', 'bs4'])
 agent.run("Could you get me the title of the page at url 'https://huggingface.co/blog'?")
@@ -178,7 +178,7 @@ You could improve the system prompt, for example, by adding an explanation of th
 For maximum flexibility, you can overwrite the whole system prompt template by passing your custom prompt as an argument to the `system_prompt` parameter.
 
 ```python
-from agents import JsonAgent, PythonInterpreterTool, JSON_SYSTEM_PROMPT
+from smolagents import JsonAgent, PythonInterpreterTool, JSON_SYSTEM_PROMPT
 
 modified_prompt = JSON_SYSTEM_PROMPT
 
@@ -267,7 +267,7 @@ All these will be automatically baked into the agent's system prompt upon initia
 
 Then you can directly initialize your agent:
 ```py
-from agents import CodeAgent
+from smolagents import CodeAgent
 agent = CodeAgent(tools=[model_download_tool], llm_engine=llm_engine)
 agent.run(
     "Can you give me the name of the model that has the most downloads in the 'text-to-video' task on the Hugging Face Hub?"
@@ -290,17 +290,17 @@ And the output:
 ## Multi-agents
 
 Multi-agent has been introduced in Microsoft's framework [Autogen](https://huggingface.co/papers/2308.08155).
-It simply means having several agents working together to solve your task instead of only one.
-It empirically yields better performance on most benchmarks. The reason for this better performance is conceptually simple: for many tasks, rather than using a do-it-all system, you would prefer to specialize units on sub-tasks. Here, having agents with separate tool sets and memories allows to achieve efficient specialization.
+In this type of framework, you have several agents working together to solve your task instead of only one.
+It empirically yields better performance on most benchmarks. The reason for this better performance is conceptually simple: for many tasks, rather than using a do-it-all system, you would prefer to specialize units on sub-tasks. Here, having agents with separate tool sets and memories allows to achieve efficient specialization. For instance, why fill the memory of the code generating agent with all the content of webpages visited by the web search agent? It's better to keep them separate.
 
-You can easily build hierarchical multi-agent systems with `agents`.
+You can easily build hierarchical multi-agent systems with `smolagents`.
 
 To do so, encapsulate the agent in a [`ManagedAgent`] object. This object needs arguments `agent`, `name`, and a `description`, which will then be embedded in the manager agent's system prompt to let it know how to call this managed agent, as we also do for tools.
 
 Here's an example of making an agent that managed a specific web search agent using our [`DuckDuckGoSearchTool`]:
 
 ```py
-from agents import CodeAgent, HfApiEngine, DuckDuckGoSearchTool, ManagedAgent
+from smolagents import CodeAgent, HfApiEngine, DuckDuckGoSearchTool, ManagedAgent
 
 llm_engine = HfApiEngine()
 
@@ -328,7 +328,7 @@ manager_agent.run("Who is the CEO of Hugging Face?")
 You can use `GradioUI` to interactively submit tasks to your agent and observe its thought and execution process, here is an example:
 
 ```py
-from agents import (
+from smolagents import (
     load_tool,
     CodeAgent,
     HfApiEngine,

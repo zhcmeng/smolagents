@@ -1,5 +1,5 @@
-from agents.agents import ToolCallingAgent
-from agents import tool, HfApiEngine, OpenAIEngine, AnthropicEngine
+from smolagents.agents import ToolCallingAgent
+from smolagents import tool, HfApiEngine, OpenAIEngine, AnthropicEngine
 
 # Choose which LLM engine to use!
 llm_engine = OpenAIEngine("gpt-4o")

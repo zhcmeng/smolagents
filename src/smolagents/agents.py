@@ -501,7 +501,7 @@ class MultiStepAgent(BaseAgent):
 
         Example:
         ```py
-        from agents import CodeAgent
+        from smolagents import CodeAgent
         agent = CodeAgent(tools=[])
         agent.run("What is the result of 2 power 3.7384?")
         ```
@@ -873,7 +873,7 @@ class JsonAgent(MultiStepAgent):
 
 class ToolCallingAgent(MultiStepAgent):
     """
-    This agent uses JSON-like tool calls, but to the difference of JsonAgents, it makes use of the underlying librarie's tool calling facilities.
+    This agent uses JSON-like tool calls, but to the difference of JsonAgents, it leverages the underlying librarie's tool calling facilities.
     """
 
     def __init__(

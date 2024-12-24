@@ -20,8 +20,7 @@ rendered properly in your Markdown viewer.
 Here, we're going to see advanced tool usage.
 
 > [!TIP]
-> If you're new to `agents`, make sure to first read the main [agents documentation](./agents).
-
+> If you're new to building agents, make sure to first read the [intro to agents](./intro_agents) and the [guided tour of smolagents](../guided_tour).
 
 ### Directly define a tool by subclassing Tool
 
@@ -41,7 +40,7 @@ The types for both `inputs` and `output_type` should be amongst [Pydantic format
 Also, all imports should be put within the tool's forward function, else you will get an error.
 
 ```python
-from agents import Tool
+from smolagents import Tool
 
 class HFModelDownloadsTool(Tool):
     name = "model_download_counter"
@@ -83,7 +82,7 @@ Once your tool is pushed to Hub, you can load it with the [`~Tool.load_tool`] fu
 Since running tools means running custom code, you need to make sure you trust the repository, and pass `trust_remote_code=True`.
 
 ```python
-from agents import load_tool, CodeAgent
+from smolagents import load_tool, CodeAgent
 
 model_download_tool = load_tool(
     "{your_username}/hf-model-downloads",
@@ -115,7 +114,7 @@ And voilà, here's your image! 🏖️
 Then you can use this tool just like any other tool.  For example, let's improve the prompt  `a rabbit wearing a space suit` and generate an image of it.
 
 ```python
-from agents import CodeAgent, HfApiEngine
+from smolagents import CodeAgent, HfApiEngine
 
 llm_engine = HfApiEngine("Qwen/Qwen2.5-Coder-32B-Instruct")
 agent = CodeAgent(tools=[image_generation_tool], llm_engine=llm_engine)
@@ -182,7 +181,7 @@ You can manage an agent's toolbox by adding or replacing a tool.
 Let's add the `model_download_tool` to an existing agent initialized with only the default toolbox.
 
 ```python
-from agents import HfApiEngine
+from smolagents import HfApiEngine
 
 llm_engine = HfApiEngine("Qwen/Qwen2.5-Coder-32B-Instruct")
 

@@ -1,5 +1,5 @@
-from agents import Tool, CodeAgent
-from agents.default_tools.search import VisitWebpageTool
+from smolagents import Tool, CodeAgent
+from smolagents.default_tools.search import VisitWebpageTool
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -35,7 +35,7 @@ agent = CodeAgent(
 )
 
 if LAUNCH_GRADIO:
-    from agents import GradioUI
+    from smolagents import GradioUI
 
     GradioUI(agent).launch()
 else:

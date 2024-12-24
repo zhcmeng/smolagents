@@ -20,8 +20,8 @@ import pytest
 
 from pathlib import Path
 
-from agents.types import AgentText
-from agents.agents import (
+from smolagents.types import AgentText
+from smolagents.agents import (
     AgentMaxIterationsError,
     ManagedAgent,
     CodeAgent,
@@ -29,8 +29,8 @@ from agents.agents import (
     Toolbox,
     ToolCall,
 )
-from agents.tools import tool
-from agents.default_tools import PythonInterpreterTool
+from smolagents.tools import tool
+from smolagents.default_tools import PythonInterpreterTool
 from transformers.testing_utils import get_tests_dir
 
 

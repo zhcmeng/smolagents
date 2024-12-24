@@ -23,7 +23,7 @@ import os
 from openai import OpenAI
 from huggingface_hub import InferenceClient
 
-from agents import Tool
+from smolagents import Tool
 
 logger = logging.getLogger(__name__)
 
@@ -258,7 +258,7 @@ class HfApiEngine(HfEngine):
         messages: List[Dict[str, str]],
         available_tools: List[Tool],
     ):
-        """Generates a tool call for the given message list"""
+        """Generates a tool call for the given message list. This method is used only by `ToolCallingAgent`."""
         messages = get_clean_message_list(
             messages, role_conversions=tool_role_conversions
         )
@@ -379,7 +379,7 @@ class OpenAIEngine:
         messages: List[Dict[str, str]],
         available_tools: List[Tool],
     ):
-        """Generates a tool call for the given message list"""
+        """Generates a tool call for the given message list. This method is used only by `ToolCallingAgent`."""
         messages = get_clean_message_list(
             messages, role_conversions=tool_role_conversions
         )
@@ -473,7 +473,7 @@ class AnthropicEngine:
         available_tools: List[Tool],
         max_tokens: int = 1500,
     ):
-        """Generates a tool call for the given message list"""
+        """Generates a tool call for the given message list. This method is used only by `ToolCallingAgent`."""
         messages = get_clean_message_list(
             messages, role_conversions=tool_role_conversions
         )

@@ -18,10 +18,10 @@ import unittest
 import numpy as np
 import pytest
 
-from agents import load_tool
-from agents.types import AGENT_TYPE_MAPPING
-from agents.default_tools import BASE_PYTHON_TOOLS
-from agents.local_python_executor import (
+from smolagents import load_tool
+from smolagents.types import AGENT_TYPE_MAPPING
+from smolagents.default_tools import BASE_PYTHON_TOOLS
+from smolagents.local_python_executor import (
     InterpreterError,
     evaluate_python_code,
 )

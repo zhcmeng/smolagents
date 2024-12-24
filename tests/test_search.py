@@ -15,7 +15,7 @@
 
 import unittest
 
-from agents import load_tool
+from smolagents import load_tool
 
 from .test_tools_common import ToolTesterMixin
 

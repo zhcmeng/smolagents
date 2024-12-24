@@ -78,7 +78,7 @@ Actually, most real-life tasks do not fit in a pre-determined workflow. This is 
 
 Agentic systems are a great way to introduce the vast world of real-world tasks to programs!
 
-### Why {Agents}?
+### Why Smolagents?
 
 For some low-level agentic use cases, like chains or routers, you can write all the code yourself. You'll be much better that way, since it will let you control and understand your system better.
 

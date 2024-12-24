@@ -20,13 +20,13 @@ import numpy as np
 import pytest
 
 from transformers import is_torch_available, is_vision_available
-from agents.types import (
+from smolagents.types import (
     AGENT_TYPE_MAPPING,
     AgentAudio,
     AgentImage,
     AgentText,
 )
-from agents.tools import Tool, tool, AUTHORIZED_TYPES
+from smolagents.tools import Tool, tool, AUTHORIZED_TYPES
 from transformers.testing_utils import get_tests_dir
 
 

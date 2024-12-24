@@ -25,10 +25,10 @@ limitations under the License.
 </p>
 
 <h3 align="center">
-<p>Agents - build great agents!</p>
+<p>Smolagents - build great agents!</p>
 </h3>
 
-Agents is a library that enables you to run powerful agents in a few lines of code!
+Smolagents is a library that enables you to run powerful agents in a few lines of code!
 
 This library offers:
 
@@ -48,7 +48,7 @@ pip install agents
 ```
 Then define your agent, give it the tools it needs and run it!
 ```py
-from agents import CodeAgent, WebSearchTool
+from smolagents import CodeAgent, WebSearchTool
 
 agent = CodeAgent(tools=[WebSearchTool()])
 

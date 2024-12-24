@@ -53,7 +53,7 @@ class E2BExecutor:
         for tool in tools:
             validate_tool_attributes(tool.__class__, check_imports=False)
             tool_code = instance_to_source(tool, base_cls=Tool)
-            tool_code = tool_code.replace("from agents.tools import Tool", "")
+            tool_code = tool_code.replace("from smolagents.tools import Tool", "")
             tool_code += f"\n{tool.name} = {tool.__class__.__name__}()\n"
             tool_codes.append(tool_code)
 

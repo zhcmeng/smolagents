@@ -17,6 +17,9 @@ rendered properly in your Markdown viewer.
 
 [[open-in-colab]]
 
+> [!TIP]
+> If you're new to building agents, make sure to first read the [intro to agents](./intro_agents) and the [guided tour of smolagents](../guided_tour).
+
 ### Code agents
 
 [Multiple](https://huggingface.co/papers/2402.01030) [research](https://huggingface.co/papers/2411.01747) [papers](https://huggingface.co/papers/2401.00812) have shown that having the LLM write its actions (the tool calls) in code is much better than the current standard format for tool calling, which is across the industry different shades of "writing actions as a JSON of tools names and arguments to use".
@@ -65,7 +68,7 @@ To set the code executor to E2B, simply pass the flag `use_e2b_executor=True` wh
 Note that you should add all the tool's dependencies in `additional_authorized_imports`, so that the executor installs them.
 
 ```py
-from agents import CodeAgent, VisitWebpageTool
+from smolagents import CodeAgent, VisitWebpageTool
 agent = CodeAgent(
     tools = [VisitWebpageTool()],
     additional_authorized_imports=["requests", "markdownify"],

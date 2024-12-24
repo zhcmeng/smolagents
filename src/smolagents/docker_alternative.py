@@ -3,7 +3,7 @@ from typing import List, Optional
 import warnings
 import socket
 
-from agents.tools import Tool
+from smolagents.tools import Tool
 
 
 class DockerPythonInterpreter:

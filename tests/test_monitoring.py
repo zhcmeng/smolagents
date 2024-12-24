@@ -15,7 +15,7 @@
 
 import unittest
 
-from agents import AgentImage, AgentError, CodeAgent, JsonAgent, stream_to_gradio
+from smolagents import AgentImage, AgentError, CodeAgent, JsonAgent, stream_to_gradio
 
 
 class MonitoringTester(unittest.TestCase):

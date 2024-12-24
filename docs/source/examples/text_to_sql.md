@@ -15,7 +15,7 @@ rendered properly in your Markdown viewer.
 -->
 # Text-to-SQL
 
-In this tutorial, we’ll see how to implement an agent that leverages SQL using `agents`.
+In this tutorial, we’ll see how to implement an agent that leverages SQL using `smolagents`.
 
 > Let's start with the goldnen question: why not keep it simple and use a standard text-to-SQL pipeline?
 

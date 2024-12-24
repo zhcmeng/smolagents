@@ -139,9 +139,9 @@ class UserInputTool(Tool):
         return user_input
 
 
-class DuckDuckGoSearchTool(Tool):
+class WebSearchTool(Tool):
     name = "web_search"
-    description = """Performs a web search based on your query (think a Google search) then returns the top search results as a list of dict elements.
+    description = """Performs a duckduckgo web search based on your query (think a Google search) then returns the top search results as a list of dict elements.
     Each result has keys 'title', 'href' and 'body'."""
     inputs = {
         "query": {"type": "string", "description": "The search query to perform."}
@@ -223,7 +223,7 @@ __all__ = [
     "PythonInterpreterTool",
     "FinalAnswerTool",
     "UserInputTool",
-    "DuckDuckGoSearchTool",
+    "WebSearchTool",
     "VisitWebpageTool",
     "SpeechToTextTool",
 ]

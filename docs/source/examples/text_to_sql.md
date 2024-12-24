@@ -15,6 +15,8 @@ rendered properly in your Markdown viewer.
 -->
 # Text-to-SQL
 
+[[open-in-colab]]
+
 In this tutorial, we’ll see how to implement an agent that leverages SQL using `smolagents`.
 
 > Let's start with the goldnen question: why not keep it simple and use a standard text-to-SQL pipeline?
@@ -54,9 +56,7 @@ receipts = Table(
     Column("tip", Float),
 )
 metadata_obj.create_all(engine)
-```
 
-```py
 rows = [
     {"receipt_id": 1, "customer_name": "Alan Payne", "price": 12.06, "tip": 1.20},
     {"receipt_id": 2, "customer_name": "Alex Mason", "price": 23.86, "tip": 0.24},
@@ -96,7 +96,7 @@ Now let’s build our tool. It needs the following: (read [the tool doc](../tuto
 - Type hints on both inputs and output.
 
 ```py
-from transformers.agents import tool
+from smolagents import tool
 
 @tool
 def sql_engine(query: str) -> str:
@@ -127,11 +127,11 @@ We use the CodeAgent, which is transformers.agents’ main agent class: an agent
 The llm_engine is the LLM that powers the agent system. HfEngine allows you to call LLMs using HF’s Inference API, either via Serverless or Dedicated endpoint, but you could also use any proprietary API.
 
 ```py
-from transformers.agents import CodeAgent, HfApiEngine
+from smolagents import CodeAgent, HfApiEngine
 
 agent = CodeAgent(
     tools=[sql_engine],
-    llm_engine=HfApiEngine("meta-llama/Meta-Llama-3-8B-Instruct"),
+    llm_engine=HfApiEngine("meta-llama/Meta-Llama-3.1-8B-Instruct"),
 )
 agent.run("Can you give me the name of the client who got the most expensive receipt?")
 ```

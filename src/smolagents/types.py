@@ -249,7 +249,7 @@ class AgentAudio(AgentType, str):
 
 
 AGENT_TYPE_MAPPING = {"string": AgentText, "image": AgentImage, "audio": AgentAudio}
-INSTANCE_TYPE_MAPPING = {str: AgentText, ImageType: AgentImage, np.ndarray: AgentAudio}
+INSTANCE_TYPE_MAPPING = {str: AgentText, ImageType: AgentImage, torch.Tensor: AgentAudio}
 
 if is_torch_available():
     INSTANCE_TYPE_MAPPING[Tensor] = AgentAudio

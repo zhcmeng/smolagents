@@ -285,6 +285,7 @@ class TransformersEngine(HfEngine):
             logger.warning(
                 f"`model_id`not provided, using this default tokenizer for token counts: '{model_id}'"
             )
+        self.model_id = model_id
         try:
             self.tokenizer = AutoTokenizer.from_pretrained(model_id)
             self.model = AutoModelForCausalLM.from_pretrained(model_id)

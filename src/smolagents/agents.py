@@ -148,7 +148,7 @@ def format_prompt_with_managed_agents_descriptions(
         return prompt_template.replace(agent_descriptions_placeholder, "")
 
 
-YELLOW_HEX = "#ffdd00"
+YELLOW_HEX = "#d4b702"
 
 
 class MultiStepAgent:
@@ -468,11 +468,19 @@ class MultiStepAgent:
             else:
                 self.logs.append(system_prompt_step)
 
-        console.print(
-            Group(
-                Rule("[bold]New run", characters="═", style=YELLOW_HEX), Text(self.task)
-            )
-        )
+        # console.print(
+        #     Group(
+        #         Rule("[bold]New run", characters="═", style=YELLOW_HEX), Text(self.task)
+        #     )
+        # )
+        console.print(Panel(
+            f"\n[bold]{task.strip()}\n",
+            title="[bold]New run",
+            subtitle=f"{type(self.llm_engine).__name__} - {(self.llm_engine.model_id if hasattr(self.llm_engine, "model_id") else "")}",
+            border_style=YELLOW_HEX,
+            subtitle_align="left",
+        ))
+
         self.logs.append(TaskStep(task=self.task))
 
         if single_step:
@@ -870,6 +878,7 @@ class CodeAgent(MultiStepAgent):
             )
             log_entry.llm_output = llm_output
         except Exception as e:
+            console.print_exception()
             raise AgentGenerationError(f"Error in generating llm_engine output:\n{e}")
 
         if self.verbose:
@@ -888,6 +897,7 @@ class CodeAgent(MultiStepAgent):
         try:
             code_action = parse_code_blob(llm_output)
         except Exception as e:
+            console.print_exception()
             error_msg = f"Error in code parsing: {e}. Make sure to provide correct code"
             raise AgentParsingError(error_msg)
 
@@ -898,10 +908,9 @@ class CodeAgent(MultiStepAgent):
         )
 
         # Execute
-        console.print(
-            Panel(
-                Syntax(code_action, lexer="python", theme="github-dark"),
-                title="[bold]Agent is executing the code below:",
+        console.print(Panel(
+                Syntax(code_action, lexer="python", theme="monokai", word_wrap=True, line_numbers=True),
+                title="[bold]Executing this code:",
                 title_align="left",
             )
         )
@@ -910,38 +919,38 @@ class CodeAgent(MultiStepAgent):
             output, execution_logs = self.python_executor(
                 code_action,
             )
+            execution_outputs_console = []
             if len(execution_logs) > 0:
-                console.print(
-                    Group(Text("Execution logs:", style="bold"), Text(execution_logs))
-                )
+                execution_outputs_console += [Text("Execution logs:", style="bold"), Text(execution_logs)]
             observation = "Execution logs:\n" + execution_logs
-            if output is not None:
-                truncated_output = truncate_content(str(output))
-                console.print(
-                    Group(
-                        Text("Last output from code snippet:", style="bold"),
-                        Text(truncated_output),
-                    )
-                )
-                observation += "Last output from code snippet:\n" + truncate_content(
-                    str(output)
-                )
-            log_entry.observations = observation
         except Exception as e:
+            console.print_exception()
             error_msg = f"Code execution failed due to the following error:\n{str(e)}"
             if "'dict' object has no attribute 'read'" in str(e):
                 error_msg += "\nYou get this error because you passed a dict as input for one of the arguments instead of a string."
             raise AgentExecutionError(error_msg)
+        
+        truncated_output = truncate_content(str(output))
+        observation += "Last output from code snippet:\n" + truncated_output
+        log_entry.observations = observation
+
+        is_final_answer = False
         for line in code_action.split("\n"):
             if line[: len("final_answer")] == "final_answer":
-                console.print(
-                    Group(
-                        Text("Final answer:", style="bold"),
-                        Text(str(output), style="bold green"),
-                    )
-                )
-                log_entry.action_output = output
-                return output
+                is_final_answer = True
+                break
+
+        execution_outputs_console+= [
+            Text(
+                f"{('Out - Final answer' if is_final_answer else 'Out')}: {truncated_output}",
+                style=(f"bold {YELLOW_HEX}" if is_final_answer else "")
+            ),
+        ]
+        console.print(
+            Group(*execution_outputs_console)
+        )
+        log_entry.action_output = output
+        return (output if is_final_answer else None)
 
 
 class ManagedAgent:
@@ -996,5 +1005,6 @@ __all__ = [
     "ManagedAgent",
     "MultiStepAgent",
     "CodeAgent",
+    "ToolCallingAgent",
     "Toolbox",
 ]

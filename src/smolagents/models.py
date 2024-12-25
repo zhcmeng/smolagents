@@ -297,19 +297,23 @@ class TransformersModel(HfModel):
             self.model = AutoModelForCausalLM.from_pretrained(default_model_id)
 
     def make_stopping_criteria(self, stop_sequences: List[str]) -> StoppingCriteriaList:
-        class StopOnTokens(StoppingCriteria):
-            def __init__(self, stop_token_ids):
-                self.stop_token_ids = stop_token_ids
+        class StopOnStrings(StoppingCriteria):
+            def __init__(self, stop_strings: List[str], tokenizer):
+                self.stop_strings = stop_strings
+                self.tokenizer = tokenizer
+                self.stream = ""
 
-            def __call__(self, input_ids, scores):
-                for stop_ids in self.stop_token_ids:
-                    if input_ids[0][-len(stop_ids) :].tolist() == stop_ids:
-                        return True
+            def reset(self):
+                self.stream = ""
+
+            def __call__(self, input_ids, scores, **kwargs):
+                generated = self.tokenizer.decode(input_ids[0][-1], skip_special_tokens=True)
+                self.stream += generated
+                if any([self.stream.endswith(stop_string) for stop_string in self.stop_strings]):
+                    return True
                 return False
 
-        stop_token_ids = [self.tokenizer.encode("Observation:")[1:]]  # Remove BOS token
-        stopping_criteria = StoppingCriteriaList([StopOnTokens(stop_token_ids)])
-        return stopping_criteria
+        return StoppingCriteriaList([StopOnStrings(stop_sequences, self.tokenizer)])
 
     def generate(
         self,

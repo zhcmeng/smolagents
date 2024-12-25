@@ -20,7 +20,7 @@ import pytest
 
 from pathlib import Path
 
-from smolagents.types import AgentText
+from smolagents.types import AgentText, AgentImage
 from smolagents.agents import (
     AgentMaxIterationsError,
     ManagedAgent,
@@ -91,7 +91,32 @@ def fake_code_model_error(messages, stop_sequences=None) -> str:
 Thought: I should multiply 2 by 3.6452. special_marker
 Code:
 ```py
+a = 2
+b = a * 2
 print = 2
+print("Ok, calculation done!")
+```<end_code>
+"""
+    else:  # We're at step 2
+        return """
+Thought: I can now answer the initial question
+Code:
+```py
+final_answer("got an error")
+```<end_code>
+"""
+
+def fake_code_model_syntax_error(messages, stop_sequences=None) -> str:
+    prompt = str(messages)
+    if "special_marker" not in prompt:
+        return """
+Thought: I should multiply 2 by 3.6452. special_marker
+Code:
+```py
+a = 2
+b = a * 2
+    print("Failing due to unexpected indent")
+print("Ok, calculation done!")
 ```<end_code>
 """
     else:  # We're at step 2
@@ -187,7 +212,7 @@ class AgentTests(unittest.TestCase):
             tools=[fake_image_generation_tool], model=FakeToolCallModelImage()
         )
         output = agent.run("Make me an image.")
-        assert isinstance(output, Image.Image)
+        assert isinstance(output, AgentImage)
         assert isinstance(agent.state["image.png"], Image.Image)
 
     def test_fake_code_agent(self):
@@ -227,7 +252,15 @@ class AgentTests(unittest.TestCase):
         output = agent.run("What is 2 multiplied by 3.6452?")
         assert isinstance(output, AgentText)
         assert output == "got an error"
-        assert "Evaluation stopped at line 'print = 2' because of" in str(agent.logs)
+        assert "Code execution failed at line 'print = 2' because of" in str(agent.logs)
+
+    def test_code_agent_syntax_error_show_offending_lines(self):
+        agent = CodeAgent(tools=[PythonInterpreterTool()], model=fake_code_model_syntax_error)
+        output = agent.run("What is 2 multiplied by 3.6452?")
+        assert isinstance(output, AgentText)
+        assert output == "got an error"
+        assert "    print(\"Failing due to unexpected indent\")" in str(agent.logs)
+
 
     def test_setup_agent_with_empty_toolbox(self):
         ToolCallingAgent(model=FakeToolCallModel(), tools=[])

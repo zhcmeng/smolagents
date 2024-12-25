@@ -34,7 +34,7 @@ from .utils import (
     AgentGenerationError,
     AgentMaxIterationsError,
 )
-from .types import AgentAudio, AgentImage
+from .types import AgentAudio, AgentImage, handle_agent_output_types
 from .default_tools import FinalAnswerTool
 from .models import MessageRole
 from .monitoring import Monitor
@@ -345,7 +345,7 @@ class MultiStepAgent:
             )  # NOTE: using indexes starting from the end solves for when you have more than one split_token in the output
         except Exception:
             raise AgentParsingError(
-                f"Error: No '{split_token}' token provided in your output.\nYour output:\n{llm_output}\n. Be sure to include an action, prefaced with '{split_token}'!"
+                f"No '{split_token}' token provided in your output.\nYour output:\n{llm_output}\n. Be sure to include an action, prefaced with '{split_token}'!"
             )
         return rationale.strip(), action.strip()
 
@@ -384,7 +384,7 @@ class MultiStepAgent:
         """
         available_tools = {**self.toolbox.tools, **self.managed_agents}
         if tool_name not in available_tools:
-            error_msg = f"Error: unknown tool {tool_name}, should be instead one of {list(available_tools.keys())}."
+            error_msg = f"Unknown tool {tool_name}, should be instead one of {list(available_tools.keys())}."
             console.print(f"[bold red]{error_msg}")
             raise AgentExecutionError(error_msg)
 
@@ -546,7 +546,7 @@ class MultiStepAgent:
                 callback(final_step_log)
             yield final_step_log
 
-        yield final_answer
+        yield handle_agent_output_types(final_answer)
 
     def direct_run(self, task: str):
         """
@@ -593,7 +593,7 @@ class MultiStepAgent:
             for callback in self.step_callbacks:
                 callback(final_step_log)
 
-        return final_answer
+        return handle_agent_output_types(final_answer)
 
     def planning_step(self, task, is_first_step: bool, iteration: int):
         """
@@ -934,7 +934,7 @@ class CodeAgent(MultiStepAgent):
                 title_align="left",
             )
         )
-
+        observation = ""
         try:
             output, execution_logs = self.python_executor(
                 code_action,
@@ -945,12 +945,17 @@ class CodeAgent(MultiStepAgent):
                     Text("Execution logs:", style="bold"),
                     Text(execution_logs),
                 ]
-            observation = "Execution logs:\n" + execution_logs
+            observation += "Execution logs:\n" + execution_logs
         except Exception as e:
-            console.print_exception()
-            error_msg = f"Code execution failed due to the following error:\n{str(e)}"
-            if "'dict' object has no attribute 'read'" in str(e):
-                error_msg += "\nYou get this error because you passed a dict as input for one of the arguments instead of a string."
+            if isinstance(e, SyntaxError):
+                error_msg = (
+                    f"Code execution failed on line {e.lineno} due to: {type(e).__name__}\n"
+                    f"{e.text}"
+                    f"{' ' * (e.offset or 0)}^\n"
+                    f"Error: {str(e)}"
+                )
+            else:
+                error_msg = f"Code execution failed: {str(e)}"
             raise AgentExecutionError(error_msg)
 
         truncated_output = truncate_content(str(output))

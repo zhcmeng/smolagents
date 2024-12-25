@@ -11,26 +11,6 @@ _BUILTIN_NAMES = set(vars(builtins))
 IMPORTED_PACKAGES = BASE_BUILTIN_MODULES
 
 
-def is_installed_package(module_name: str) -> bool:
-    """
-    Check if an import is from an installed package.
-    Returns False if it's not found or a local file import.
-    """
-    try:
-        spec = importlib.util.find_spec(module_name)
-        if spec is None:
-            return False  # If we can't find the module, assume it's local
-
-        # If the module is found and has a file path, check if it's in site-packages
-        if spec.origin and "site-packages" not in spec.origin:
-            # Check if it's a .py file in the current directory or subdirectories
-            return not spec.origin.endswith(".py")
-
-        return False
-    except ImportError:
-        return False  # If there's an import error, assume it's local
-
-
 class MethodChecker(ast.NodeVisitor):
     """
     Checks that a method
@@ -59,20 +39,12 @@ class MethodChecker(ast.NodeVisitor):
     def visit_Import(self, node):
         for name in node.names:
             actual_name = name.asname or name.name
-            if not is_installed_package(actual_name) and self.check_imports:
-                self.errors.append(
-                    f"Package not found in importlib, might be a local install: '{actual_name}'"
-                )
             self.imports[actual_name] = name.name
 
     def visit_ImportFrom(self, node):
         module = node.module or ""
         for name in node.names:
             actual_name = name.asname or name.name
-            if not is_installed_package(module) and self.check_imports:
-                self.errors.append(
-                    f"Package not found in importlib, might be a local install: '{module}'"
-                )
             self.from_imports[actual_name] = (module, name.name)
 
     def visit_Assign(self, node):

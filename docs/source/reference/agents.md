@@ -51,6 +51,9 @@ We provide two types of agents, based on the main [`Agent`] class.
 
 [[autodoc]] stream_to_gradio
 
+### GradioUI
+
+[[autodoc]] GradioUI
 
 ## Models
 
@@ -61,19 +64,17 @@ These engines have the following specification:
 
 ### TransformersModel
 
-For convenience, we have added a `TransformersModel` that implements the points above, taking a pre-initialized `Pipeline` as input.
+For convenience, we have added a `TransformersModel` that implements the points above by building a local `transformers` pipeline for the model_id given at initialization.
 
 ```python
-from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline, TransformersModel
+from smolagents import TransformersModel
 
-model_name = "HuggingFaceTB/SmolLM-135M-Instruct"
-tokenizer = AutoTokenizer.from_pretrained(model_name)
-model = AutoModelForCausalLM.from_pretrained(model_name)
+model = TransformersModel(model_id="HuggingFaceTB/SmolLM-135M-Instruct")
 
-pipe = pipeline("text-generation", model=model, tokenizer=tokenizer)
-
-engine = TransformersModel(pipe)
-engine([{"role": "user", "content": "Ok!"}], stop_sequences=["great"])
+print(model([{"role": "user", "content": "Ok!"}], stop_sequences=["great"]))
+```
+```text
+>>> What a
 ```
 
 [[autodoc]] TransformersModel
@@ -83,7 +84,7 @@ engine([{"role": "user", "content": "Ok!"}], stop_sequences=["great"])
 The `HfApiModel` is an engine that wraps an [HF Inference API](https://huggingface.co/docs/api-inference/index) client for the execution of the LLM.
 
 ```python
-from transformers import HfApiModel
+from smolagents import HfApiModel
 
 messages = [
   {"role": "user", "content": "Hello, how are you?"},
@@ -91,7 +92,10 @@ messages = [
   {"role": "user", "content": "No need to help, take it easy."},
 ]
 
-HfApiModel()(messages)
+model = HfApiModel()
+print(model(messages))
 ```
-
+```text
+>>> Of course! If you change your mind, feel free to reach out. Take care!
+```
 [[autodoc]] HfApiModel

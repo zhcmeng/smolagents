@@ -702,7 +702,7 @@ counts += 1
 b += 1"""
         with pytest.raises(InterpreterError) as e:
             evaluate_python_code(code, BASE_PYTHON_TOOLS, state={})
-        assert "Evaluation stopped at line 'counts += 1" in str(e)
+        assert "Code execution failed at line 'counts += 1" in str(e)
 
     def test_assert(self):
         code = """

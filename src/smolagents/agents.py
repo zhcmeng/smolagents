@@ -889,16 +889,16 @@ class CodeAgent(MultiStepAgent):
             console.print_exception()
             raise AgentGenerationError(f"Error in generating model output:\n{e}")
 
-        from rich.live import Live
-        from rich.markdown import Markdown
-        import time
+        # from rich.live import Live
+        # from rich.markdown import Markdown
+        # import time
 
-        with Live(console=console, vertical_overflow="visible") as live:
-            message = ""
-            for i in range(100):
-                time.sleep(0.02)
-                message += str(i)
-                live.update(Markdown(message))
+        # with Live(console=console, vertical_overflow="visible") as live:
+        #     message = ""
+        #     for i in range(100):
+        #         time.sleep(0.02)
+        #         message += str(i)
+        #         live.update(Markdown(message))
 
         if self.verbose:
             console.print(

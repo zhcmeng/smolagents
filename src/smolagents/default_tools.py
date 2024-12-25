@@ -99,19 +99,21 @@ class PythonInterpreterTool(Tool):
                 ),
             }
         }
-        self.base_python_tool = BASE_PYTHON_TOOLS
+        self.base_python_tools = BASE_PYTHON_TOOLS
         self.python_evaluator = evaluate_python_code
         super().__init__(*args, **kwargs)
 
     def forward(self, code: str) -> str:
+        state = {}
         output = str(
             self.python_evaluator(
                 code,
-                static_tools=self.base_python_tool,
+                state=state,
+                static_tools=self.base_python_tools,
                 authorized_imports=self.authorized_imports,
             )
         )
-        return output
+        return f"Stdout:\n{state['print_outputs']}\nOutput: {output}"
 
 
 class FinalAnswerTool(Tool):
@@ -240,7 +242,7 @@ class GoogleSearchTool(Tool):
 
 class VisitWebpageTool(Tool):
     name = "visit_webpage"
-    description = "Visits a webpage at the given url and returns its content as a markdown string."
+    description = "Visits a webpage at the given url and reads its content as a markdown string. Use this to browse webpages."
     inputs = {
         "url": {
             "type": "string",

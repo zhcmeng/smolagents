@@ -1,10 +1,10 @@
 from smolagents.agents import ToolCallingAgent
-from smolagents import tool, HfApiEngine, TransformersEngine, LiteLLMEngine
+from smolagents import tool, HfApiModel, TransformersModel, LiteLLMModel
 
 # Choose which LLM engine to use!
-llm_engine = HfApiEngine("meta-llama/Llama-3.3-70B-Instruct")
-llm_engine = TransformersEngine("meta-llama/Llama-3.2-2B-Instruct")
-llm_engine = LiteLLMEngine("gpt-4o")
+model = HfApiModel("meta-llama/Llama-3.3-70B-Instruct")
+model = TransformersModel("meta-llama/Llama-3.2-2B-Instruct")
+model = LiteLLMModel("gpt-4o")
 
 @tool
 def get_weather(location: str) -> str:
@@ -17,6 +17,6 @@ def get_weather(location: str) -> str:
     """
     return "The weather is UNGODLY with torrential rains and temperatures below -10°C"
 
-agent = ToolCallingAgent(tools=[get_weather], llm_engine=llm_engine)
+agent = ToolCallingAgent(tools=[get_weather], model=model)
 
 print(agent.run("What's the weather like in Paris?"))

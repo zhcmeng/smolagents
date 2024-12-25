@@ -125,7 +125,7 @@ def get_clean_message_list(
     return final_message_list
 
 
-class HfEngine:
+class HfModel:
     def __init__(self):
         self.last_input_token_count = None
         self.last_output_token_count = None
@@ -177,7 +177,7 @@ class HfEngine:
         return remove_stop_sequences(response, stop_sequences)
 
 
-class HfApiEngine(HfEngine):
+class HfApiModel(HfModel):
     """A class to interact with Hugging Face's Inference API for language model interaction.
 
     This engine allows you to communicate with Hugging Face's models using the Inference API. It can be used in both serverless mode or with a dedicated endpoint, supporting features like stop sequences and grammar customization.
@@ -200,7 +200,7 @@ class HfApiEngine(HfEngine):
 
     Example:
     ```python
-    >>> engine = HfApiEngine(
+    >>> engine = HfApiModel(
     ...     model="Qwen/Qwen2.5-Coder-32B-Instruct",
     ...     token="your_hf_token_here",
     ...     max_tokens=2000
@@ -274,7 +274,7 @@ class HfApiEngine(HfEngine):
         return tool_call.function.name, tool_call.function.arguments, tool_call.id
 
 
-class TransformersEngine(HfEngine):
+class TransformersModel(HfModel):
     """This engine initializes a model and tokenizer from the given `model_id`."""
 
     def __init__(self, model_id: Optional[str] = None):
@@ -391,7 +391,7 @@ class TransformersEngine(HfEngine):
         return tool_name, tool_input, call_id
 
 
-class LiteLLMEngine:
+class LiteLLMModel:
     def __init__(self, model_id="anthropic/claude-3-5-sonnet-20240620"):
         self.model_id = model_id
         # IMPORTANT - Set this to TRUE to add the function to the prompt for Non OpenAI LLMs
@@ -448,8 +448,8 @@ __all__ = [
     "MessageRole",
     "tool_role_conversions",
     "get_clean_message_list",
-    "HfEngine",
-    "TransformersEngine",
-    "HfApiEngine",
-    "LiteLLMEngine",
+    "HfModel",
+    "TransformersModel",
+    "HfApiModel",
+    "LiteLLMModel",
 ]

@@ -26,7 +26,7 @@ from smolagents import (
 
 class MonitoringTester(unittest.TestCase):
     def test_code_agent_metrics(self):
-        class FakeLLMEngine:
+        class FakeLLMModel:
             def __init__(self):
                 self.last_input_token_count = 10
                 self.last_output_token_count = 20
@@ -40,7 +40,7 @@ final_answer('This is the final answer.')
 
         agent = CodeAgent(
             tools=[],
-            llm_engine=FakeLLMEngine(),
+            model=FakeLLMModel(),
             max_iterations=1,
         )
 
@@ -50,7 +50,7 @@ final_answer('This is the final answer.')
         self.assertEqual(agent.monitor.total_output_token_count, 20)
 
     def test_json_agent_metrics(self):
-        class FakeLLMEngine:
+        class FakeLLMModel:
             def __init__(self):
                 self.last_input_token_count = 10
                 self.last_output_token_count = 20
@@ -60,7 +60,7 @@ final_answer('This is the final answer.')
 
         agent = ToolCallingAgent(
             tools=[],
-            llm_engine=FakeLLMEngine(),
+            model=FakeLLMModel(),
             max_iterations=1,
         )
 
@@ -70,7 +70,7 @@ final_answer('This is the final answer.')
         self.assertEqual(agent.monitor.total_output_token_count, 20)
 
     def test_code_agent_metrics_max_iterations(self):
-        class FakeLLMEngine:
+        class FakeLLMModel:
             def __init__(self):
                 self.last_input_token_count = 10
                 self.last_output_token_count = 20
@@ -80,7 +80,7 @@ final_answer('This is the final answer.')
 
         agent = CodeAgent(
             tools=[],
-            llm_engine=FakeLLMEngine(),
+            model=FakeLLMModel(),
             max_iterations=1,
         )
 
@@ -90,7 +90,7 @@ final_answer('This is the final answer.')
         self.assertEqual(agent.monitor.total_output_token_count, 40)
 
     def test_code_agent_metrics_generation_error(self):
-        class FakeLLMEngine:
+        class FakeLLMModel:
             def __init__(self):
                 self.last_input_token_count = 10
                 self.last_output_token_count = 20
@@ -100,7 +100,7 @@ final_answer('This is the final answer.')
 
         agent = CodeAgent(
             tools=[],
-            llm_engine=FakeLLMEngine(),
+            model=FakeLLMModel(),
             max_iterations=1,
         )
 
@@ -110,7 +110,7 @@ final_answer('This is the final answer.')
         self.assertEqual(agent.monitor.total_output_token_count, 40)
 
     def test_streaming_agent_text_output(self):
-        def dummy_llm_engine(prompt, **kwargs):
+        def dummy_model(prompt, **kwargs):
             return """
 Code:
 ```py
@@ -119,7 +119,7 @@ final_answer('This is the final answer.')
 
         agent = CodeAgent(
             tools=[],
-            llm_engine=dummy_llm_engine,
+            model=dummy_model,
             max_iterations=1,
         )
 
@@ -132,14 +132,14 @@ final_answer('This is the final answer.')
         self.assertIn("This is the final answer.", final_message.content)
 
     def test_streaming_agent_image_output(self):
-        def dummy_llm_engine(prompt, **kwargs):
+        def dummy_model(prompt, **kwargs):
             return (
                 'Action:{"action": "final_answer", "action_input": {"answer": "image"}}'
             )
 
         agent = ToolCallingAgent(
             tools=[],
-            llm_engine=dummy_llm_engine,
+            model=dummy_model,
             max_iterations=1,
         )
 
@@ -161,12 +161,12 @@ final_answer('This is the final answer.')
         self.assertEqual(final_message.content["mime_type"], "image/png")
 
     def test_streaming_with_agent_error(self):
-        def dummy_llm_engine(prompt, **kwargs):
+        def dummy_model(prompt, **kwargs):
             raise AgentError("Simulated agent error")
 
         agent = CodeAgent(
             tools=[],
-            llm_engine=dummy_llm_engine,
+            model=dummy_model,
             max_iterations=1,
         )
 

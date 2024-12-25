@@ -26,7 +26,7 @@ if TYPE_CHECKING:
     from .agents import *
     from .default_tools import *
     from .gradio_ui import *
-    from .llm_engines import *
+    from .models import *
     from .local_python_executor import *
     from .e2b_executor import *
     from .monitoring import *

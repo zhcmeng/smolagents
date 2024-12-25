@@ -36,7 +36,7 @@ from .utils import (
 )
 from .types import AgentAudio, AgentImage
 from .default_tools import FinalAnswerTool
-from .llm_engines import MessageRole
+from .models import MessageRole
 from .monitoring import Monitor
 from .prompts import (
     CODE_SYSTEM_PROMPT,
@@ -160,7 +160,7 @@ class MultiStepAgent:
     def __init__(
         self,
         tools: Union[List[Tool], Toolbox],
-        llm_engine: Callable[[List[Dict[str, str]]], str],
+        model: Callable[[List[Dict[str, str]]], str],
         system_prompt: Optional[str] = None,
         tool_description_template: Optional[str] = None,
         max_iterations: int = 6,
@@ -177,7 +177,7 @@ class MultiStepAgent:
         if tool_parser is None:
             tool_parser = parse_json_tool_call
         self.agent_name = self.__class__.__name__
-        self.llm_engine = llm_engine
+        self.model = model
         self.system_prompt_template = system_prompt
         self.tool_description_template = (
             tool_description_template
@@ -208,7 +208,7 @@ class MultiStepAgent:
         self.logs = []
         self.task = None
         self.verbose = verbose
-        self.monitor = Monitor(self.llm_engine)
+        self.monitor = Monitor(self.model)
         self.step_callbacks = step_callbacks if step_callbacks is not None else []
         self.step_callbacks.append(self.monitor.update_metrics)
 
@@ -367,7 +367,7 @@ class MultiStepAgent:
             }
         ]
         try:
-            return self.llm_engine(self.input_messages)
+            return self.model(self.input_messages)
         except Exception as e:
             error_msg = f"Error in generating final LLM output:\n{e}"
             console.print(f"[bold red]{error_msg}[/bold red]")
@@ -473,13 +473,15 @@ class MultiStepAgent:
         #         Rule("[bold]New run", characters="═", style=YELLOW_HEX), Text(self.task)
         #     )
         # )
-        console.print(Panel(
-            f"\n[bold]{task.strip()}\n",
-            title="[bold]New run",
-            subtitle=f"{type(self.llm_engine).__name__} - {(self.llm_engine.model_id if hasattr(self.llm_engine, "model_id") else "")}",
-            border_style=YELLOW_HEX,
-            subtitle_align="left",
-        ))
+        console.print(
+            Panel(
+                f"\n[bold]{task.strip()}\n",
+                title="[bold]New run",
+                subtitle=f"{type(self.model).__name__} - {(self.model.model_id if hasattr(self.model, "model_id") else "")}",
+                border_style=YELLOW_HEX,
+                subtitle_align="left",
+            )
+        )
 
         self.logs.append(TaskStep(task=self.task))
 
@@ -616,7 +618,7 @@ class MultiStepAgent:
 Now begin!""",
             }
 
-            answer_facts = self.llm_engine([message_prompt_facts, message_prompt_task])
+            answer_facts = self.model([message_prompt_facts, message_prompt_task])
 
             message_system_prompt_plan = {
                 "role": MessageRole.SYSTEM,
@@ -635,7 +637,7 @@ Now begin!""",
                     answer_facts=answer_facts,
                 ),
             }
-            answer_plan = self.llm_engine(
+            answer_plan = self.model(
                 [message_system_prompt_plan, message_user_prompt_plan],
                 stop_sequences=["<end_plan>"],
             )
@@ -668,7 +670,7 @@ Now begin!""",
                 "role": MessageRole.USER,
                 "content": USER_PROMPT_FACTS_UPDATE,
             }
-            facts_update = self.llm_engine(
+            facts_update = self.model(
                 [facts_update_system_prompt] + agent_memory + [facts_update_message]
             )
 
@@ -691,7 +693,7 @@ Now begin!""",
                     remaining_steps=(self.max_iterations - iteration),
                 ),
             }
-            plan_update = self.llm_engine(
+            plan_update = self.model(
                 [plan_update_message] + agent_memory + [plan_update_message_user],
                 stop_sequences=["<end_plan>"],
             )
@@ -714,13 +716,13 @@ Now begin!""",
 
 class ToolCallingAgent(MultiStepAgent):
     """
-    This agent uses JSON-like tool calls, using method `llm_engine.get_tool_call` to leverage the LLM engine's tool calling capabilities.
+    This agent uses JSON-like tool calls, using method `model.get_tool_call` to leverage the LLM engine's tool calling capabilities.
     """
 
     def __init__(
         self,
         tools: List[Tool],
-        llm_engine: Callable,
+        model: Callable,
         system_prompt: Optional[str] = None,
         planning_interval: Optional[int] = None,
         **kwargs,
@@ -729,7 +731,7 @@ class ToolCallingAgent(MultiStepAgent):
             system_prompt = TOOL_CALLING_SYSTEM_PROMPT
         super().__init__(
             tools=tools,
-            llm_engine=llm_engine,
+            model=model,
             system_prompt=system_prompt,
             planning_interval=planning_interval,
             **kwargs,
@@ -748,14 +750,14 @@ class ToolCallingAgent(MultiStepAgent):
         log_entry.agent_memory = agent_memory.copy()
 
         try:
-            tool_name, tool_arguments, tool_call_id = self.llm_engine.get_tool_call(
+            tool_name, tool_arguments, tool_call_id = self.model.get_tool_call(
                 self.input_messages,
                 available_tools=list(self.toolbox._tools.values()),
                 stop_sequences=["Observation:"],
             )
         except Exception as e:
             raise AgentGenerationError(
-                f"Error in generating tool call with llm_engine:\n{e}"
+                f"Error in generating tool call with model:\n{e}"
             )
 
         log_entry.tool_call = ToolCall(
@@ -808,7 +810,7 @@ class CodeAgent(MultiStepAgent):
     def __init__(
         self,
         tools: List[Tool],
-        llm_engine: Callable,
+        model: Callable,
         system_prompt: Optional[str] = None,
         grammar: Optional[Dict[str, str]] = None,
         additional_authorized_imports: Optional[List[str]] = None,
@@ -820,7 +822,7 @@ class CodeAgent(MultiStepAgent):
             system_prompt = CODE_SYSTEM_PROMPT
         super().__init__(
             tools=tools,
-            llm_engine=llm_engine,
+            model=model,
             system_prompt=system_prompt,
             grammar=grammar,
             planning_interval=planning_interval,
@@ -871,7 +873,7 @@ class CodeAgent(MultiStepAgent):
             additional_args = (
                 {"grammar": self.grammar} if self.grammar is not None else {}
             )
-            llm_output = self.llm_engine(
+            llm_output = self.model(
                 self.input_messages,
                 stop_sequences=["<end_action>", "Observation:"],
                 **additional_args,
@@ -879,7 +881,18 @@ class CodeAgent(MultiStepAgent):
             log_entry.llm_output = llm_output
         except Exception as e:
             console.print_exception()
-            raise AgentGenerationError(f"Error in generating llm_engine output:\n{e}")
+            raise AgentGenerationError(f"Error in generating model output:\n{e}")
+
+        from rich.live import Live
+        from rich.markdown import Markdown
+        import time
+
+        with Live(console=console, vertical_overflow="visible") as live:
+            message = ""
+            for i in range(100):
+                time.sleep(0.02)
+                message += str(i)
+                live.update(Markdown(message))
 
         if self.verbose:
             console.print(
@@ -908,8 +921,15 @@ class CodeAgent(MultiStepAgent):
         )
 
         # Execute
-        console.print(Panel(
-                Syntax(code_action, lexer="python", theme="monokai", word_wrap=True, line_numbers=True),
+        console.print(
+            Panel(
+                Syntax(
+                    code_action,
+                    lexer="python",
+                    theme="monokai",
+                    word_wrap=True,
+                    line_numbers=True,
+                ),
                 title="[bold]Executing this code:",
                 title_align="left",
             )
@@ -921,7 +941,10 @@ class CodeAgent(MultiStepAgent):
             )
             execution_outputs_console = []
             if len(execution_logs) > 0:
-                execution_outputs_console += [Text("Execution logs:", style="bold"), Text(execution_logs)]
+                execution_outputs_console += [
+                    Text("Execution logs:", style="bold"),
+                    Text(execution_logs),
+                ]
             observation = "Execution logs:\n" + execution_logs
         except Exception as e:
             console.print_exception()
@@ -929,7 +952,7 @@ class CodeAgent(MultiStepAgent):
             if "'dict' object has no attribute 'read'" in str(e):
                 error_msg += "\nYou get this error because you passed a dict as input for one of the arguments instead of a string."
             raise AgentExecutionError(error_msg)
-        
+
         truncated_output = truncate_content(str(output))
         observation += "Last output from code snippet:\n" + truncated_output
         log_entry.observations = observation
@@ -940,17 +963,15 @@ class CodeAgent(MultiStepAgent):
                 is_final_answer = True
                 break
 
-        execution_outputs_console+= [
+        execution_outputs_console += [
             Text(
                 f"{('Out - Final answer' if is_final_answer else 'Out')}: {truncated_output}",
-                style=(f"bold {YELLOW_HEX}" if is_final_answer else "")
+                style=(f"bold {YELLOW_HEX}" if is_final_answer else ""),
             ),
         ]
-        console.print(
-            Group(*execution_outputs_console)
-        )
+        console.print(Group(*execution_outputs_console))
         log_entry.action_output = output
-        return (output if is_final_answer else None)
+        return output if is_final_answer else None
 
 
 class ManagedAgent:

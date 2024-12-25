@@ -19,11 +19,11 @@ from rich.text import Text
 
 
 class Monitor:
-    def __init__(self, tracked_llm_engine):
+    def __init__(self, tracked_model):
         self.step_durations = []
-        self.tracked_llm_engine = tracked_llm_engine
+        self.tracked_model = tracked_model
         if (
-            getattr(self.tracked_llm_engine, "last_input_token_count", "Not found")
+            getattr(self.tracked_model, "last_input_token_count", "Not found")
             != "Not found"
         ):
             self.total_input_token_count = 0
@@ -41,13 +41,9 @@ class Monitor:
             f"[Step {len(self.step_durations)-1}: Duration {step_duration:.2f} seconds"
         )
 
-        if getattr(self.tracked_llm_engine, "last_input_token_count", None) is not None:
-            self.total_input_token_count += (
-                self.tracked_llm_engine.last_input_token_count
-            )
-            self.total_output_token_count += (
-                self.tracked_llm_engine.last_output_token_count
-            )
+        if getattr(self.tracked_model, "last_input_token_count", None) is not None:
+            self.total_input_token_count += self.tracked_model.last_input_token_count
+            self.total_output_token_count += self.tracked_model.last_output_token_count
             console_outputs += f"| Input tokens: {self.total_input_token_count:,} | Output tokens: {self.total_output_token_count:,}"
         console_outputs += "]"
         console.print(Text(console_outputs, style="dim"))

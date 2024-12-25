@@ -39,53 +39,32 @@ def get_new_path(suffix="") -> str:
     return os.path.join(directory, str(uuid.uuid4()) + suffix)
 
 
-def fake_json_llm(messages, stop_sequences=None, grammar=None) -> str:
-    prompt = str(messages)
-
-    if "special_marker" not in prompt:
-        return """
-Thought: I should multiply 2 by 3.6452. special_marker
-Action:
-{
-    "action": "python_interpreter",
-    "action_input": {"code": "2*3.6452"}
-}
-"""
-    else:  # We're at step 2
-        return """
-Thought: I can now answer the initial question
-Action:
-{
-    "action": "final_answer",
-    "action_input": {"answer": "7.2904"}
-}
-"""
+class FakeToolCallModel:
+    def get_tool_call(
+        self, messages, available_tools, stop_sequences=None, grammar=None
+    ):
+        if len(messages) < 3:
+            return "python_interpreter", {"code": "2*3.6452"}, "call_0"
+        else:
+            return "final_answer", {"answer": "7.2904"}, "call_1"
 
 
-def fake_json_llm_image(messages, stop_sequences=None, grammar=None) -> str:
-    prompt = str(messages)
+class FakeToolCallModelImage:
+    def get_tool_call(
+        self, messages, available_tools, stop_sequences=None, grammar=None
+    ):
+        if len(messages) < 3:
+            return (
+                "fake_image_generation_tool",
+                {"prompt": "An image of a cat"},
+                "call_0",
+            )
 
-    if "special_marker" not in prompt:
-        return """
-Thought: I should generate an image. special_marker
-Action:
-{
-    "action": "fake_image_generation_tool",
-    "action_input": {"prompt": "An image of a cat"}
-}
-"""
-    else:  # We're at step 2
-        return """
-Thought: I can now answer the initial question
-Action:
-{
-    "action": "final_answer",
-    "action_input": "image.png"
-}
-"""
+        else:  # We're at step 2
+            return "final_answer", "image.png", "call_1"
 
 
-def fake_code_llm(messages, stop_sequences=None, grammar=None) -> str:
+def fake_code_model(messages, stop_sequences=None, grammar=None) -> str:
     prompt = str(messages)
     if "special_marker" not in prompt:
         return """
@@ -105,7 +84,7 @@ final_answer(7.2904)
 """
 
 
-def fake_code_llm_error(messages, stop_sequences=None) -> str:
+def fake_code_model_error(messages, stop_sequences=None) -> str:
     prompt = str(messages)
     if "special_marker" not in prompt:
         return """
@@ -150,7 +129,7 @@ final_answer(res)
 """
 
 
-def fake_code_llm_single_step(messages, stop_sequences=None, grammar=None) -> str:
+def fake_code_model_single_step(messages, stop_sequences=None, grammar=None) -> str:
     return """
 Thought: I should multiply 2 by 3.6452. special_marker
 Code:
@@ -161,7 +140,7 @@ final_answer(result)
 """
 
 
-def fake_code_llm_no_return(messages, stop_sequences=None, grammar=None) -> str:
+def fake_code_model_no_return(messages, stop_sequences=None, grammar=None) -> str:
     return """
 Thought: I should multiply 2 by 3.6452. special_marker
 Code:
@@ -175,34 +154,24 @@ print(result)
 class AgentTests(unittest.TestCase):
     def test_fake_single_step_code_agent(self):
         agent = CodeAgent(
-            tools=[PythonInterpreterTool()], llm_engine=fake_code_llm_single_step
+            tools=[PythonInterpreterTool()], model=fake_code_model_single_step
         )
         output = agent.run("What is 2 multiplied by 3.6452?", single_step=True)
         assert isinstance(output, str)
         assert output == "7.2904"
 
-    def test_fake_json_agent(self):
+    def test_fake_toolcalling_agent(self):
         agent = ToolCallingAgent(
-            tools=[PythonInterpreterTool()], llm_engine=fake_json_llm
+            tools=[PythonInterpreterTool()], model=FakeToolCallModel()
         )
         output = agent.run("What is 2 multiplied by 3.6452?")
         assert isinstance(output, str)
         assert output == "7.2904"
         assert agent.logs[1].task == "What is 2 multiplied by 3.6452?"
         assert agent.logs[2].observations == "7.2904"
-        assert (
-            agent.logs[3].llm_output
-            == """
-Thought: I can now answer the initial question
-Action:
-{
-    "action": "final_answer",
-    "action_input": {"answer": "7.2904"}
-}
-"""
-        )
+        assert agent.logs[3].llm_output is None
 
-    def test_json_agent_handles_image_tool_outputs(self):
+    def test_toolcalling_agent_handles_image_tool_outputs(self):
         from PIL import Image
 
         @tool
@@ -215,33 +184,32 @@ Action:
             return Image.open(Path(get_tests_dir("fixtures")) / "000000039769.png")
 
         agent = ToolCallingAgent(
-            tools=[fake_image_generation_tool], llm_engine=fake_json_llm_image
+            tools=[fake_image_generation_tool], model=FakeToolCallModelImage()
         )
         output = agent.run("Make me an image.")
         assert isinstance(output, Image.Image)
         assert isinstance(agent.state["image.png"], Image.Image)
 
     def test_fake_code_agent(self):
-        agent = CodeAgent(tools=[PythonInterpreterTool()], llm_engine=fake_code_llm)
+        agent = CodeAgent(tools=[PythonInterpreterTool()], model=fake_code_model)
         output = agent.run("What is 2 multiplied by 3.6452?")
         assert isinstance(output, float)
         assert output == 7.2904
         assert agent.logs[1].task == "What is 2 multiplied by 3.6452?"
         assert agent.logs[3].tool_call == ToolCall(
-            tool_name="python_interpreter",
-            tool_arguments="final_answer(7.2904)",
+            name="python_interpreter", arguments="final_answer(7.2904)", id="call_3"
         )
 
     def test_additional_args_added_to_task(self):
-        agent = CodeAgent(tools=[], llm_engine=fake_code_llm)
+        agent = CodeAgent(tools=[], model=fake_code_model)
         agent.run(
             "What is 2 multiplied by 3.6452?", additional_instruction="Remember this."
         )
         assert "Remember this" in agent.task
-        assert "Remember this" in str(agent.prompt_messages)
+        assert "Remember this" in str(agent.input_messages)
 
     def test_reset_conversations(self):
-        agent = CodeAgent(tools=[PythonInterpreterTool()], llm_engine=fake_code_llm)
+        agent = CodeAgent(tools=[PythonInterpreterTool()], model=fake_code_model)
         output = agent.run("What is 2 multiplied by 3.6452?", reset=True)
         assert output == 7.2904
         assert len(agent.logs) == 4
@@ -255,21 +223,19 @@ Action:
         assert len(agent.logs) == 4
 
     def test_code_agent_code_errors_show_offending_lines(self):
-        agent = CodeAgent(
-            tools=[PythonInterpreterTool()], llm_engine=fake_code_llm_error
-        )
+        agent = CodeAgent(tools=[PythonInterpreterTool()], model=fake_code_model_error)
         output = agent.run("What is 2 multiplied by 3.6452?")
         assert isinstance(output, AgentText)
         assert output == "got an error"
         assert "Evaluation stopped at line 'print = 2' because of" in str(agent.logs)
 
     def test_setup_agent_with_empty_toolbox(self):
-        ToolCallingAgent(llm_engine=fake_json_llm, tools=[])
+        ToolCallingAgent(model=FakeToolCallModel(), tools=[])
 
     def test_fails_max_iterations(self):
         agent = CodeAgent(
             tools=[PythonInterpreterTool()],
-            llm_engine=fake_code_llm_no_return,  # use this callable because it never ends
+            model=fake_code_model_no_return,  # use this callable because it never ends
             max_iterations=5,
         )
         agent.run("What is 2 multiplied by 3.6452?")
@@ -278,19 +244,19 @@ Action:
 
     def test_init_agent_with_different_toolsets(self):
         toolset_1 = []
-        agent = CodeAgent(tools=toolset_1, llm_engine=fake_code_llm)
+        agent = CodeAgent(tools=toolset_1, model=fake_code_model)
         assert (
             len(agent.toolbox.tools) == 1
         )  # when no tools are provided, only the final_answer tool is added by default
 
         toolset_2 = [PythonInterpreterTool(), PythonInterpreterTool()]
-        agent = CodeAgent(tools=toolset_2, llm_engine=fake_code_llm)
+        agent = CodeAgent(tools=toolset_2, model=fake_code_model)
         assert (
             len(agent.toolbox.tools) == 2
         )  # deduplication of tools, so only one python_interpreter tool is added in addition to final_answer
 
         toolset_3 = Toolbox(toolset_2)
-        agent = CodeAgent(tools=toolset_3, llm_engine=fake_code_llm)
+        agent = CodeAgent(tools=toolset_3, model=fake_code_model)
         assert (
             len(agent.toolbox.tools) == 2
         )  # same as previous one, where toolset_3 is an instantiation of previous one
@@ -298,18 +264,20 @@ Action:
         # check that add_base_tools will not interfere with existing tools
         with pytest.raises(KeyError) as e:
             agent = ToolCallingAgent(
-                tools=toolset_3, llm_engine=fake_json_llm, add_base_tools=True
+                tools=toolset_3, model=FakeToolCallModel(), add_base_tools=True
             )
         assert "already exists in the toolbox" in str(e)
 
         # check that python_interpreter base tool does not get added to code agents
-        agent = CodeAgent(tools=[], llm_engine=fake_code_llm, add_base_tools=True)
-        assert len(agent.toolbox.tools) == 2  # added final_answer tool + search
+        agent = CodeAgent(tools=[], model=fake_code_model, add_base_tools=True)
+        assert (
+            len(agent.toolbox.tools) == 3
+        )  # added final_answer tool + search + transcribe
 
     def test_function_persistence_across_steps(self):
         agent = CodeAgent(
             tools=[],
-            llm_engine=fake_code_functiondef,
+            model=fake_code_functiondef,
             max_iterations=2,
             additional_authorized_imports=["numpy"],
         )
@@ -317,17 +285,17 @@ Action:
         assert res[0] == 0.5
 
     def test_init_managed_agent(self):
-        agent = CodeAgent(tools=[], llm_engine=fake_code_functiondef)
+        agent = CodeAgent(tools=[], model=fake_code_functiondef)
         managed_agent = ManagedAgent(agent, name="managed_agent", description="Empty")
         assert managed_agent.name == "managed_agent"
         assert managed_agent.description == "Empty"
 
     def test_agent_description_gets_correctly_inserted_in_system_prompt(self):
-        agent = CodeAgent(tools=[], llm_engine=fake_code_functiondef)
+        agent = CodeAgent(tools=[], model=fake_code_functiondef)
         managed_agent = ManagedAgent(agent, name="managed_agent", description="Empty")
         manager_agent = CodeAgent(
             tools=[],
-            llm_engine=fake_code_functiondef,
+            model=fake_code_functiondef,
             managed_agents=[managed_agent],
         )
         assert "You can also give requests to team members." not in agent.system_prompt

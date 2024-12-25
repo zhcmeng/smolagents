@@ -26,7 +26,7 @@ To initialize a minimal agent, you need at least these two arguments:
 - An LLM to power your agent - because the agent is different from a simple LLM, it is a system that uses a LLM as its engine.
 - A list of tools from which the agent pick tools to execute
 
-For defining your llm, you can make a `llm_engine` method which accepts a list of [messages](./chat_templating) and returns text. This callable also needs to accept a `stop_sequences` argument that indicates when to stop generating.
+For defining your LLM, you can make a `custom_model` method which accepts a list of [messages](./chat_templating) and returns text. This callable also needs to accept a `stop_sequences` argument that indicates when to stop generating.
 
 ```python
 from huggingface_hub import login, InferenceClient
@@ -37,32 +37,32 @@ model_id = "Qwen/Qwen2.5-72B-Instruct"
 
 client = InferenceClient(model=model_id)
 
-def llm_engine(messages, stop_sequences=["Task"]) -> str:
+def custom_model(messages, stop_sequences=["Task"]) -> str:
     response = client.chat_completion(messages, stop=stop_sequences, max_tokens=1000)
     answer = response.choices[0].message.content
     return answer
 ```
 
-You could use any `llm_engine` method as long as:
+You could use any `custom_model` method as long as:
 1. it follows the [messages format](./chat_templating) (`List[Dict[str, str]]`) for its input `messages`, and it returns a `str`.
 2. it stops generating outputs at the sequences passed in the argument `stop_sequences`
 
-Additionally, `llm_engine` can also take a `grammar` argument. In the case where you specify a `grammar` upon agent initialization, this argument will be passed to the calls to llm_engine, with the `grammar` that you defined upon initialization, to allow [constrained generation](https://huggingface.co/docs/text-generation-inference/conceptual/guidance) in order to force properly-formatted agent outputs.
+Additionally, `custom_model` can also take a `grammar` argument. In the case where you specify a `grammar` upon agent initialization, this argument will be passed to the calls to model, with the `grammar` that you defined upon initialization, to allow [constrained generation](https://huggingface.co/docs/text-generation-inference/conceptual/guidance) in order to force properly-formatted agent outputs.
 
-For convenience, we provide pre-built classes for your llm engine:
-- [`TransformersEngine`] takes a pre-initialized `transformers` pipeline to run inference on your local machine using `transformers`.
-- [`HfApiEngine`] leverages a `huggingface_hub.InferenceClient` under the hood.
-- We also provide [`LiteLLMEngine`], which lets you call 100+ different models through [LiteLLM](https://docs.litellm.ai/)!
+For convenience, we provide pre-built classes for your model engine:
+- [`TransformersModel`] takes a pre-initialized `transformers` pipeline to run inference on your local machine using `transformers`.
+- [`HfApiModel`] leverages a `huggingface_hub.InferenceClient` under the hood.
+- We also provide [`LiteLLMModel`], which lets you call 100+ different models through [LiteLLM](https://docs.litellm.ai/)!
 
 You will also need a `tools` argument which accepts a list of `Tools` - it can be an empty list. You can also add the default toolbox on top of your `tools` list by defining the optional argument `add_base_tools=True`.
 
-Once you have these two arguments, `tools` and `llm_engine`,  you can create an agent and run it. 
+Once you have these two arguments, `tools` and `model`,  you can create an agent and run it. 
 
 ```python
-from smolagents import CodeAgent, HfApiEngine
+from smolagents import CodeAgent, HfApiModel
 
-llm_engine = HfApiEngine(model=model_id)
-agent = CodeAgent(tools=[], llm_engine=llm_engine, add_base_tools=True)
+model = HfApiModel(model=model_id)
+agent = CodeAgent(tools=[], model=model, add_base_tools=True)
 
 agent.run(
     "Could you give me the 118th number in the Fibonacci sequence?",
@@ -76,7 +76,7 @@ You can use this to indicate the path to local or remote files for the model to 
 ```py
 from smolagents import CodeAgent, Tool, SpeechToTextTool
 
-agent = CodeAgent(tools=[SpeechToTextTool()], llm_engine=llm_engine, add_base_tools=True)
+agent = CodeAgent(tools=[SpeechToTextTool()], model=model, add_base_tools=True)
 
 agent.run("Why does Mike not know many people in New York?", audio="https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/transformers/recording.mp3")
 ```
@@ -96,7 +96,7 @@ You can authorize additional imports by passing the authorized modules as a list
 ```py
 from smolagents import CodeAgent
 
-agent = CodeAgent(tools=[], llm_engine=llm_engine, additional_authorized_imports=['requests', 'bs4'])
+agent = CodeAgent(tools=[], model=model, additional_authorized_imports=['requests', 'bs4'])
 agent.run("Could you get me the title of the page at url 'https://huggingface.co/blog'?")
 ```
 This gives you at the end of the agent run:
@@ -165,11 +165,11 @@ You could improve the system prompt, for example, by adding an explanation of th
 For maximum flexibility, you can overwrite the whole system prompt template by passing your custom prompt as an argument to the `system_prompt` parameter.
 
 ```python
-from smolagents import ToolCallingAgent, PythonInterpreterTool, JSON_SYSTEM_PROMPT
+from smolagents import ToolCallingAgent, PythonInterpreterTool, TOOL_CALLING_SYSTEM_PROMPT
 
-modified_prompt = JSON_SYSTEM_PROMPT
+modified_prompt = TOOL_CALLING_SYSTEM_PROMPT
 
-agent = ToolCallingAgent(tools=[PythonInterpreterTool()], llm_engine=llm_engine, system_prompt=modified_prompt)
+agent = ToolCallingAgent(tools=[PythonInterpreterTool()], model=model, system_prompt=modified_prompt)
 ```
 
 > [!WARNING]
@@ -255,7 +255,7 @@ All these will be automatically baked into the agent's system prompt upon initia
 Then you can directly initialize your agent:
 ```py
 from smolagents import CodeAgent
-agent = CodeAgent(tools=[model_download_tool], llm_engine=llm_engine)
+agent = CodeAgent(tools=[model_download_tool], model=model)
 agent.run(
     "Can you give me the name of the model that has the most downloads in the 'text-to-video' task on the Hugging Face Hub?"
 )
@@ -287,11 +287,11 @@ To do so, encapsulate the agent in a [`ManagedAgent`] object. This object needs 
 Here's an example of making an agent that managed a specific web search agent using our [`DuckDuckGoSearchTool`]:
 
 ```py
-from smolagents import CodeAgent, HfApiEngine, DuckDuckGoSearchTool, ManagedAgent
+from smolagents import CodeAgent, HfApiModel, DuckDuckGoSearchTool, ManagedAgent
 
-llm_engine = HfApiEngine()
+model = HfApiModel()
 
-web_agent = CodeAgent(tools=[DuckDuckGoSearchTool()], llm_engine=llm_engine)
+web_agent = CodeAgent(tools=[DuckDuckGoSearchTool()], model=model)
 
 managed_web_agent = ManagedAgent(
     agent=web_agent,
@@ -300,7 +300,7 @@ managed_web_agent = ManagedAgent(
 )
 
 manager_agent = CodeAgent(
-    tools=[], llm_engine=llm_engine, managed_agents=[managed_web_agent]
+    tools=[], model=model, managed_agents=[managed_web_agent]
 )
 
 manager_agent.run("Who is the CEO of Hugging Face?")
@@ -318,17 +318,17 @@ You can use `GradioUI` to interactively submit tasks to your agent and observe i
 from smolagents import (
     load_tool,
     CodeAgent,
-    HfApiEngine,
+    HfApiModel,
     GradioUI
 )
 
 # Import tool from Hub
 image_generation_tool = load_tool("m-ric/text-to-image")
 
-llm_engine = HfApiEngine(model_id)
+model = HfApiModel(model_id)
 
 # Initialize the agent with the image generation tool
-agent = CodeAgent(tools=[image_generation_tool], llm_engine=llm_engine)
+agent = CodeAgent(tools=[image_generation_tool], model=model)
 
 GradioUI(agent).launch()
 ```

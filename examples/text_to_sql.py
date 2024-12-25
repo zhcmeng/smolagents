@@ -66,10 +66,10 @@ def sql_engine(query: str) -> str:
             output += "\n" + str(row)
     return output
 
-from smolagents import CodeAgent, HfApiEngine
+from smolagents import CodeAgent, HfApiModel
 
 agent = CodeAgent(
     tools=[sql_engine],
-    llm_engine=HfApiEngine("meta-llama/Meta-Llama-3.1-8B-Instruct"),
+    model=HfApiModel("meta-llama/Meta-Llama-3.1-8B-Instruct"),
 )
 agent.run("Can you give me the name of the client who got the most expensive receipt?")

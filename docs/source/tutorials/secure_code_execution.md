@@ -68,10 +68,10 @@ To set the code executor to E2B, simply pass the flag `use_e2b_executor=True` wh
 Note that you should add all the tool's dependencies in `additional_authorized_imports`, so that the executor installs them.
 
 ```py
-from smolagents import CodeAgent, VisitWebpageTool, HfApiEngine
+from smolagents import CodeAgent, VisitWebpageTool, HfApiModel
 agent = CodeAgent(
     tools = [VisitWebpageTool()],
-    llm_engine=HfApiEngine(),
+    model=HfApiModel(),
     additional_authorized_imports=["requests", "markdownify"],
     use_e2b_executor=True
 )

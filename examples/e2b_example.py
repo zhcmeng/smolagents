@@ -1,4 +1,4 @@
-from smolagents import Tool, CodeAgent, HfApiEngine
+from smolagents import Tool, CodeAgent, HfApiModel
 from smolagents.default_tools import VisitWebpageTool
 from dotenv import load_dotenv
 
@@ -30,7 +30,7 @@ get_cat_image = GetCatImageTool()
 
 agent = CodeAgent(
     tools = [get_cat_image, VisitWebpageTool()],
-    llm_engine=HfApiEngine(),
+    model=HfApiModel(),
     additional_authorized_imports=["Pillow", "requests", "markdownify"], # "duckduckgo-search", 
     use_e2b_executor=False
 )

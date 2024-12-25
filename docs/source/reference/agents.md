@@ -52,19 +52,19 @@ We provide two types of agents, based on the main [`Agent`] class.
 [[autodoc]] stream_to_gradio
 
 
-## Engines
+## Models
 
 You're free to create and use your own engines to be usable by the Agents framework.
 These engines have the following specification:
 1. Follow the [messages format](../chat_templating.md) for its input (`List[Dict[str, str]]`) and return a string.
 2. Stop generating outputs *before* the sequences passed in the argument `stop_sequences`
 
-### TransformersEngine
+### TransformersModel
 
-For convenience, we have added a `TransformersEngine` that implements the points above, taking a pre-initialized `Pipeline` as input.
+For convenience, we have added a `TransformersModel` that implements the points above, taking a pre-initialized `Pipeline` as input.
 
 ```python
-from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline, TransformersEngine
+from transformers import AutoModelForCausalLM, AutoTokenizer, pipeline, TransformersModel
 
 model_name = "HuggingFaceTB/SmolLM-135M-Instruct"
 tokenizer = AutoTokenizer.from_pretrained(model_name)
@@ -72,18 +72,18 @@ model = AutoModelForCausalLM.from_pretrained(model_name)
 
 pipe = pipeline("text-generation", model=model, tokenizer=tokenizer)
 
-engine = TransformersEngine(pipe)
+engine = TransformersModel(pipe)
 engine([{"role": "user", "content": "Ok!"}], stop_sequences=["great"])
 ```
 
-[[autodoc]] TransformersEngine
+[[autodoc]] TransformersModel
 
-### HfApiEngine
+### HfApiModel
 
-The `HfApiEngine` is an engine that wraps an [HF Inference API](https://huggingface.co/docs/api-inference/index) client for the execution of the LLM.
+The `HfApiModel` is an engine that wraps an [HF Inference API](https://huggingface.co/docs/api-inference/index) client for the execution of the LLM.
 
 ```python
-from transformers import HfApiEngine
+from transformers import HfApiModel
 
 messages = [
   {"role": "user", "content": "Hello, how are you?"},
@@ -91,7 +91,7 @@ messages = [
   {"role": "user", "content": "No need to help, take it easy."},
 ]
 
-HfApiEngine()(messages)
+HfApiModel()(messages)
 ```
 
-[[autodoc]] HfApiEngine
+[[autodoc]] HfApiModel

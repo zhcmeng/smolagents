@@ -124,14 +124,14 @@ Now let us create an agent that leverages this tool.
 
 We use the CodeAgent, which is transformers.agents’ main agent class: an agent that writes actions in code and can iterate on previous output according to the ReAct framework.
 
-The llm_engine is the LLM that powers the agent system. HfEngine allows you to call LLMs using HF’s Inference API, either via Serverless or Dedicated endpoint, but you could also use any proprietary API.
+The model is the LLM that powers the agent system. HfModel allows you to call LLMs using HF’s Inference API, either via Serverless or Dedicated endpoint, but you could also use any proprietary API.
 
 ```py
-from smolagents import CodeAgent, HfApiEngine
+from smolagents import CodeAgent, HfApiModel
 
 agent = CodeAgent(
     tools=[sql_engine],
-    llm_engine=HfApiEngine("meta-llama/Meta-Llama-3.1-8B-Instruct"),
+    model=HfApiModel("meta-llama/Meta-Llama-3.1-8B-Instruct"),
 )
 agent.run("Can you give me the name of the client who got the most expensive receipt?")
 ```
@@ -187,7 +187,7 @@ sql_engine.description = updated_description
 
 agent = CodeAgent(
     tools=[sql_engine],
-    llm_engine=HfApiEngine("Qwen/Qwen2.5-72B-Instruct"),
+    model=HfApiModel("Qwen/Qwen2.5-72B-Instruct"),
 )
 
 agent.run("Which waiter got more total money from tips?")

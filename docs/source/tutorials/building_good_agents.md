@@ -166,7 +166,7 @@ Better ways to guide your LLM engine are:
 We provide a model for a supplementary planning step, that an agent can run regularly in-between normal action steps. In this step, there is no tool call, the LLM is simply asked to update a list of facts it knows and to reflect on what steps it should take next based on those facts.
 
 ```py
-from smolagents import load_tool, CodeAgent, HfApiEngine, DuckDuckGoSearchTool
+from smolagents import load_tool, CodeAgent, HfApiModel, DuckDuckGoSearchTool
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -178,7 +178,7 @@ search_tool = DuckDuckGoSearchTool()
 
 agent = CodeAgent(
     tools=[search_tool],
-    llm_engine=HfApiEngine("Qwen/Qwen2.5-72B-Instruct"),
+    model=HfApiModel("Qwen/Qwen2.5-72B-Instruct"),
     planning_interval=3 # This is where you activate planning!
 )
 

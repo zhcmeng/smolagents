@@ -114,10 +114,10 @@ And voilà, here's your image! 🏖️
 Then you can use this tool just like any other tool.  For example, let's improve the prompt  `a rabbit wearing a space suit` and generate an image of it.
 
 ```python
-from smolagents import CodeAgent, HfApiEngine
+from smolagents import CodeAgent, HfApiModel
 
-llm_engine = HfApiEngine("Qwen/Qwen2.5-Coder-32B-Instruct")
-agent = CodeAgent(tools=[image_generation_tool], llm_engine=llm_engine)
+model = HfApiModel("Qwen/Qwen2.5-Coder-32B-Instruct")
+agent = CodeAgent(tools=[image_generation_tool], model=model)
 
 agent.run(
     "Improve this prompt, then generate an image of it.", prompt='A rabbit wearing a space suit'
@@ -169,7 +169,7 @@ from langchain.agents import load_tools
 
 search_tool = Tool.from_langchain(load_tools(["serpapi"])[0])
 
-agent = CodeAgent(tools=[search_tool], llm_engine=llm_engine)
+agent = CodeAgent(tools=[search_tool], model=model)
 
 agent.run("How many more blocks (also denoted as layers) are in BERT base encoder compared to the encoder from the architecture proposed in Attention is All You Need?")
 ```
@@ -181,11 +181,11 @@ You can manage an agent's toolbox by adding or replacing a tool.
 Let's add the `model_download_tool` to an existing agent initialized with only the default toolbox.
 
 ```python
-from smolagents import HfApiEngine
+from smolagents import HfApiModel
 
-llm_engine = HfApiEngine("Qwen/Qwen2.5-Coder-32B-Instruct")
+model = HfApiModel("Qwen/Qwen2.5-Coder-32B-Instruct")
 
-agent = CodeAgent(tools=[], llm_engine=llm_engine, add_base_tools=True)
+agent = CodeAgent(tools=[], model=model, add_base_tools=True)
 agent.toolbox.add_tool(model_download_tool)
 ```
 Now we can leverage the new tool:
@@ -218,7 +218,7 @@ image_tool_collection = ToolCollection(
     collection_slug="huggingface-tools/diffusion-tools-6630bb19a942c2306a2cdb6f",
     token="<YOUR_HUGGINGFACEHUB_API_TOKEN>"
 )
-agent = CodeAgent(tools=[*image_tool_collection.tools], llm_engine=llm_engine, add_base_tools=True)
+agent = CodeAgent(tools=[*image_tool_collection.tools], model=model, add_base_tools=True)
 
 agent.run("Please draw me a picture of rivers and lakes.")
 ```

@@ -34,7 +34,7 @@ This library offers:
 
 ✨ **Simplicity**: the logic for agents fits in ~thousand lines of code. We kept abstractions to their minimal shape above raw code!
 
-🌐 **Support for any LLM**: it supports models hosted on the Hub loaded in their `transformers` version or through our inference API, but also models from OpenAI, Anthropic... it's really easy to power an agent with any LLM.
+🌐 **Support for any LLM**: it supports models hosted on the Hub loaded in their `transformers` version or through our inference API, but also models from OpenAI, Anthropic, and many more through our LiteLLM integration.
 
 🧑‍💻 **First-class support for Code Agents**, i.e. agents that write their actions in code (as opposed to "agents being used to write code"), [read more here](tutorials/secure_code_execution).
 
@@ -48,9 +48,9 @@ pip install agents
 ```
 Then define your agent, give it the tools it needs and run it!
 ```py
-from smolagents import CodeAgent, DuckDuckGoSearchTool, HfApiEngine
+from smolagents import CodeAgent, DuckDuckGoSearchTool, HfApiModel
 
-agent = CodeAgent(tools=[DuckDuckGoSearchTool()], llm_engine=HfApiEngine())
+agent = CodeAgent(tools=[DuckDuckGoSearchTool()], model=HfApiModel())
 
 agent.run("What time would the world's fastest car take to travel from New York to San Francisco?")
 ```

@@ -45,7 +45,7 @@ from huggingface_hub import login
 login()
 ```
 
-We first load a knowledge base on which we want to perform RAG: this dataset is a compilation of the documentation pages for many Hugging Face libraries, stored as markdown.
+We first load a knowledge base on which we want to perform RAG: this dataset is a compilation of the documentation pages for many Hugging Face libraries, stored as markdown. We will keep only the documentation for the `transformers` library.
 
 Then prepare the knowledge base by processing the dataset and storing it into a vector database to be used by the retriever.
 
@@ -58,11 +58,11 @@ from tqdm import tqdm
 from transformers import AutoTokenizer
 from langchain.docstore.document import Document
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_community.vectorstores import FAISS
+from langchain_community.vectorstores import FAISS, DistanceStrategy
 from langchain_community.embeddings import HuggingFaceEmbeddings
-from langchain_community.vectorstores.utils import DistanceStrategy
 
 knowledge_base = datasets.load_dataset("m-ric/huggingface_doc", split="train")
+knowledge_base = knowledge_base.filter(lambda row: row["source"].startswith("huggingface/transformers"))
 
 source_docs = [
     Document(page_content=doc["text"], metadata={"source": doc["source"].split("/")[1]})
@@ -92,7 +92,7 @@ for doc in tqdm(source_docs):
             docs_processed.append(new_doc)
 
 print(
-    "Embedding documents... This should take a few minutes (5 minutes on MacBook with M1 Pro)"
+    "Embedding documents... This could take a few minutes."
 )
 t0 = time.time()
 embedding_model = HuggingFaceEmbeddings(
@@ -105,11 +105,13 @@ vectordb = FAISS.from_documents(
     distance_strategy=DistanceStrategy.COSINE,
 )
 t1 = time.time()
-print(f"VectorDB embedded in {int((t1-t0)/60)} minutes")
+print(f"VectorDB embedded in {(t1-t0):.2f} seconds")
 ```
 If you want to improve performance, head to the [MTEB Leaderboard](https://huggingface.co/spaces/mteb/leaderboard) to select a bigger model for your embeddings: here we selected a small one for the sake of speed.
 
-Now the database is ready: let’s build our agentic RAG system!
+Now the database is ready. Building the embeddings for each document snippet took a few minutes, but now they're ready to be used in a split second.
+
+So let’s build our agentic RAG system!
 
 👉 We only need a RetrieverTool that our agent can leverage to retrieve information from the knowledge base.
 
@@ -138,7 +140,7 @@ class RetrieverTool(Tool):
 
         docs = self.vectordb.similarity_search(
             query,
-            k=7,
+            k=10,
         )
 
         return "\nRetrieved documents:\n" + "".join(
@@ -156,7 +158,7 @@ The agent will need these arguments upon initialization:
 - `model`: the LLM that powers the agent.
 Our `model` must be a callable that takes as input a list of messages and returns text. It also needs to accept a stop_sequences argument that indicates when to stop its generation. For convenience, we directly use the HfEngine class provided in the package to get a LLM engine that calls Hugging Face's Inference API.
 
-And we use meta-llama/Llama-3.3-70B-Instruct as the llm engine because:
+And we use [meta-llama/Llama-3.3-70B-Instruct](meta-llama/Llama-3.3-70B-Instruct) as the llm engine because:
 - It has a long 128k context, which is helpful for processing long source documents
 - It is served for free at all times on HF's Inference API!
 
@@ -167,7 +169,7 @@ from smolagents import HfApiModel, CodeAgent
 
 retriever_tool = RetrieverTool(vectordb)
 agent = CodeAgent(
-    tools=[retriever_tool], model=HfApiModel("Qwen/Qwen2.5-72B-Instruct"), max_iterations=4, verbose=True
+    tools=[retriever_tool], model=HfApiModel("meta-llama/Llama-3.3-70B-Instruct"), max_iterations=4, verbose=True
 )
 ```
 

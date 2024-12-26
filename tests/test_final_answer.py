@@ -25,7 +25,7 @@ from smolagents.types import AGENT_TYPE_MAPPING
 
 from smolagents.default_tools import FinalAnswerTool
 
-from .test_tools_common import ToolTesterMixin
+from .test_tools import ToolTesterMixin
 
 
 if is_torch_available():

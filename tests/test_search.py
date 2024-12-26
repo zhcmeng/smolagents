@@ -17,7 +17,7 @@ import unittest
 
 from smolagents import load_tool
 
-from .test_tools_common import ToolTesterMixin
+from .test_tools import ToolTesterMixin
 
 
 class DuckDuckGoSearchToolTester(unittest.TestCase, ToolTesterMixin):

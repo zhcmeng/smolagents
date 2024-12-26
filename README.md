@@ -44,7 +44,7 @@ This library offers:
 
 First install the package.
 ```bash
-pip install agents
+pip install smolagents
 ```
 Then define your agent, give it the tools it needs and run it!
 ```py

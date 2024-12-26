@@ -1,9 +1,9 @@
 # docstyle-ignore
 INSTALL_CONTENT = """
-# Transformers installation
-! pip install agents
+# Installation
+! pip install smolagents
 # To install from source instead of the last release, comment the command above and uncomment the following one.
-# ! pip install git+https://github.com/huggingface/agents.git
+# ! pip install git+https://github.com/huggingface/smolagents.git
 """
 
 notebook_first_cells = [{"type": "code", "content": INSTALL_CONTENT}]

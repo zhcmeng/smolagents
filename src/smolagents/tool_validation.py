@@ -85,7 +85,6 @@ class MethodChecker(ast.NodeVisitor):
         self.generic_visit(node)
 
     def visit_Attribute(self, node):
-        # Skip self.something
         if not (isinstance(node.value, ast.Name) and node.value.id == "self"):
             self.generic_visit(node)
 

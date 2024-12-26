@@ -67,9 +67,12 @@ tool_role_conversions = {
 
 def get_json_schema(tool: Tool) -> Dict:
     properties = deepcopy(tool.inputs)
-    for value in properties.values():
+    required = []
+    for key, value in properties.items():
         if value["type"] == "any":
             value["type"] = "string"
+        if not ("nullable" in value and value["nullable"]):
+            required.append(key)
     return {
         "type": "function",
         "function": {
@@ -78,7 +81,7 @@ def get_json_schema(tool: Tool) -> Dict:
             "parameters": {
                 "type": "object",
                 "properties": properties,
-                "required": list(tool.inputs.keys()),
+                "required": required,
             },
         },
     }

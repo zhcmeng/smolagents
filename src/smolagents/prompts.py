@@ -260,10 +260,8 @@ Task: "Which city has the highest population: Guangzhou or Shanghai?"
 Thought: I need to get the populations for both cities and compare them: I will use the tool `search` to get the population of both cities.
 Code:
 ```py
-population_guangzhou = search("Guangzhou population")
-print("Population Guangzhou:", population_guangzhou)
-population_shanghai = search("Shanghai population")
-print("Population Shanghai:", population_shanghai)
+for city in ["Guangzhou", "Shanghai"]:
+    print(f"Population {city}:", search(f"{city} population")
 ```<end_code>
 Observation:
 Population Guangzhou: ['Guangzhou has a population of 15 million inhabitants as of 2021.']
@@ -278,11 +276,13 @@ final_answer("Shanghai")
 ---
 Task: "What is the current age of the pope, raised to the power 0.36?"
 
-Thought: I will use the tool `wiki` to get the age of the pope, then raise it to the power 0.36.
+Thought: I will use the tool `wiki` to get the age of the pope, and confirm that with a web search.
 Code:
 ```py
-pope_age = wiki(query="current pope age")
-print("Pope age:", pope_age)
+pope_age_wiki = wiki(query="current pope age")
+print("Pope age as per wikipedia:", pope_age_wiki)
+pope_age_search = web_search(query="current pope age")
+print("Pope age as per google search:", pope_age_search)
 ```<end_code>
 Observation:
 Pope age: "The pope Francis is currently 85 years old."

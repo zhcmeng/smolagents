@@ -26,7 +26,7 @@ from smolagents.local_python_executor import (
     evaluate_python_code,
 )
 
-from .test_tools_common import ToolTesterMixin
+from .test_tools import ToolTesterMixin
 
 
 # Fake function we will use as tool

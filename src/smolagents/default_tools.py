@@ -172,6 +172,7 @@ class GoogleSearchTool(Tool):
         "filter_year": {
             "type": "integer",
             "description": "Optionally restrict results to a certain year",
+            "nullable": True,
         },
     }
     output_type = "string"
@@ -209,9 +210,14 @@ class GoogleSearchTool(Tool):
             raise ValueError(response.json())
 
         if "organic_results" not in results.keys():
-            raise Exception(
-                f"'organic_results' key not found for query: '{query}'. Use a less restrictive query."
-            )
+            if filter_year is not None:
+                raise Exception(
+                    f"'organic_results' key not found for query: '{query}' with filtering on year={filter_year}. Use a less restrictive query or do not filter on year."
+                )
+            else:
+                raise Exception(
+                    f"'organic_results' key not found for query: '{query}'. Use a less restrictive query."
+                )
         if len(results["organic_results"]) == 0:
             year_filter_message = (
                 f" with filter year={filter_year}" if filter_year is not None else ""

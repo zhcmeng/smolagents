@@ -14,7 +14,7 @@
 # limitations under the License.
 import unittest
 from pathlib import Path
-from typing import Dict, Union
+from typing import Dict, Union, Optional
 
 import numpy as np
 import pytest
@@ -126,9 +126,9 @@ class ToolTests(unittest.TestCase):
                     "description": "the task category (such as text-classification, depth-estimation, etc)",
                 }
             }
-            output_type = "integer"
+            output_type = "string"
 
-            def forward(self, task):
+            def forward(self, task: str) -> str:
                 return "best model"
 
         tool = HFModelDownloadsTool()
@@ -223,7 +223,7 @@ class ToolTests(unittest.TestCase):
             name = "specific"
             description = "test description"
             inputs = {
-                "input_str": {"type": "string", "description": "input description"}
+                "string_input": {"type": "string", "description": "input description"}
             }
             output_type = "string"
 
@@ -231,7 +231,7 @@ class ToolTests(unittest.TestCase):
                 super().__init__(self)
                 self.url = "none"
 
-            def forward(self, string_input):
+            def forward(self, string_input: str) -> str:
                 return self.url + string_input
 
         fail_tool = FailTool("dummy_url")
@@ -241,46 +241,127 @@ class ToolTests(unittest.TestCase):
 
     def test_saving_tool_allows_no_imports_from_outside_methods(self):
         # Test that using imports from outside functions fails
-        from numpy import random
+        import numpy as np
 
-        class FailTool2(Tool):
+        class FailTool(Tool):
             name = "specific"
             description = "test description"
             inputs = {
-                "input_str": {"type": "string", "description": "input description"}
+                "string_input": {"type": "string", "description": "input description"}
             }
             output_type = "string"
 
             def useless_method(self):
-                self.client = random.random()
+                self.client = np.random.random()
                 return ""
 
             def forward(self, string_input):
                 return self.useless_method() + string_input
 
-        fail_tool_2 = FailTool2()
+        fail_tool = FailTool()
         with pytest.raises(Exception) as e:
-            fail_tool_2.save("output")
-        assert "random" in str(e)
+            fail_tool.save("output")
+        assert "'np' is undefined" in str(e)
 
         # Test that putting these imports inside functions works
-
-        class FailTool3(Tool):
+        class SuccessTool(Tool):
             name = "specific"
             description = "test description"
             inputs = {
-                "input_str": {"type": "string", "description": "input description"}
+                "string_input": {"type": "string", "description": "input description"}
             }
             output_type = "string"
 
             def useless_method(self):
-                from numpy import random
+                import numpy as np
 
-                self.client = random.random()
+                self.client = np.random.random()
                 return ""
 
             def forward(self, string_input):
                 return self.useless_method() + string_input
 
-        fail_tool_3 = FailTool3()
-        fail_tool_3.save("output")
+        success_tool = SuccessTool()
+        success_tool.save("output")
+
+    def test_tool_missing_class_attributes_raises_error(self):
+        with pytest.raises(Exception) as e:
+            class GetWeatherTool(Tool):
+                name = "get_weather"
+                description = "Get weather in the next days at given location."
+                inputs = {
+                    "location": {"type": "string", "description": "the location"},
+                    "celsius": {"type": "string", "description": "the temperature type"}
+                }
+
+                def forward(self, location: str, celsius: Optional[bool] = False) -> str:
+                    return "The weather is UNGODLY with torrential rains and temperatures below -10°C"
+                
+            tool = GetWeatherTool()
+        assert "You must set an attribute output_type" in str(e)
+
+    def test_tool_from_decorator_optional_args(self):
+        @tool
+        def get_weather(location: str, celsius: Optional[bool] = False) -> str:
+            """
+            Get weather in the next days at given location.
+            Secretly this tool does not care about the location, it hates the weather everywhere.
+
+            Args:
+                location: the location
+                celsius: the temperature type
+            """
+            return "The weather is UNGODLY with torrential rains and temperatures below -10°C"
+        
+        assert "nullable" in get_weather.inputs["celsius"]
+        assert get_weather.inputs["celsius"]["nullable"] == True
+        assert "nullable" not in get_weather.inputs["location"]
+
+    def test_tool_mismatching_nullable_args_raises_error(self):
+        with pytest.raises(Exception) as e:
+            class GetWeatherTool(Tool):
+                name = "get_weather"
+                description = "Get weather in the next days at given location."
+                inputs = {
+                    "location": {"type": "string", "description": "the location"},
+                    "celsius": {"type": "string", "description": "the temperature type"}
+                }
+                output_type = "string"
+
+                def forward(self, location: str, celsius: Optional[bool] = False) -> str:
+                    return "The weather is UNGODLY with torrential rains and temperatures below -10°C"
+                
+            tool = GetWeatherTool()
+        assert "Nullable" in str(e)
+
+        with pytest.raises(Exception) as e:
+            class GetWeatherTool2(Tool):
+                name = "get_weather"
+                description = "Get weather in the next days at given location."
+                inputs = {
+                    "location": {"type": "string", "description": "the location"},
+                    "celsius": {"type": "string", "description": "the temperature type"}
+                }
+                output_type = "string"
+
+                def forward(self, location: str, celsius: bool = False) -> str:
+                    return "The weather is UNGODLY with torrential rains and temperatures below -10°C"
+                
+            tool = GetWeatherTool2()
+        assert "Nullable" in str(e)
+
+        with pytest.raises(Exception) as e:
+            class GetWeatherTool3(Tool):
+                name = "get_weather"
+                description = "Get weather in the next days at given location."
+                inputs = {
+                    "location": {"type": "string", "description": "the location"},
+                    "celsius": {"type": "string", "description": "the temperature type", "nullable": True}
+                }
+                output_type = "string"
+
+                def forward(self, location, celsius: str) -> str:
+                    return "The weather is UNGODLY with torrential rains and temperatures below -10°C"
+                
+            tool = GetWeatherTool3()
+        assert "Nullable" in str(e)

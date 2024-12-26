@@ -24,7 +24,7 @@ import torch
 import textwrap
 from functools import lru_cache, wraps
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Union
+from typing import Callable, Dict, List, Optional, Union, get_type_hints
 from huggingface_hub import (
     create_repo,
     get_collection,
@@ -42,6 +42,8 @@ from transformers.utils import (
     is_accelerate_available,
     is_torch_available,
 )
+from transformers.utils.chat_template_utils import _parse_type_hint
+
 from transformers.dynamic_module_utils import get_imports
 from transformers import AutoProcessor
 
@@ -95,17 +97,27 @@ def setup_default_tools():
     return default_tools
 
 
-def validate_after_init(cls, do_validate_forward: bool = True):
+def validate_after_init(cls):
     original_init = cls.__init__
 
     @wraps(original_init)
     def new_init(self, *args, **kwargs):
         original_init(self, *args, **kwargs)
-        self.validate_arguments(do_validate_forward=do_validate_forward)
+        self.validate_arguments()
 
     cls.__init__ = new_init
     return cls
 
+def _convert_type_hints_to_json_schema(func: Callable) -> Dict:
+    type_hints = get_type_hints(func)
+    signature = inspect.signature(func)
+    properties = {}
+    for param_name, param_type in type_hints.items():
+        if param_name != "return":
+            properties[param_name] = _parse_type_hint(param_type)
+            if signature.parameters[param_name].default != inspect.Parameter.empty:
+                properties[param_name]["nullable"] = True
+    return properties
 
 AUTHORIZED_TYPES = [
     "string",
@@ -145,7 +157,7 @@ class Tool:
 
     name: str
     description: str
-    inputs: Dict[str, Dict[str, Union[str, type]]]
+    inputs: Dict[str, Dict[str, Union[str, type, bool]]]
     output_type: str
 
     def __init__(self, *args, **kwargs):
@@ -153,9 +165,9 @@ class Tool:
 
     def __init_subclass__(cls, **kwargs):
         super().__init_subclass__(**kwargs)
-        validate_after_init(cls, do_validate_forward=False)
+        validate_after_init(cls)
 
-    def validate_arguments(self, do_validate_forward: bool = True):
+    def validate_arguments(self):
         required_attributes = {
             "description": str,
             "name": str,
@@ -184,12 +196,21 @@ class Tool:
                 )
 
         assert getattr(self, "output_type", None) in AUTHORIZED_TYPES
-        if do_validate_forward:
-            signature = inspect.signature(self.forward)
-            if not set(signature.parameters.keys()) == set(self.inputs.keys()):
-                raise Exception(
-                    "Tool's 'forward' method should take 'self' as its first argument, then its next arguments should match the keys of tool attribute 'inputs'."
-                )
+
+        # Validate forward function signature
+        signature = inspect.signature(self.forward)
+
+        if not set(signature.parameters.keys()) == set(self.inputs.keys()):
+            raise Exception(
+                "Tool's 'forward' method should take 'self' as its first argument, then its next arguments should match the keys of tool attribute 'inputs'."
+            )
+
+        json_schema = _convert_type_hints_to_json_schema(self.forward)
+        for key, value in self.inputs.items():
+            if "nullable" in value:
+                assert (key in json_schema and "nullable" in json_schema[key]), f"Nullable argument '{key}' in inputs should have key 'nullable' set to True in function signature."
+            if key in json_schema and "nullable" in json_schema[key]:
+                assert "nullable" in value, f"Nullable argument '{key}' in function signature should have key 'nullable' set to True in inputs."
 
     def forward(self, *args, **kwargs):
         return NotImplementedError("Write this method in your subclass of `Tool`.")
@@ -877,9 +898,6 @@ def tool(tool_function: Callable) -> Tool:
             "Tool return type not found: make sure your function has a return type hint!"
         )
 
-    if parameters["return"]["type"] == "object":
-        parameters["return"]["type"] = "any"
-
     class SimpleTool(Tool):
         def __init__(self, name, description, inputs, output_type, function):
             self.name = name
@@ -898,11 +916,10 @@ def tool(tool_function: Callable) -> Tool:
     )
     original_signature = inspect.signature(tool_function)
     new_parameters = [
-        inspect.Parameter("self", inspect.Parameter.POSITIONAL_OR_KEYWORD)
+        inspect.Parameter("self", inspect.Parameter.POSITIONAL_ONLY)
     ] + list(original_signature.parameters.values())
     new_signature = original_signature.replace(parameters=new_parameters)
     simple_tool.forward.__signature__ = new_signature
-    # SimpleTool.__name__ = "".join([el.title() for el in parameters["name"].split("_")])
     return simple_tool
 
 

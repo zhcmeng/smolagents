@@ -242,11 +242,10 @@ class Tool:
         Saves the relevant code files for your tool so it can be pushed to the Hub. This will copy the code of your
         tool in `output_dir` as well as autogenerate:
 
-        - an `app.py` file so that your tool can be converted to a space
+        - a `tool.py` file containing the logic for your tool.
+        - an `app.py` file providing an UI for your tool when it is exported to a Space with `tool.push_to_hub()`
         - a `requirements.txt` containing the names of the module used by your tool (as detected when inspecting its
           code)
-
-        You should only use this method to save tools that are defined in a separate module (not `__main__`).
 
         Args:
             output_dir (`str`): The folder in which you want to save your tool.

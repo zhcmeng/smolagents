@@ -50,7 +50,7 @@ from smolagents import CodeAgent, DuckDuckGoSearchTool, HfApiModel
 
 agent = CodeAgent(tools=[DuckDuckGoSearchTool()], model=HfApiModel())
 
-agent.run("What time would the world's fastest car take to travel from New York to San Francisco?")
+agent.run("What time would it take for a leopard at full speed to run through Pont des Arts?")
 ```
 
 > TODO: Add video

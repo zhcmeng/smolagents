@@ -153,15 +153,21 @@ class DuckDuckGoSearchTool(Tool):
     }
     output_type = "any"
 
-    def forward(self, query: str) -> list[dict[str, str]]:
+    def __init__(self):
+        super().__init__(self)
         try:
             from duckduckgo_search import DDGS
         except ImportError:
             raise ImportError(
                 "You must install package `duckduckgo_search` to run this tool: for instance run `pip install duckduckgo-search`."
             )
-        results = DDGS().text(query, max_results=7)
-        return results
+        self.ddgs = DDGS()
+
+
+    def forward(self, query: str) -> str:
+        results = self.ddgs.text(query, max_results=10)
+        postprocessed_results = [f"[{result['title']}]({result['href']})\n{result['body']}" for result in results]
+        return "## Search Results\n\n" + "\n\n".join(postprocessed_results)
 
 
 class GoogleSearchTool(Tool):
@@ -246,7 +252,7 @@ class GoogleSearchTool(Tool):
                 )
                 web_snippets.append(redacted_version)
 
-        return "## Web Results\n" + "\n\n".join(web_snippets)
+        return "## Search Results\n" + "\n\n".join(web_snippets)
 
 
 class VisitWebpageTool(Tool):

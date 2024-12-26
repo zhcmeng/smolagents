@@ -23,33 +23,10 @@ In this guided visit, you will learn how to build an agent, how to run it, and h
 
 To initialize a minimal agent, you need at least these two arguments:
 
-- An LLM to power your agent - because the agent is different from a simple LLM, it is a system that uses a LLM as its engine.
+- An text-generation model to power your agent - because the agent is different from a simple LLM, it is a system that uses a LLM as its engine.
 - A list of tools from which the agent pick tools to execute
 
-For defining your LLM, you can make a `custom_model` method which accepts a list of [messages](./chat_templating) and returns text. This callable also needs to accept a `stop_sequences` argument that indicates when to stop generating.
-
-```python
-from huggingface_hub import login, InferenceClient
-
-login("<YOUR_HUGGINGFACEHUB_API_TOKEN>")
-
-model_id = "meta-llama/Llama-3.3-70B-Instruct"
-
-client = InferenceClient(model=model_id)
-
-def custom_model(messages, stop_sequences=["Task"]) -> str:
-    response = client.chat_completion(messages, stop=stop_sequences, max_tokens=1000)
-    answer = response.choices[0].message.content
-    return answer
-```
-
-You could use any `custom_model` method as long as:
-1. it follows the [messages format](./chat_templating) (`List[Dict[str, str]]`) for its input `messages`, and it returns a `str`.
-2. it stops generating outputs at the sequences passed in the argument `stop_sequences`
-
-Additionally, `custom_model` can also take a `grammar` argument. In the case where you specify a `grammar` upon agent initialization, this argument will be passed to the calls to model, with the `grammar` that you defined upon initialization, to allow [constrained generation](https://huggingface.co/docs/text-generation-inference/conceptual/guidance) in order to force properly-formatted agent outputs.
-
-For convenience, we provide pre-built classes for your model engine:
+For your model, you can use any of these options:
 - [`TransformersModel`] takes a pre-initialized `transformers` pipeline to run inference on your local machine using `transformers`.
 - [`HfApiModel`] leverages a `huggingface_hub.InferenceClient` under the hood.
 - We also provide [`LiteLLMModel`], which lets you call 100+ different models through [LiteLLM](https://docs.litellm.ai/)!
@@ -60,6 +37,11 @@ Once you have these two arguments, `tools` and `model`,  you can create an agent
 
 ```python
 from smolagents import CodeAgent, HfApiModel
+from huggingface_hub import login
+
+login("<YOUR_HUGGINGFACEHUB_API_TOKEN>")
+
+model_id = "meta-llama/Llama-3.3-70B-Instruct"
 
 model = HfApiModel(model_id=model_id)
 agent = CodeAgent(tools=[], model=model, add_base_tools=True)

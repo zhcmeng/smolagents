@@ -23,7 +23,6 @@ class GetCatImageTool(Tool):
 
         return Image.open(BytesIO(response.content))
 
-LAUNCH_GRADIO = False
 
 get_cat_image = GetCatImageTool()
 
@@ -34,11 +33,11 @@ agent = CodeAgent(
     use_e2b_executor=True
 )
 
-if LAUNCH_GRADIO:
-    from smolagents import GradioUI
+agent.run(
+    "Return me an image of a cat. Directly use the image provided in your state.", additional_args={"cat_image":get_cat_image()}
+) # Asking to directly return the image from state tests that additional_args are properly sent to server.
 
-    GradioUI(agent).launch()
-else:
-    agent.run(
-        "Return me an image of a cat. Directly use the image provided in your state.", additional_args={"cat_image":get_cat_image()}
-    ) # Asking to directly return the image from state tests that additional_args are properly sent to server.
+# Try the agent in a Gradio UI
+from smolagents import GradioUI
+
+GradioUI(agent).launch()

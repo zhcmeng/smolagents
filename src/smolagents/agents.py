@@ -539,6 +539,7 @@ class MultiStepAgent:
             final_step_log = ActionStep(error=AgentMaxIterationsError(error_message))
             self.logs.append(final_step_log)
             final_answer = self.provide_final_answer(task)
+            console.print(Text(f"Final answer: {final_answer}"))
             final_step_log.action_output = final_answer
             final_step_log.end_time = time.time()
             final_step_log.duration = step_log.end_time - step_start_time
@@ -588,6 +589,7 @@ class MultiStepAgent:
             final_step_log = ActionStep(error=AgentMaxIterationsError(error_message))
             self.logs.append(final_step_log)
             final_answer = self.provide_final_answer(task)
+            console.print(Text(f"Final answer: {final_answer}"))
             final_step_log.action_output = final_answer
             final_step_log.duration = 0
             for callback in self.step_callbacks:

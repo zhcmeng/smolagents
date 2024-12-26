@@ -105,15 +105,18 @@ class PythonInterpreterTool(Tool):
 
     def forward(self, code: str) -> str:
         state = {}
-        output = str(
-            self.python_evaluator(
-                code,
-                state=state,
-                static_tools=self.base_python_tools,
-                authorized_imports=self.authorized_imports,
+        try:
+            output = str(
+                self.python_evaluator(
+                    code,
+                    state=state,
+                    static_tools=self.base_python_tools,
+                    authorized_imports=self.authorized_imports,
+                )
             )
-        )
-        return f"Stdout:\n{state['print_outputs']}\nOutput: {output}"
+            return f"Stdout:\n{state['print_outputs']}\nOutput: {output}"
+        except Exception as e:
+            return f"Error: {str(e)}"
 
 
 class FinalAnswerTool(Tool):

@@ -19,7 +19,7 @@ rendered properly in your Markdown viewer.
 
 In this tutorial, we’ll see how to implement an agent that leverages SQL using `smolagents`.
 
-> Let's start with the goldnen question: why not keep it simple and use a standard text-to-SQL pipeline?
+> Let's start with the golden question: why not keep it simple and use a standard text-to-SQL pipeline?
 
 A standard text-to-sql pipeline is brittle, since the generated SQL query can be incorrect. Even worse, the query could be incorrect, but not raise an error, instead giving some incorrect/useless outputs without raising an alarm.
 
@@ -27,7 +27,7 @@ A standard text-to-sql pipeline is brittle, since the generated SQL query can be
 
 Let’s build this agent! 💪
 
-### Setup text to SQL
+First, we setup the SQL environment:
 ```py
 from sqlalchemy import (
     create_engine,
@@ -73,7 +73,7 @@ for row in rows:
 
 Now let’s make our SQL table retrievable by a tool.
 
-The tool’s description attribute will be embedded in the LLM’s prompt by the agent system: it gives the LLM information about how to use the tool. So that is where we want to describe the SQL table.
+The tool’s description attribute will be embedded in the LLM’s prompt by the agent system: it gives the LLM information about how to use the tool. This is where we want to describe the SQL table.
 
 ```py
 inspector = inspect(engine)

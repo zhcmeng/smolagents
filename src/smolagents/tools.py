@@ -117,6 +117,10 @@ def _convert_type_hints_to_json_schema(func: Callable) -> Dict:
             properties[param_name] = _parse_type_hint(param_type)
             if signature.parameters[param_name].default != inspect.Parameter.empty:
                 properties[param_name]["nullable"] = True
+    for param_name in signature.parameters.keys():
+        if signature.parameters[param_name].default != inspect.Parameter.empty:
+            if param_name not in properties: # this can happen if the param has no type hint but a default value
+                properties[param_name] = {"nullable": True}
     return properties
 
 AUTHORIZED_TYPES = [

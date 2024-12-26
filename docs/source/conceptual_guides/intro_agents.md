@@ -112,4 +112,4 @@ This is illustrated on the figure below, taken from [Executable Code Actions Eli
 
 <img src="https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/transformers/code_vs_json_actions.png">
 
-This is why we put emphasis on proposing code agents, in this case python agents, which meant putting higher effort on building secure python interpreters.
+This is why we put emphasis on proposing code agents, in this case python agents, which meant building secure python interpreters.

@@ -33,7 +33,7 @@ from huggingface_hub import login, InferenceClient
 
 login("<YOUR_HUGGINGFACEHUB_API_TOKEN>")
 
-model_id = "Qwen/Qwen2.5-72B-Instruct"
+model_id = "meta-llama/Llama-3.3-70B-Instruct"
 
 client = InferenceClient(model=model_id)
 
@@ -71,12 +71,19 @@ agent.run(
 
 Note that we used an additional `additional_detail` argument: you can additional kwargs to `agent.run()`, they will be baked into the prompt as text.
 
-You can use this to indicate the path to local or remote files for the model to use:
+You can use this to pass files in various formats:
 
 ```py
-agent = CodeAgent(tools=[], model=model, add_base_tools=True)
+from smolagents import CodeAgent, HfApiModel
 
-agent.run("Why does Mike not know many people in New York?", audio="https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/transformers/recording.mp3")
+model_id = "meta-llama/Llama-3.3-70B-Instruct"
+
+agent = CodeAgent(tools=[], model=HfApiModel(model_id=model_id), add_base_tools=True)
+
+agent.run(
+    "Why does Mike not know many people in New York?",
+    additional_args={"mp3_sound_file_url":'https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/transformers/recording.mp3'}
+)
 ```
 
 It's important to explain as clearly as possible the task you want to perform.

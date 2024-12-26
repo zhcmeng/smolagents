@@ -188,6 +188,7 @@ class MultiStepAgent:
         self.tool_parser = tool_parser
         self.grammar = grammar
         self.planning_interval = planning_interval
+        self.state = {}
 
         self.managed_agents = {}
         if managed_agents is not None:
@@ -370,8 +371,7 @@ class MultiStepAgent:
             return self.model(self.input_messages)
         except Exception as e:
             error_msg = f"Error in generating final LLM output:\n{e}"
-            console.print(f"[bold red]{error_msg}[/bold red]")
-            return error_msg
+            raise AgentGenerationError(error_msg)
 
     def execute_tool_call(self, tool_name: str, arguments: Dict[str, str]) -> Any:
         """
@@ -385,7 +385,6 @@ class MultiStepAgent:
         available_tools = {**self.toolbox.tools, **self.managed_agents}
         if tool_name not in available_tools:
             error_msg = f"Unknown tool {tool_name}, should be instead one of {list(available_tools.keys())}."
-            console.print(f"[bold red]{error_msg}")
             raise AgentExecutionError(error_msg)
 
         try:
@@ -398,7 +397,6 @@ class MultiStepAgent:
                 observation = available_tools[tool_name].__call__(**arguments, sanitize_inputs_outputs=True)
             else:
                 error_msg = f"Arguments passed to tool should be a dict or string: got a {type(arguments)}."
-                console.print(f"[bold red]{error_msg}")
                 raise AgentExecutionError(error_msg)
             return observation
         except Exception as e:
@@ -410,14 +408,12 @@ class MultiStepAgent:
                     f"Error in tool call execution: {e}\nYou should only use this tool with a correct input.\n"
                     f"As a reminder, this tool's description is the following:\n{tool_description}"
                 )
-                console.print(f"[bold red]{error_msg}")
                 raise AgentExecutionError(error_msg)
             elif tool_name in self.managed_agents:
                 error_msg = (
                     f"Error in calling team member: {e}\nYou should only ask this team member with a correct request.\n"
                     f"As a reminder, this team member's description is the following:\n{available_tools[tool_name]}"
                 )
-                console.print(f"[bold red]{error_msg}")
                 raise AgentExecutionError(error_msg)
 
     def step(self, log_entry: ActionStep) -> Union[None, Any]:
@@ -430,7 +426,7 @@ class MultiStepAgent:
         stream: bool = False,
         reset: bool = True,
         single_step: bool = False,
-        **kwargs,
+        additional_args: Optional[Dict] = None,
     ):
         """
         Runs the agent for the given task.
@@ -440,6 +436,7 @@ class MultiStepAgent:
             stream (`bool`): Wether to run in a streaming way.
             reset (`bool`): Wether to reset the conversation or keep it going from previous run.
             single_step (`bool`): Should the agent run in one shot or multi-step fashion?
+            additional_args (`dict`): Any other variables that you want to pass to the agent run, for instance images or dataframes. Give them clear names!
 
         Example:
         ```py
@@ -449,11 +446,11 @@ class MultiStepAgent:
         ```
         """
         self.task = task
-        if len(kwargs) > 0:
-            self.task += (
-                f"\nYou have been provided with these initial arguments: {str(kwargs)}."
-            )
-        self.state = kwargs.copy()
+        if additional_args is not None:
+            self.state.update(additional_args)
+            self.task += f"""
+You have been provided with these additional arguments, that you can access as variables in your python code using the keys:
+{str(additional_args)}."""
 
         self.initialize_system_prompt()
         system_prompt_step = SystemPromptStep(system_prompt=self.system_prompt)
@@ -468,14 +465,9 @@ class MultiStepAgent:
             else:
                 self.logs.append(system_prompt_step)
 
-        # console.print(
-        #     Group(
-        #         Rule("[bold]New run", characters="═", style=YELLOW_HEX), Text(self.task)
-        #     )
-        # )
         console.print(
             Panel(
-                f"\n[bold]{task.strip()}\n",
+                f"\n[bold]{self.task.strip()}\n",
                 title="[bold]New run",
                 subtitle=f"{type(self.model).__name__} - {(self.model.model_id if hasattr(self.model, "model_id") else "")}",
                 border_style=YELLOW_HEX,
@@ -891,17 +883,6 @@ class CodeAgent(MultiStepAgent):
             console.print_exception()
             raise AgentGenerationError(f"Error in generating model output:\n{e}")
 
-        # from rich.live import Live
-        # from rich.markdown import Markdown
-        # import time
-
-        # with Live(console=console, vertical_overflow="visible") as live:
-        #     message = ""
-        #     for i in range(100):
-        #         time.sleep(0.02)
-        #         message += str(i)
-        #         live.update(Markdown(message))
-
         if self.verbose:
             console.print(
                 Group(
@@ -946,6 +927,7 @@ class CodeAgent(MultiStepAgent):
         try:
             output, execution_logs = self.python_executor(
                 code_action,
+                self.state,
             )
             execution_outputs_console = []
             if len(execution_logs) > 0:

@@ -295,7 +295,7 @@ class SpeechToTextTool(PipelineTool):
     pre_processor_class = WhisperProcessor
     model_class = WhisperForConditionalGeneration
 
-    inputs = {"audio": {"type": "audio", "description": "The audio to transcribe"}}
+    inputs = {"audio": {"type": "audio", "description": "The audio to transcribe. Can be a local path, an url, or a tensor."}}
     output_type = "string"
 
     def encode(self, audio):

@@ -27,12 +27,11 @@ LAUNCH_GRADIO = False
 
 get_cat_image = GetCatImageTool()
 
-
 agent = CodeAgent(
     tools = [get_cat_image, VisitWebpageTool()],
     model=HfApiModel(),
     additional_authorized_imports=["Pillow", "requests", "markdownify"], # "duckduckgo-search", 
-    use_e2b_executor=False
+    use_e2b_executor=True
 )
 
 if LAUNCH_GRADIO:
@@ -41,6 +40,5 @@ if LAUNCH_GRADIO:
     GradioUI(agent).launch()
 else:
     agent.run(
-        "Return me an image of Lincoln's preferred pet",
-        additional_context="Here is a webpage about US presidents and pets: https://www.9lives.com/blog/a-history-of-cats-in-the-white-house/"
-    )
+        "Return me an image of a cat. Directly use the image provided in your state.", additional_args={"cat_image":get_cat_image()}
+    ) # Asking to directly return the image from state tests that additional_args are properly sent to server.

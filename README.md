@@ -62,7 +62,7 @@ and [reaches higher performance on difficult benchmarks](https://huggingface.co/
 
 Especially, since code execution can be a security concern (arbitrary code execution!), we provide options at runtime:
   - a secure python interpreter to run code more safely in your environment
-  - a sandboxed environment.
+  - a sandboxed environment using [E2B](https://e2b.dev/).
 
 ## How lightweight is it?
 

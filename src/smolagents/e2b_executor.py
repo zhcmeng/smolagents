@@ -17,13 +17,14 @@
 from dotenv import load_dotenv
 import textwrap
 import base64
+import pickle
 from io import BytesIO
 from PIL import Image
 
 from e2b_code_interpreter import Sandbox
 from typing import List, Tuple, Any
 from .tool_validation import validate_tool_attributes
-from .utils import instance_to_source, BASE_BUILTIN_MODULES
+from .utils import instance_to_source, BASE_BUILTIN_MODULES, console
 from .tools import Tool
 
 load_dotenv()
@@ -40,6 +41,7 @@ class E2BExecutor:
         #     timeout=300
         # )
         # print("Installation of agents package finished.")
+        additional_imports = additional_imports + ["pickle5"]
         if len(additional_imports) > 0:
             execution = self.sbx.commands.run(
                 "pip install " + " ".join(additional_imports)
@@ -47,7 +49,7 @@ class E2BExecutor:
             if execution.error:
                 raise Exception(f"Error installing dependencies: {execution.error}")
             else:
-                print("Installation succeeded!")
+                console.print(f"Installation of {additional_imports} succeeded!")
 
         tool_codes = []
         for tool in tools:
@@ -71,21 +73,44 @@ class E2BExecutor:
         tool_definition_code += "\n\n".join(tool_codes)
 
         tool_definition_execution = self.run_code_raise_errors(tool_definition_code)
-        print(tool_definition_execution.logs)
+        console.print(tool_definition_execution.logs)
 
     def run_code_raise_errors(self, code: str):
         execution = self.sbx.run_code(
             code,
         )
         if execution.error:
-            logs = "Executing code yielded an error:"
+            execution_logs = "\n".join([str(log) for log in execution.logs.stdout])
+            logs = execution_logs
+            logs += "Executing code yielded an error:"
             logs += execution.error.name
             logs += execution.error.value
             logs += execution.error.traceback
             raise ValueError(logs)
         return execution
 
-    def __call__(self, code_action: str) -> Tuple[Any, Any]:
+    def __call__(self, code_action: str, additional_args: dict) -> Tuple[Any, Any]:
+        if len(additional_args) > 0:
+            # Pickle additional_args to server
+            import tempfile
+
+            with tempfile.NamedTemporaryFile() as f:
+                pickle.dump(additional_args, f)
+                f.flush()
+                with open(f.name, "rb") as file:
+                    self.sbx.files.write("/home/state.pkl", file)
+            remote_unloading_code = """import pickle
+import os
+print("File path", os.path.getsize('/home/state.pkl'))
+with open('/home/state.pkl', 'rb') as f:
+    pickle_dict = pickle.load(f)
+locals().update({key: value for key, value in pickle_dict.items()})
+"""
+            execution = self.run_code_raise_errors(remote_unloading_code)
+            execution_logs = "\n".join([str(log) for log in execution.logs.stdout])
+            console.print(execution_logs)
+
+        
         execution = self.run_code_raise_errors(code_action)
         execution_logs = "\n".join([str(log) for log in execution.logs.stdout])
         if not execution.results:

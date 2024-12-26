@@ -201,20 +201,21 @@ class Tool:
 
         assert getattr(self, "output_type", None) in AUTHORIZED_TYPES
 
-        # Validate forward function signature
-        signature = inspect.signature(self.forward)
+        # Validate forward function signature, except for PipelineTool
+        if not (hasattr(self, "is_pipeline_tool") and getattr(self, "is_pipeline_tool") is True):
+            signature = inspect.signature(self.forward)
 
-        if not set(signature.parameters.keys()) == set(self.inputs.keys()):
-            raise Exception(
-                "Tool's 'forward' method should take 'self' as its first argument, then its next arguments should match the keys of tool attribute 'inputs'."
-            )
+            if not set(signature.parameters.keys()) == set(self.inputs.keys()):
+                raise Exception(
+                    "Tool's 'forward' method should take 'self' as its first argument, then its next arguments should match the keys of tool attribute 'inputs'."
+                )
 
-        json_schema = _convert_type_hints_to_json_schema(self.forward)
-        for key, value in self.inputs.items():
-            if "nullable" in value:
-                assert (key in json_schema and "nullable" in json_schema[key]), f"Nullable argument '{key}' in inputs should have key 'nullable' set to True in function signature."
-            if key in json_schema and "nullable" in json_schema[key]:
-                assert "nullable" in value, f"Nullable argument '{key}' in function signature should have key 'nullable' set to True in inputs."
+            json_schema = _convert_type_hints_to_json_schema(self.forward)
+            for key, value in self.inputs.items():
+                if "nullable" in value:
+                    assert (key in json_schema and "nullable" in json_schema[key]), f"Nullable argument '{key}' in inputs should have key 'nullable' set to True in function signature."
+                if key in json_schema and "nullable" in json_schema[key]:
+                    assert "nullable" in value, f"Nullable argument '{key}' in function signature should have key 'nullable' set to True in inputs."
 
     def forward(self, *args, **kwargs):
         return NotImplementedError("Write this method in your subclass of `Tool`.")
@@ -1074,6 +1075,7 @@ class PipelineTool(Tool):
     name = "pipeline"
     inputs = {"prompt": str}
     output_type = str
+    is_pipeline_tool = True
 
     def __init__(
         self,

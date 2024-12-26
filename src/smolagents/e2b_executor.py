@@ -36,7 +36,7 @@ class E2BExecutor:
         # TODO: validate installing agents package or not
         # print("Installing agents package on remote executor...")
         # self.sbx.commands.run(
-        #     "pip install git+https://github.com/huggingface/agents.git",
+        #     "pip install git+https://github.com/huggingface/smolagents.git",
         #     timeout=300
         # )
         # print("Installation of agents package finished.")

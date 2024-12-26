@@ -910,7 +910,7 @@ class CodeAgent(MultiStepAgent):
                         align="left",
                         style="orange",
                     ),
-                    Syntax(llm_output, lexer="markdown", theme="github-dark"),
+                    Syntax(llm_output, lexer="markdown", theme="github-dark", word_wrap=True),
                 )
             )
 

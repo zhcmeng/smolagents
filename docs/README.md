@@ -78,7 +78,7 @@ The `preview` command only works with existing doc files. When you add a complet
 Accepted files are Markdown (.md).
 
 Create a file with its extension and put it in the source directory. You can then link it to the toc-tree by putting
-the filename without the extension in the [`_toctree.yml`](https://github.com/huggingface/agents/blob/main/docs/source/_toctree.yml) file.
+the filename without the extension in the [`_toctree.yml`](https://github.com/huggingface/smolagents/blob/main/docs/source/_toctree.yml) file.
 
 ## Renaming section headers and moving sections
 
@@ -108,7 +108,7 @@ For an example of a rich moved section set please see the very end of [the trans
 
 ## Writing Documentation - Specification
 
-The `huggingface/agents` documentation follows the
+The `huggingface/smolagents` documentation follows the
 [Google documentation](https://sphinxcontrib-napoleon.readthedocs.io/en/latest/example_google.html) style for docstrings,
 although we can write them directly in Markdown.
 
@@ -123,7 +123,7 @@ Make sure to put your new file under the proper section. If you have a doubt, fe
 
 ### Translating
 
-When translating, refer to the guide at [./TRANSLATING.md](https://github.com/huggingface/agents/blob/main/docs/TRANSLATING.md).
+When translating, refer to the guide at [./TRANSLATING.md](https://github.com/huggingface/smolagents/blob/main/docs/TRANSLATING.md).
 
 ### Writing source documentation
 

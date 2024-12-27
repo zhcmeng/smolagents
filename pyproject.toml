@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "smolagents"
-version = "0.0.1"
+version = "0.1.0"
 description = "🤗 `smolagents`: a barebones library for agents. Agents just write python code to call/orchestrate tools."
 authors = [
   { name="Aymeric Roucher", email="aymeric@hf.co" }, { name="Thomas Wolf"},

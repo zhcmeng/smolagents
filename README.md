@@ -13,7 +13,6 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 -->
-
 <p align="center">
     <!-- Uncomment when CircleCI is set up
     <a href="https://circleci.com/gh/huggingface/accelerate"><img alt="Build" src="https://img.shields.io/circleci/build/github/huggingface/transformers/master"></a>
@@ -50,7 +49,7 @@ from smolagents import CodeAgent, DuckDuckGoSearchTool, HfApiModel
 
 agent = CodeAgent(tools=[DuckDuckGoSearchTool()], model=HfApiModel())
 
-agent.run("What time would it take for a leopard at full speed to run through Pont des Arts?")
+agent.run("How many seconds would it take for a leopard at full speed to run through Pont des Arts?")
 ```
 
 https://github.com/user-attachments/assets/cd0226e2-7479-4102-aea0-57c22ca47884
@@ -69,14 +68,14 @@ Especially, since code execution can be a security concern (arbitrary code execu
 We strived to keep abstractions to a strict minimum: the main code in `agents.py` is only ~1,000 lines of code.
 Still, we implement several types of agents: `CodeAgent` writes its actions as Python code snippets, and the more classic `ToolCallingAgent` that leverages built-in tool calling methods.
 
-Many people ask: why use a framework at all? Well, because a big part of this stuff is non-trivial. For instance, the code agent has to keep a consistent format for code throughout its system prompt, its parser, the execution. So our framework handles this complexity for you. But of course we still encourage you to hack into the source code and use only the bits that you need, to the exclusion of everything else!
+By the way, why use a framework at all? Well, because a big part of this stuff is non-trivial. For instance, the code agent has to keep a consistent format for code throughout its system prompt, its parser, the execution. So our framework handles this complexity for you. But of course we still encourage you to hack into the source code and use only the bits that you need, to the exclusion of everything else!
 
 ## Citing smolagents
 
 If you use `smolagents` in your publication, please cite it by using the following BibTeX entry.
 
 ```bibtex
-@Misc{accelerate,
+@Misc{smolagents,
   title =        {`smolagents`: The easiest way to build efficient agentic systems.},
   author =       {Aymeric Roucher and Thomas Wolf and Leandro von Werra and Erik Kaunismäki},
   howpublished = {\url{https://github.com/huggingface/smolagents}},

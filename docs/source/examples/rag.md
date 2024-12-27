@@ -37,12 +37,11 @@ Run the line below to install required dependencies:
 ```bash
 !pip install smolagents pandas langchain langchain-community sentence-transformers faiss-cpu --upgrade -q
 ```
-Let's login in order to call the HF Inference API:
-
+To call the HF Inference API, you will need a valid token as your environment variable `HF_TOKEN`.
+We use python-dotenv to load it.
 ```py
-from huggingface_hub import login
-
-login()
+from python_dotenv import load_dotenv
+load_dotenv()
 ```
 
 We first load a knowledge base on which we want to perform RAG: this dataset is a compilation of the documentation pages for many Hugging Face libraries, stored as markdown. We will keep only the documentation for the `transformers` library.

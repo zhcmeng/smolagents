@@ -25,10 +25,10 @@ limitations under the License.
 </p>
 
 <h3 align="center">
-<p>🤗 Smolagents - a smol library to build great agents!</p>
+  <p>🤗 `smolagents` - a smol library to build great agents!</p>
 </h3>
 
-Smolagents is a library that enables you to run powerful agents in a few lines of code. It offers:
+`smolagents` is a library that enables you to run powerful agents in a few lines of code. It offers:
 
 ✨ **Simplicity**: the logic for agents fits in ~thousand lines of code. We kept abstractions to their minimal shape above raw code!
 
@@ -58,7 +58,7 @@ https://github.com/user-attachments/assets/cd0226e2-7479-4102-aea0-57c22ca47884
 ## Code agents?
 
 We built agents where the LLM engine writes its actions in code. This approach is demonstrated to work better than the current industry practice of letting the LLM output a dictionary of the tools it wants to calls: [uses 30% fewer steps](https://huggingface.co/papers/2402.01030) (thus 30% fewer LLM calls)
-and [reaches higher performance on difficult benchmarks](https://huggingface.co/papers/2411.01747). Head to [./conceptual_guides/intro_agents.md] to learn more on that.
+and [reaches higher performance on difficult benchmarks](https://huggingface.co/papers/2411.01747). Head to [https://huggingface.co/docs/smolagents/conceptual_guides/intro_agents] to learn more on that.
 
 Especially, since code execution can be a security concern (arbitrary code execution!), we provide options at runtime:
   - a secure python interpreter to run code more safely in your environment
@@ -76,7 +76,7 @@ If you use `smolagents` in your publication, please cite it by using the followi
 
 ```bibtex
 @Misc{accelerate,
-  title =        {Smolagents: The easiest way to build efficient agentic systems.},
+  title =        {`smolagents`: The easiest way to build efficient agentic systems.},
   author =       {Aymeric Roucher and Thomas Wolf and Leandro von Werra and Erik Kaunismäki},
   howpublished = {\url{https://github.com/huggingface/smolagents}},
   year =         {2024}

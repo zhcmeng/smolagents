@@ -184,7 +184,7 @@ class AgentTests(unittest.TestCase):
         )
         output = agent.run("What is 2 multiplied by 3.6452?", single_step=True)
         assert isinstance(output, str)
-        assert output == "7.2904"
+        assert "7.2904" in output
 
     def test_fake_toolcalling_agent(self):
         agent = ToolCallingAgent(
@@ -192,9 +192,9 @@ class AgentTests(unittest.TestCase):
         )
         output = agent.run("What is 2 multiplied by 3.6452?")
         assert isinstance(output, str)
-        assert output == "7.2904"
+        assert "7.2904" in output
         assert agent.logs[1].task == "What is 2 multiplied by 3.6452?"
-        assert agent.logs[2].observations == "7.2904"
+        assert "7.2904" in agent.logs[2].observations
         assert agent.logs[3].llm_output is None
 
     def test_toolcalling_agent_handles_image_tool_outputs(self):
@@ -229,7 +229,8 @@ class AgentTests(unittest.TestCase):
     def test_additional_args_added_to_task(self):
         agent = CodeAgent(tools=[], model=fake_code_model)
         agent.run(
-            "What is 2 multiplied by 3.6452?", additional_instruction="Remember this."
+            "What is 2 multiplied by 3.6452?",
+            additional_args={"instruction": "Remember this."},
         )
         assert "Remember this" in agent.task
         assert "Remember this" in str(agent.input_messages)

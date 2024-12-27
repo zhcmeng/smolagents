@@ -54,18 +54,11 @@ agent.run("What time would it take for a leopard at full speed to run through Po
 ```
 
 <div class="flex justify-center">
-  <video width="320" height="240" controls>
-    <source src="https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/smolagents/smolagents.mp4" type="video/mp4">
-  </video>
+  <img src="https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/smolagents/smolagents.gif" alt="CodeAgent browsing the web and doing calculations to solve a question"/>
 </div>
-    <!-- <img
-        class="block dark:hidden"
-        src="https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/transformers/Agent_ManimCE.gif"
-    />
-    <img
-        class="hidden dark:block"
-        src="https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/transformers/Agent_ManimCE.gif"
-    /> -->
+
+![CodeAgent browsing the web and doing calculations to solve a question](https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/smolagents/smolagents.gif)
+
 
 ## Code agents?
 

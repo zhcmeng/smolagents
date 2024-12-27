@@ -53,12 +53,7 @@ agent = CodeAgent(tools=[DuckDuckGoSearchTool()], model=HfApiModel())
 agent.run("What time would it take for a leopard at full speed to run through Pont des Arts?")
 ```
 
-<div class="flex justify-center">
-  <img src="https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/smolagents/smolagents.gif" alt="CodeAgent browsing the web and doing calculations to solve a question"/>
-</div>
-
-![CodeAgent browsing the web and doing calculations to solve a question](https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/smolagents/smolagents.gif)
-
+https://github.com/user-attachments/assets/cd0226e2-7479-4102-aea0-57c22ca47884
 
 ## Code agents?
 

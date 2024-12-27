@@ -129,7 +129,8 @@ def get_clean_message_list(
             final_message_list.append(message)
     return final_message_list
 
-class Model():
+
+class Model:
     def __init__(self):
         self.last_input_token_count = None
         self.last_output_token_count = None
@@ -313,9 +314,16 @@ class TransformersModel(Model):
                 self.stream = ""
 
             def __call__(self, input_ids, scores, **kwargs):
-                generated = self.tokenizer.decode(input_ids[0][-1], skip_special_tokens=True)
+                generated = self.tokenizer.decode(
+                    input_ids[0][-1], skip_special_tokens=True
+                )
                 self.stream += generated
-                if any([self.stream.endswith(stop_string) for stop_string in self.stop_strings]):
+                if any(
+                    [
+                        self.stream.endswith(stop_string)
+                        for stop_string in self.stop_strings
+                    ]
+                ):
                     return True
                 return False
 
@@ -458,7 +466,7 @@ __all__ = [
     "MessageRole",
     "tool_role_conversions",
     "get_clean_message_list",
-    "HfModel",
+    "Model",
     "TransformersModel",
     "HfApiModel",
     "LiteLLMModel",

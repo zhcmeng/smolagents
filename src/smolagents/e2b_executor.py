@@ -110,7 +110,6 @@ locals().update({key: value for key, value in pickle_dict.items()})
             execution_logs = "\n".join([str(log) for log in execution.logs.stdout])
             console.print(execution_logs)
 
-        
         execution = self.run_code_raise_errors(code_action)
         execution_logs = "\n".join([str(log) for log in execution.logs.stdout])
         if not execution.results:

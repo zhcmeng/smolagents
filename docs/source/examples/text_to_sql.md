@@ -122,9 +122,9 @@ def sql_engine(query: str) -> str:
 
 Now let us create an agent that leverages this tool.
 
-We use the CodeAgent, which is transformers.agents’ main agent class: an agent that writes actions in code and can iterate on previous output according to the ReAct framework.
+We use the `CodeAgent`, which is transformers.agents’ main agent class: an agent that writes actions in code and can iterate on previous output according to the ReAct framework.
 
-The model is the LLM that powers the agent system. HfModel allows you to call LLMs using HF’s Inference API, either via Serverless or Dedicated endpoint, but you could also use any proprietary API.
+The model is the LLM that powers the agent system. HfApiModel allows you to call LLMs using HF’s Inference API, either via Serverless or Dedicated endpoint, but you could also use any proprietary API.
 
 ```py
 from smolagents import CodeAgent, HfApiModel
@@ -180,14 +180,14 @@ for table in ["receipts", "waiters"]:
 
 print(updated_description)
 ```
-Since this request is a bit harder than the previous one, we’ll switch the LLM engine to use the more powerful [Qwen/Qwen2.5-72B-Instruct](https://huggingface.co/Qwen/Qwen2.5-72B-Instruct)!
+Since this request is a bit harder than the previous one, we’ll switch the LLM engine to use the more powerful [Qwen/Qwen2.5-Coder-32B-Instruct](https://huggingface.co/Qwen/Qwen2.5-Coder-32B-Instruct)!
 
 ```py
 sql_engine.description = updated_description
 
 agent = CodeAgent(
     tools=[sql_engine],
-    model=HfApiModel("Qwen/Qwen2.5-72B-Instruct"),
+    model=HfApiModel("Qwen/Qwen2.5-Coder-32B-Instruct"),
 )
 
 agent.run("Which waiter got more total money from tips?")

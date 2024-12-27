@@ -106,6 +106,7 @@ final_answer("got an error")
 ```<end_code>
 """
 
+
 def fake_code_model_syntax_error(messages, stop_sequences=None) -> str:
     prompt = str(messages)
     if "special_marker" not in prompt:
@@ -255,12 +256,13 @@ class AgentTests(unittest.TestCase):
         assert "Code execution failed at line 'print = 2' because of" in str(agent.logs)
 
     def test_code_agent_syntax_error_show_offending_lines(self):
-        agent = CodeAgent(tools=[PythonInterpreterTool()], model=fake_code_model_syntax_error)
+        agent = CodeAgent(
+            tools=[PythonInterpreterTool()], model=fake_code_model_syntax_error
+        )
         output = agent.run("What is 2 multiplied by 3.6452?")
         assert isinstance(output, AgentText)
         assert output == "got an error"
-        assert "    print(\"Failing due to unexpected indent\")" in str(agent.logs)
-
+        assert '    print("Failing due to unexpected indent")' in str(agent.logs)
 
     def test_setup_agent_with_empty_toolbox(self):
         ToolCallingAgent(model=FakeToolCallModel(), tools=[])

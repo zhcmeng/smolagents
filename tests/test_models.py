@@ -16,6 +16,7 @@ import unittest
 from smolagents import models, tool
 from typing import Optional
 
+
 class ModelTests(unittest.TestCase):
     def test_get_json_schema_has_nullable_args(self):
         @tool
@@ -29,4 +30,10 @@ class ModelTests(unittest.TestCase):
                 celsius: the temperature type
             """
             return "The weather is UNGODLY with torrential rains and temperatures below -10°C"
-        assert "nullable" in models.get_json_schema(get_weather)["function"]["parameters"]["properties"]["celsius"]
+
+        assert (
+            "nullable"
+            in models.get_json_schema(get_weather)["function"]["parameters"][
+                "properties"
+            ]["celsius"]
+        )

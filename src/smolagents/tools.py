@@ -108,6 +108,7 @@ def validate_after_init(cls):
     cls.__init__ = new_init
     return cls
 
+
 def _convert_type_hints_to_json_schema(func: Callable) -> Dict:
     type_hints = get_type_hints(func)
     signature = inspect.signature(func)
@@ -119,9 +120,12 @@ def _convert_type_hints_to_json_schema(func: Callable) -> Dict:
                 properties[param_name]["nullable"] = True
     for param_name in signature.parameters.keys():
         if signature.parameters[param_name].default != inspect.Parameter.empty:
-            if param_name not in properties: # this can happen if the param has no type hint but a default value
+            if (
+                param_name not in properties
+            ):  # this can happen if the param has no type hint but a default value
                 properties[param_name] = {"nullable": True}
     return properties
+
 
 AUTHORIZED_TYPES = [
     "string",
@@ -202,7 +206,10 @@ class Tool:
         assert getattr(self, "output_type", None) in AUTHORIZED_TYPES
 
         # Validate forward function signature, except for PipelineTool
-        if not (hasattr(self, "is_pipeline_tool") and getattr(self, "is_pipeline_tool") is True):
+        if not (
+            hasattr(self, "is_pipeline_tool")
+            and getattr(self, "is_pipeline_tool") is True
+        ):
             signature = inspect.signature(self.forward)
 
             if not set(signature.parameters.keys()) == set(self.inputs.keys()):
@@ -213,9 +220,13 @@ class Tool:
             json_schema = _convert_type_hints_to_json_schema(self.forward)
             for key, value in self.inputs.items():
                 if "nullable" in value:
-                    assert (key in json_schema and "nullable" in json_schema[key]), f"Nullable argument '{key}' in inputs should have key 'nullable' set to True in function signature."
+                    assert (
+                        key in json_schema and "nullable" in json_schema[key]
+                    ), f"Nullable argument '{key}' in inputs should have key 'nullable' set to True in function signature."
                 if key in json_schema and "nullable" in json_schema[key]:
-                    assert "nullable" in value, f"Nullable argument '{key}' in function signature should have key 'nullable' set to True in inputs."
+                    assert (
+                        "nullable" in value
+                    ), f"Nullable argument '{key}' in function signature should have key 'nullable' set to True in inputs."
 
     def forward(self, *args, **kwargs):
         return NotImplementedError("Write this method in your subclass of `Tool`.")

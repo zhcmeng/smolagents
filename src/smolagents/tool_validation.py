@@ -1,6 +1,5 @@
 import ast
 import inspect
-import importlib.util
 import builtins
 from typing import Set
 import textwrap

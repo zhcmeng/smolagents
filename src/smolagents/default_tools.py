@@ -163,10 +163,12 @@ class DuckDuckGoSearchTool(Tool):
             )
         self.ddgs = DDGS()
 
-
     def forward(self, query: str) -> str:
         results = self.ddgs.text(query, max_results=10)
-        postprocessed_results = [f"[{result['title']}]({result['href']})\n{result['body']}" for result in results]
+        postprocessed_results = [
+            f"[{result['title']}]({result['href']})\n{result['body']}"
+            for result in results
+        ]
         return "## Search Results\n\n" + "\n\n".join(postprocessed_results)
 
 
@@ -301,7 +303,12 @@ class SpeechToTextTool(PipelineTool):
     pre_processor_class = WhisperProcessor
     model_class = WhisperForConditionalGeneration
 
-    inputs = {"audio": {"type": "audio", "description": "The audio to transcribe. Can be a local path, an url, or a tensor."}}
+    inputs = {
+        "audio": {
+            "type": "audio",
+            "description": "The audio to transcribe. Can be a local path, an url, or a tensor.",
+        }
+    }
     output_type = "string"
 
     def encode(self, audio):

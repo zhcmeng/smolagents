@@ -286,18 +286,24 @@ class ToolTests(unittest.TestCase):
 
     def test_tool_missing_class_attributes_raises_error(self):
         with pytest.raises(Exception) as e:
+
             class GetWeatherTool(Tool):
                 name = "get_weather"
                 description = "Get weather in the next days at given location."
                 inputs = {
                     "location": {"type": "string", "description": "the location"},
-                    "celsius": {"type": "string", "description": "the temperature type"}
+                    "celsius": {
+                        "type": "string",
+                        "description": "the temperature type",
+                    },
                 }
 
-                def forward(self, location: str, celsius: Optional[bool] = False) -> str:
+                def forward(
+                    self, location: str, celsius: Optional[bool] = False
+                ) -> str:
                     return "The weather is UNGODLY with torrential rains and temperatures below -10°C"
-                
-            tool = GetWeatherTool()
+
+            GetWeatherTool()
         assert "You must set an attribute output_type" in str(e)
 
     def test_tool_from_decorator_optional_args(self):
@@ -312,56 +318,71 @@ class ToolTests(unittest.TestCase):
                 celsius: the temperature type
             """
             return "The weather is UNGODLY with torrential rains and temperatures below -10°C"
-        
+
         assert "nullable" in get_weather.inputs["celsius"]
-        assert get_weather.inputs["celsius"]["nullable"] == True
+        assert get_weather.inputs["celsius"]["nullable"]
         assert "nullable" not in get_weather.inputs["location"]
 
     def test_tool_mismatching_nullable_args_raises_error(self):
         with pytest.raises(Exception) as e:
+
             class GetWeatherTool(Tool):
                 name = "get_weather"
                 description = "Get weather in the next days at given location."
                 inputs = {
                     "location": {"type": "string", "description": "the location"},
-                    "celsius": {"type": "string", "description": "the temperature type"}
+                    "celsius": {
+                        "type": "string",
+                        "description": "the temperature type",
+                    },
                 }
                 output_type = "string"
 
-                def forward(self, location: str, celsius: Optional[bool] = False) -> str:
+                def forward(
+                    self, location: str, celsius: Optional[bool] = False
+                ) -> str:
                     return "The weather is UNGODLY with torrential rains and temperatures below -10°C"
-                
-            tool = GetWeatherTool()
+
+            GetWeatherTool()
         assert "Nullable" in str(e)
 
         with pytest.raises(Exception) as e:
+
             class GetWeatherTool2(Tool):
                 name = "get_weather"
                 description = "Get weather in the next days at given location."
                 inputs = {
                     "location": {"type": "string", "description": "the location"},
-                    "celsius": {"type": "string", "description": "the temperature type"}
+                    "celsius": {
+                        "type": "string",
+                        "description": "the temperature type",
+                    },
                 }
                 output_type = "string"
 
                 def forward(self, location: str, celsius: bool = False) -> str:
                     return "The weather is UNGODLY with torrential rains and temperatures below -10°C"
-                
-            tool = GetWeatherTool2()
+
+            GetWeatherTool2()
         assert "Nullable" in str(e)
 
         with pytest.raises(Exception) as e:
+
             class GetWeatherTool3(Tool):
                 name = "get_weather"
                 description = "Get weather in the next days at given location."
                 inputs = {
                     "location": {"type": "string", "description": "the location"},
-                    "celsius": {"type": "string", "description": "the temperature type", "nullable": True}
+                    "celsius": {
+                        "type": "string",
+                        "description": "the temperature type",
+                        "nullable": True,
+                    },
                 }
                 output_type = "string"
 
                 def forward(self, location, celsius: str) -> str:
                     return "The weather is UNGODLY with torrential rains and temperatures below -10°C"
-                
-            tool = GetWeatherTool3()
+
+            GetWeatherTool3()
         assert "Nullable" in str(e)

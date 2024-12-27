@@ -3,9 +3,11 @@ from smolagents import tool, HfApiModel, TransformersModel, LiteLLMModel
 from typing import Optional
 
 # Choose which LLM engine to use!
-# model = HfApiModel("meta-llama/Llama-3.3-70B-Instruct")
-# model = TransformersModel("meta-llama/Llama-3.2-2B-Instruct")
-model = LiteLLMModel("gpt-4o")
+# model = HfApiModel(model_id="meta-llama/Llama-3.3-70B-Instruct")
+# model = TransformersModel(model_id="meta-llama/Llama-3.2-2B-Instruct")
+
+# For anthropic: change model_id below to 'anthropic/claude-3-5-sonnet-20240620'
+model = LiteLLMModel(model_id="gpt-4o")
 
 @tool
 def get_weather(location: str, celsius: Optional[bool] = False) -> str:

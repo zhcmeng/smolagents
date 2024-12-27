@@ -29,6 +29,12 @@ class Monitor:
             self.total_input_token_count = 0
             self.total_output_token_count = 0
 
+    def get_total_token_counts(self):
+        return {
+            "input": self.total_input_token_count,
+            "output": self.total_output_token_count
+        }
+
     def reset(self):
         self.step_durations = []
         self.total_input_token_count = 0

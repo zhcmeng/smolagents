@@ -16,6 +16,7 @@
 # limitations under the License.
 from copy import deepcopy
 from enum import Enum
+import json
 from typing import Dict, List, Optional
 from transformers import (
     AutoTokenizer,
@@ -128,8 +129,7 @@ def get_clean_message_list(
             final_message_list.append(message)
     return final_message_list
 
-
-class HfModel:
+class Model():
     def __init__(self):
         self.last_input_token_count = None
         self.last_output_token_count = None
@@ -181,7 +181,7 @@ class HfModel:
         return remove_stop_sequences(response, stop_sequences)
 
 
-class HfApiModel(HfModel):
+class HfApiModel(Model):
     """A class to interact with Hugging Face's Inference API for language model interaction.
 
     This engine allows you to communicate with Hugging Face's models using the Inference API. It can be used in both serverless mode or with a dedicated endpoint, supporting features like stop sequences and grammar customization.
@@ -280,7 +280,7 @@ class HfApiModel(HfModel):
         return tool_call.function.name, tool_call.function.arguments, tool_call.id
 
 
-class TransformersModel(HfModel):
+class TransformersModel(Model):
     """This engine initializes a model and tokenizer from the given `model_id`."""
 
     def __init__(self, model_id: Optional[str] = None):
@@ -401,13 +401,12 @@ class TransformersModel(HfModel):
         return tool_name, tool_input, call_id
 
 
-class LiteLLMModel:
+class LiteLLMModel(Model):
     def __init__(self, model_id="anthropic/claude-3-5-sonnet-20240620"):
+        super().__init__()
         self.model_id = model_id
         # IMPORTANT - Set this to TRUE to add the function to the prompt for Non OpenAI LLMs
         litellm.add_function_to_prompt = True
-        self.last_input_token_count = 0
-        self.last_output_token_count = 0
 
     def __call__(
         self,
@@ -451,7 +450,8 @@ class LiteLLMModel:
         tool_calls = response.choices[0].message.tool_calls[0]
         self.last_input_token_count = response.usage.prompt_tokens
         self.last_output_token_count = response.usage.completion_tokens
-        return tool_calls.function.name, tool_calls.function.arguments, tool_calls.id
+        arguments = json.loads(tool_calls.function.arguments)
+        return tool_calls.function.name, arguments, tool_calls.id
 
 
 __all__ = [

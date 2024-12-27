@@ -53,7 +53,19 @@ agent = CodeAgent(tools=[DuckDuckGoSearchTool()], model=HfApiModel())
 agent.run("What time would it take for a leopard at full speed to run through Pont des Arts?")
 ```
 
-> TODO: Add video
+<div class="flex justify-center">
+  <video width="320" height="240" controls>
+    <source src="https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/smolagents/smolagents.mp4" type="video/mp4">
+  </video>
+</div>
+    <!-- <img
+        class="block dark:hidden"
+        src="https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/transformers/Agent_ManimCE.gif"
+    />
+    <img
+        class="hidden dark:block"
+        src="https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/transformers/Agent_ManimCE.gif"
+    /> -->
 
 ## Code agents?
 
@@ -69,3 +81,16 @@ Especially, since code execution can be a security concern (arbitrary code execu
 We strived to keep abstractions to a strict minimum, with the main code in `agents.py` being roughly 1,000 lines of code, and still being quite complete, with several types of agents implemented: `CodeAgent` writing its actions in code snippets, and the more classic `ToolCallingAgent` that leverage built-in tool calling methods.
 
 Many people ask: why use a framework at all? Well, because a big part of this stuff is non-trivial. For instance, the code agent has to keep a consistent format for code throughout its system prompt, its parser, the execution. So our framework handles this complexity for you. But of course we still encourage you to hack into the source code and use only the bits that you need, to the exclusion of everything else!
+
+## Citing smolagents
+
+If you use `smolagents` in your publication, please cite it by using the following BibTeX entry.
+
+```bibtex
+@Misc{accelerate,
+  title =        {Smolagents: The easiest way to build efficient agentic systems.},
+  author =       {Aymeric Roucher and Thomas Wolf and Leandro von Werra and Erik Kaunismäki},
+  howpublished = {\url{https://github.com/huggingface/smolagents}},
+  year =         {2024}
+}
+```

@@ -449,7 +449,7 @@ class MultiStepAgent:
         if additional_args is not None:
             self.state.update(additional_args)
             self.task += f"""
-You have been provided with these additional arguments, that you can access as variables in your python code using the keys:
+You have been provided with these additional arguments, that you can access using the keys as variables in your python code:
 {str(additional_args)}."""
 
         self.initialize_system_prompt()

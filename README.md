@@ -66,7 +66,7 @@ Especially, since code execution can be a security concern (arbitrary code execu
 ## How smol is it really?
 
 We strived to keep abstractions to a strict minimum: the main code in `agents.py` is only ~1,000 lines of code.
-Still, we implement several types of agents: `CodeAgent` writes its actions as Python code snippets, and the more classic `ToolCallingAgent` that leverages built-in tool calling methods.
+Still, we implement several types of agents: `CodeAgent` writes its actions as Python code snippets, and the more classic `ToolCallingAgent` leverages built-in tool calling methods.
 
 By the way, why use a framework at all? Well, because a big part of this stuff is non-trivial. For instance, the code agent has to keep a consistent format for code throughout its system prompt, its parser, the execution. So our framework handles this complexity for you. But of course we still encourage you to hack into the source code and use only the bits that you need, to the exclusion of everything else!
 

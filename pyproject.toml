@@ -26,6 +26,7 @@ dependencies = [
     "e2b-code-interpreter>=1.0.3",
     "torch>=2.5.1",
     "litellm>=1.55.10",
+    "torchvision>=0.20.1",
 ]
 
 [project.optional-dependencies]

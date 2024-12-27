@@ -219,7 +219,7 @@ class HfApiModel(Model):
 
     def __init__(
         self,
-        model_id: str = "meta-llama/Llama-3.3-70B-Instruct",
+        model_id: str = "Qwen/Qwen2.5-Coder-32B-Instruct",
         token: Optional[str] = None,
         timeout: Optional[int] = 120,
     ):

@@ -51,27 +51,6 @@ agent.run(
 )
 ```
 
-Note that we used an additional `additional_detail` argument: you can additional kwargs to `agent.run()`, they will be baked into the prompt as text.
-
-You can use this to pass files in various formats:
-
-```py
-from smolagents import CodeAgent, HfApiModel
-
-model_id = "meta-llama/Llama-3.3-70B-Instruct"
-
-agent = CodeAgent(tools=[], model=HfApiModel(model_id=model_id), add_base_tools=True)
-
-agent.run(
-    "Why does Mike not know many people in New York?",
-    additional_args={"mp3_sound_file_url":'https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/transformers/recording.mp3'}
-)
-```
-
-It's important to explain as clearly as possible the task you want to perform.
-Since an agent is powered by an LLM, minor variations in your task formulation might yield completely different results.
-You can also run an agent consecutively for different tasks: if you leave the default option of `True` for the flag `reset` when calling `agent.run(task)`, the agent's memory will be erased before starting the new task.
-
 #### Code execution
 
 A Python interpreter executes the code on a set of inputs passed along with your tools.
@@ -326,6 +305,8 @@ GradioUI(agent).launch()
 
 Under the hood, when the user types a new answer, the agent is launched with `agent.run(user_request, reset=False)`.
 The `reset=False` flag means the agent's memory is not flushed before launching this new task, which lets the conversation go on.
+
+You can also use this `reset=False` argument to keep the conversation going in any other agentic application.
 
 ## Next steps
 

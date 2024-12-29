@@ -47,6 +47,11 @@ Remember that your LLM engine is like a ~intelligent~ robot, tapped into a room 
 
 It won't know of anything that happened if you don't explicitly put that into its prompt.
 
+So first start with making your task very clear!
+Since an agent is powered by an LLM, minor variations in your task formulation might yield completely different results.
+
+Then, improve the information flow towards your agent in tool use.
+
 Particular guidelines to follow:
 - Each tool should log (by simply using `print` statements inside the tool's `forward` method) everything that could be useful for the LLM engine.
   - In particular, logging detail on tool execution errors would help a lot!
@@ -108,7 +113,27 @@ def get_weather_api(location: str, date_time: str) -> str:
     return f"Weather report for {location}, {date_time}: Temperature will be {temperature_celsius}°C, risk of rain is {risk_of_rain*100:.0f}%, wave height is {wave_height}m."
 ```
 
-In general, to ease the load on your LLM, the good question to ask yourself is: "How easy would it be for me, if I was dumb and using this tool for thsefirst time ever, to program with this tool and correct my own errors?".
+In general, to ease the load on your LLM, the good question to ask yourself is: "How easy would it be for me, if I was dumb and using this tool for the first time ever, to program with this tool and correct my own errors?".
+
+### Give more stuff to the agent
+
+To pass some additional objects to your agent than thes smple string that tells it the task to run, you can use argument `additional_args` to pass any type of object:
+
+```py
+from smolagents import CodeAgent, HfApiModel
+
+model_id = "meta-llama/Llama-3.3-70B-Instruct"
+
+agent = CodeAgent(tools=[], model=HfApiModel(model_id=model_id), add_base_tools=True)
+
+agent.run(
+    "Why does Mike not know many people in New York?",
+    additional_args={"mp3_sound_file_url":'https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/transformers/recording.mp3'}
+)
+```
+For instance, use this to pass images or strings.
+
+
 
 ## How to debug your agent
 

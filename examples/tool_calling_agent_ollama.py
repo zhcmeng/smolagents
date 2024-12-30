@@ -1,7 +1,5 @@
 from smolagents.agents import ToolCallingAgent
-from smolagents import tool, HfApiModel, TransformersModel, LiteLLMModel, Model
-from smolagents.tools import Tool
-from smolagents.models import get_clean_message_list, tool_role_conversions
+from smolagents import tool, LiteLLMModel
 from typing import Optional
 
 model = LiteLLMModel(model_id="openai/llama3.2",

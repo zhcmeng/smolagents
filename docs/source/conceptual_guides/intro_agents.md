@@ -33,7 +33,7 @@ Note that with this definition, "agent" is not a discrete, 0 or 1 definition: in
 Then it can get more agentic.
 
 - If you use an LLM output to determine which function is run and with which arguments, that's tool calling.
-- If you use an LLM output to determine if you should keep iterating in a while loop, you get a multi-step agent.
+- If you use an LLM output to determine if you should keep iterating in a while loop, you have a multi-step agent.
 
 | Agency Level | Description | How that's called | Example Pattern |
 |-------------|-------------|-------------|-----------------|
@@ -52,9 +52,9 @@ One type of agentic system is quite simple: the multi-step agent. It has this st
 ```python
 memory = [user_defined_task]
 while llm_should_continue(memory): # this loop is the multi-step part
-		action = llm_get_next_action(memory) # this is the tool-calling part
-		observations = execute_action(action)
-		memory += [action, observations]
+    action = llm_get_next_action(memory) # this is the tool-calling part
+    observations = execute_action(action)
+    memory += [action, observations]
 ```
 
 This agentic system just runs in a loop, execution a new action at each step (the action can involve calling some pre-determined *tools* that are just functions), until its observations make it apparent that a satisfactory state has been reached to solve the given task.

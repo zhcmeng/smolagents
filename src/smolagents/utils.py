@@ -34,15 +34,16 @@ def is_pygments_available():
 console = Console()
 
 BASE_BUILTIN_MODULES = [
-    "random",
     "collections",
-    "math",
-    "time",
-    "queue",
+    "datetime",
     "itertools",
+    "math",
+    "queue",
+    "random",
     "re",
     "stat",
     "statistics",
+    "time",
     "unicodedata",
 ]
 

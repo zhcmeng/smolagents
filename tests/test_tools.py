@@ -93,7 +93,7 @@ class ToolTesterMixin:
 
     def test_agent_type_output(self):
         inputs = create_inputs(self.tool.inputs)
-        output = self.tool(**inputs)
+        output = self.tool(**inputs, sanitize_inputs_outputs=True)
         if self.tool.output_type != "any":
             agent_type = AGENT_TYPE_MAPPING[self.tool.output_type]
             self.assertTrue(isinstance(output, agent_type))
@@ -164,20 +164,20 @@ class ToolTests(unittest.TestCase):
             assert coolfunc.output_type == "number"
         assert "docstring has no description for the argument" in str(e)
 
-    def test_tool_definition_raises_error_imports_outside_function(self):
+    def test_saving_tool_raises_error_imports_outside_function(self):
         with pytest.raises(Exception) as e:
-            from datetime import datetime
+            import numpy as np
 
             @tool
             def get_current_time() -> str:
                 """
                 Gets the current time.
                 """
-                return str(datetime.now())
+                return str(np.random.random())
 
             get_current_time.save("output")
 
-        assert "datetime" in str(e)
+        assert "np" in str(e)
 
         # Also test with classic definition
         with pytest.raises(Exception) as e:
@@ -189,12 +189,12 @@ class ToolTests(unittest.TestCase):
                 output_type = "string"
 
                 def forward(self):
-                    return str(datetime.now())
+                    return str(np.random.random())
 
             get_current_time = GetCurrentTimeTool()
             get_current_time.save("output")
 
-        assert "datetime" in str(e)
+        assert "np" in str(e)
 
     def test_tool_definition_raises_no_error_imports_in_function(self):
         @tool

@@ -410,7 +410,12 @@ class TransformersModel(Model):
 
 
 class LiteLLMModel(Model):
-    def __init__(self, model_id="anthropic/claude-3-5-sonnet-20240620", api_base=None, api_key=None):
+    def __init__(
+        self,
+        model_id="anthropic/claude-3-5-sonnet-20240620",
+        api_base=None,
+        api_key=None,
+    ):
         super().__init__()
         self.model_id = model_id
         # IMPORTANT - Set this to TRUE to add the function to the prompt for Non OpenAI LLMs

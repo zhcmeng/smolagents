@@ -55,8 +55,8 @@ final_answer('This is the final answer.')
                 self.last_input_token_count = 10
                 self.last_output_token_count = 20
 
-            def __call__(self, prompt, **kwargs):
-                return 'Action:{"action": "final_answer", "action_input": {"answer": "image"}}'
+            def get_tool_call(self, prompt, **kwargs):
+                return "final_answer", {"answer": "image"}, "fake_id"
 
         agent = ToolCallingAgent(
             tools=[],
@@ -96,18 +96,21 @@ final_answer('This is the final answer.')
                 self.last_output_token_count = 20
 
             def __call__(self, prompt, **kwargs):
-                raise AgentError
+                self.last_input_token_count = 10
+                self.last_output_token_count = 0
+                raise Exception("Cannot generate")
 
         agent = CodeAgent(
             tools=[],
             model=FakeLLMModel(),
             max_iterations=1,
         )
-
         agent.run("Fake task")
 
-        self.assertEqual(agent.monitor.total_input_token_count, 20)
-        self.assertEqual(agent.monitor.total_output_token_count, 40)
+        self.assertEqual(
+            agent.monitor.total_input_token_count, 20
+        )  # Should have done two monitoring callbacks
+        self.assertEqual(agent.monitor.total_output_token_count, 0)
 
     def test_streaming_agent_text_output(self):
         def dummy_model(prompt, **kwargs):
@@ -132,14 +135,16 @@ final_answer('This is the final answer.')
         self.assertIn("This is the final answer.", final_message.content)
 
     def test_streaming_agent_image_output(self):
-        def dummy_model(prompt, **kwargs):
-            return (
-                'Action:{"action": "final_answer", "action_input": {"answer": "image"}}'
-            )
+        class FakeLLM:
+            def __init__(self):
+                pass
+
+            def get_tool_call(self, messages, **kwargs):
+                return "final_answer", {"answer": "image"}, "fake_id"
 
         agent = ToolCallingAgent(
             tools=[],
-            model=dummy_model,
+            model=FakeLLM(),
             max_iterations=1,
         )
 
@@ -148,7 +153,7 @@ final_answer('This is the final answer.')
             stream_to_gradio(
                 agent,
                 task="Test task",
-                image=AgentImage(value="path.png"),
+                additional_args=dict(image=AgentImage(value="path.png")),
                 test_mode=True,
             )
         )

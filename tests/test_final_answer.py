@@ -59,6 +59,6 @@ class FinalAnswerToolTester(unittest.TestCase, ToolTesterMixin):
     def test_agent_type_output(self):
         inputs = self.create_inputs()
         for input_type, input in inputs.items():
-            output = self.tool(**input)
+            output = self.tool(**input, sanitize_inputs_outputs=True)
             agent_type = AGENT_TYPE_MAPPING[input_type]
             self.assertTrue(isinstance(output, agent_type))

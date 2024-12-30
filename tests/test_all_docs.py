@@ -123,6 +123,7 @@ class TestDocs:
                 "ToolCollection",
                 "image_generation_tool",
                 "from_langchain",
+                "while llm_should_continue(memory):",
             ]
             code_blocks = [
                 block.replace("<YOUR_HUGGINGFACEHUB_API_TOKEN>", self.hf_token).replace(

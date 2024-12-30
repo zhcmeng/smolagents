@@ -7,8 +7,6 @@ from .utils import BASE_BUILTIN_MODULES
 
 _BUILTIN_NAMES = set(vars(builtins))
 
-IMPORTED_PACKAGES = BASE_BUILTIN_MODULES
-
 
 class MethodChecker(ast.NodeVisitor):
     """
@@ -91,7 +89,7 @@ class MethodChecker(ast.NodeVisitor):
         if isinstance(node.ctx, ast.Load):
             if not (
                 node.id in _BUILTIN_NAMES
-                or node.id in IMPORTED_PACKAGES
+                or node.id in BASE_BUILTIN_MODULES
                 or node.id in self.arg_names
                 or node.id == "self"
                 or node.id in self.class_attributes
@@ -105,7 +103,7 @@ class MethodChecker(ast.NodeVisitor):
         if isinstance(node.func, ast.Name):
             if not (
                 node.func.id in _BUILTIN_NAMES
-                or node.func.id in IMPORTED_PACKAGES
+                or node.func.id in BASE_BUILTIN_MODULES
                 or node.func.id in self.arg_names
                 or node.func.id == "self"
                 or node.func.id in self.class_attributes

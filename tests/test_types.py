@@ -20,7 +20,6 @@ from pathlib import Path
 
 from smolagents.types import AgentAudio, AgentImage, AgentText
 from transformers.testing_utils import (
-    get_tests_dir,
     require_soundfile,
     require_torch,
     require_vision,
@@ -91,7 +90,7 @@ class AgentImageTests(unittest.TestCase):
         self.assertTrue(os.path.exists(path))
 
     def test_from_string(self):
-        path = Path(get_tests_dir("fixtures/")) / "000000039769.png"
+        path = Path("tests/fixtures/000000039769.png")
         image = Image.open(path)
         agent_type = AgentImage(path)
 
@@ -103,7 +102,7 @@ class AgentImageTests(unittest.TestCase):
         self.assertTrue(os.path.exists(path))
 
     def test_from_image(self):
-        path = Path(get_tests_dir("fixtures/")) / "000000039769.png"
+        path = Path("tests/fixtures/000000039769.png")
         image = Image.open(path)
         agent_type = AgentImage(image)
 

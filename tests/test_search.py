@@ -27,4 +27,4 @@ class DuckDuckGoSearchToolTester(unittest.TestCase, ToolTesterMixin):
 
     def test_exact_match_arg(self):
         result = self.tool("Agents")
-        assert isinstance(result, list) and isinstance(result[0], dict)
+        assert isinstance(result, str)

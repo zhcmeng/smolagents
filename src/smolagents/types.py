@@ -104,7 +104,9 @@ class AgentImage(AgentType, ImageType):
         self._raw = None
         self._tensor = None
 
-        if isinstance(value, ImageType):
+        if isinstance(value, AgentImage):
+            self._raw, self._path, self._tensor = value._raw, value._path, value._tensor
+        elif isinstance(value, ImageType):
             self._raw = value
         elif isinstance(value, bytes):
             self._raw = Image.open(BytesIO(value))

@@ -854,7 +854,7 @@ def load_tool(
         main_module = importlib.import_module("smolagents")
         tools_module = main_module
         tool_class = getattr(tools_module, tool_class_name)
-        return tool_class(model_repo_id, token=token, **kwargs)
+        return tool_class(token=token, **kwargs)
     else:
         return Tool.from_hub(
             task_or_repo_id,

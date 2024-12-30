@@ -153,8 +153,8 @@ class DuckDuckGoSearchTool(Tool):
     }
     output_type = "any"
 
-    def __init__(self):
-        super().__init__(self)
+    def __init__(self, **kwargs):
+        super().__init__(self, **kwargs)
         try:
             from duckduckgo_search import DDGS
         except ImportError:

@@ -15,39 +15,28 @@ rendered properly in your Markdown viewer.
 -->
 # Introduction to Agents
 
-### What is an agent?
+### 🤔 What are agents?
 
-Any efficient system using AI will need to provide LLMs some kind of access to the real world: for instance the possibility to call a search tool to get external information, or to act on certain programs in order to solve a task.
+Any efficient system using AI will need to provide LLMs some kind of access to the real world: for instance the possibility to call a search tool to get external information, or to act on certain programs in order to solve a task. In other words, LLMs should have ***agency***. Agentic programs are the gateway to the outside world for LLMs.
 
-In other words, give them some ***agency***. Agentic programs are the gateway to the outside world for LLMs.
-
-For a rigorous definition, AI Agents are *“programs in which the workflow is determined by LLM outputs”*.
+> [!TIP]
+> AI Agents are **programs where LLM outputs control the workflow**.
 
 Any system leveraging LLMs will integrate the LLM outputs into code. The influence of the LLM's input on the code workflow is the level of agency of LLMs in the system.
 
-Note that with this definition, "agent" is not a discrete, 0 or 1 definition: instead, "agency" evolves on a continuous spectrum, as you give more or less influence to the LLM on your workflow.
+Note that with this definition, "agent" is not a discrete, 0 or 1 definition: instead, "agency" evolves on a continuous spectrum, as you give more or less power to the LLM on your workflow.
 
-- If the output of the LLM has no impact on the workflow, as in a program that just postprocesses a LLM's output and returns it, this system is not agentic at all.
-- If an LLM output is used to determine which branch of an `if/else` switch is ran, the system starts to have some level of agency: it's a router.
+See in the table below how agency can vary across systems:
 
-Then it can get more agentic.
+| Agency Level | Description                                             | How that's called | Example Pattern                                    |
+| ------------ | ------------------------------------------------------- | ----------------- | -------------------------------------------------- |
+| ☆☆☆          | LLM output has no impact on program flow                | Simple Processor  | `process_llm_output(llm_response)`                 |
+| ★☆☆          | LLM output determines basic control flow                | Router            | `if llm_decision(): path_a() else: path_b()`       |
+| ★★☆          | LLM output determines function execution                | Tool Caller       | `run_function(llm_chosen_tool, llm_chosen_args)`   |
+| ★★★          | LLM output controls iteration and program continuation  | Multi-step Agent  | `while llm_should_continue(): execute_next_step()` |
+| ★★★          | One agentic workflow can start another agentic workflow | Multi-Agent       | `if llm_trigger(): execute_agent()`                |
 
-- If you use an LLM output to determine which function is run and with which arguments, that's tool calling.
-- If you use an LLM output to determine if you should keep iterating in a while loop, you have a multi-step agent.
-
-| Agency Level | Description | How that's called | Example Pattern |
-|-------------|-------------|-------------|-----------------|
-| No Agency | LLM output has no impact on program flow | Simple Processor | `process_llm_output(llm_response)` |
-| Basic Agency | LLM output determines basic control flow | Router | `if llm_decision(): path_a() else: path_b()` |
-| Higher Agency | LLM output determines function execution | Tool Caller | `run_function(llm_chosen_tool, llm_chosen_args)` |
-| High Agency | LLM output controls iteration and program continuation | Multi-step Agent | `while llm_should_continue(): execute_next_step()` |
-| High Agency | One agentic workflow can start another agentic workflow | Multi-Agent | `if llm_trigger(): execute_agent()` |
-
-Since the system’s versatility goes in lockstep with the level of agency that you give to the LLM, agentic systems can perform much broader tasks than any classic program.
-
-Programs are not just tools anymore, confined to an ultra-specialized task : they are agents.
-
-One type of agentic system is quite simple: the multi-step agent. It has this structure:
+The multi-step agent has this code structure:
 
 ```python
 memory = [user_defined_task]
@@ -57,7 +46,11 @@ while llm_should_continue(memory): # this loop is the multi-step part
     memory += [action, observations]
 ```
 
-This agentic system just runs in a loop, execution a new action at each step (the action can involve calling some pre-determined *tools* that are just functions), until its observations make it apparent that a satisfactory state has been reached to solve the given task.
+This agentic system runs in a loop, executing a new action at each step (the action can involve calling some pre-determined *tools* that are just functions), until its observations make it apparent that a satisfactory state has been reached to solve the given task. Here’s an example of how a multi-step agent can solve a simple math question:
+
+<div class="flex justify-center">
+    <img src="https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/transformers/Agent_ManimCE.gif"/>
+</div>
 
 
 ### When to use an agentic system ?
@@ -114,12 +107,12 @@ All these elements need tight coupling to make a well-functioning system. That's
 
 Why is code better? Well, because we crafted our code languages specifically to be great at expressing actions performed by a computer. If JSON snippets were a better way, JSON would be the top programming language and programming would be hell on earth.
 
-Code has better:
+Writing actions in code rather than JSON-like snippets provides better:
 
 - **Composability:** could you nest JSON actions within each other, or define a set of JSON actions to re-use later, the same way you could just define a python function?
 - **Object management:** how do you store the output of an action like `generate_image` in JSON?
-- **Generality:** code is built to express simply anything you can do have a computer do.
-- **Representation in LLM training corpuses:** why not leverage this benediction of the sky that plenty of quality actions have already been included in LLM training corpuses?
+- **Generality:** code is built to express simply anything you can have a computer do.
+- **Representation in LLM training data:** plenty of quality code actions is already included in LLMs’ training data which means they’re already trained for this!
 
 This is illustrated on the figure below, taken from [Executable Code Actions Elicit Better LLM Agents](https://huggingface.co/papers/2402.01030).
 

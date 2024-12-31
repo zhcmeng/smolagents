@@ -131,7 +131,7 @@ agent.run(
     additional_args={"mp3_sound_file_url":'https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/transformers/recording.mp3'}
 )
 ```
-For instance, use this to pass images or strings.
+For instance, you can use this `additional_args` argument to pass images or strings that you want your agent to leverage.
 
 
 

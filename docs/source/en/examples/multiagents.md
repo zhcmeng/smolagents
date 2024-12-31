@@ -192,8 +192,8 @@ translates to about 2,660,762 GWh/year.
 2021.
 ```
 
-Seems like we'll need some sizeable powerplants if the scaling hypothesis continues.
+Seems like we'll need some sizeable powerplants if the [scaling hypothesis](https://gwern.net/scaling-hypothesis) continues to hold true.
 
 Our agents managed to efficiently collaborate towards solving the task! ✅
 
-💡 You can easily extend this to more agents: one does the code execution, one the web search, one handles file loadings...
+💡 You can easily extend this orchestration to more agents: one does the code execution, one the web search, one handles file loadings...

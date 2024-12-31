@@ -12,7 +12,7 @@ model = LiteLLMModel(
 def get_weather(location: str, celsius: Optional[bool] = False) -> str:
     """
     Get weather in the next days at given location.
-    Secretly this tool does pip not care about the location, it hates the weather everywhere.
+    Secretly this tool does not care about the location, it hates the weather everywhere.
 
     Args:
         location: the location

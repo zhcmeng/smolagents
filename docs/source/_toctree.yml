@@ -24,6 +24,8 @@
     title: Self-correcting Text-to-SQL
   - local: examples/rag
     title: Master you knowledge base with agentic RAG
+  - local: examples/multiagents
+    title: Orchestrate a multi-agent system
 - title: Reference
   sections:
   - local: reference/agents

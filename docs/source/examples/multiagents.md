@@ -59,10 +59,10 @@ notebook_login()
 _Note:_ The Inference API hosts models based on various criteria, and deployed models may be updated or replaced without prior notice. Learn more about it [here](https://huggingface.co/docs/api-inference/supported-models).
 
 ```py
-model = "Qwen/Qwen2.5-Coder-32B-Instruct"
+model_id = "Qwen/Qwen2.5-Coder-32B-Instruct"
 ```
 
-### 🔍 Create a web search tool
+## 🔍 Create a web search tool
 
 For web browsing, we can already use our pre-existing [`DuckDuckGoSearchTool`](https://github.com/huggingface/smolagents/blob/main/src/smolagents/default_tools/search.py) tool to provide a Google search equivalent.
 
@@ -128,10 +128,11 @@ from smolagents import (
     ToolCallingAgent,
     HfApiModel,
     ManagedAgent,
+    DuckDuckGoSearchTool,
+    LiteLLMModel,
 )
-from smolagents.default_tools import DuckDuckGoSearchTool
 
-model = HfApiModel(model)
+model = HfApiModel(model_id)
 
 web_agent = ToolCallingAgent(
     tools=[DuckDuckGoSearchTool(), visit_webpage],
@@ -154,22 +155,44 @@ Finally we create a manager agent, and upon initialization we pass our managed a
 
 Since this agent is the one tasked with the planning and thinking, advanced reasoning will be beneficial, so a `CodeAgent` will be the best choice.
 
-Also, we want to ask a question that involves the current year: so let us add `additional_authorized_imports=["time"]`
+Also, we want to ask a question that involves the current year and does additional data calculations: so let us add `additional_authorized_imports=["time", "numpy", "pandas"]`, just in case the agent needs these packages.
 
 ```py
 manager_agent = CodeAgent(
     tools=[],
     model=model,
     managed_agents=[managed_web_agent],
-    additional_authorized_imports=["time"],
+    additional_authorized_imports=["time", "numpy", "pandas"],
 )
 ```
 
-That's all! Now let's run our system! We select a question that requires some calculation and 
+That's all! Now let's run our system! We select a question that requires both some calculation and research:
 
 ```py
-manager_agent.run("How many years ago was Stripe founded?")
+answer = manager_agent.run("If LLM trainings continue to scale up at the current rythm until 2030, what would be the electric power in GW required to power the biggest training runs by 2030? What does that correspond to, compared to some contries? Please provide a source for any number used.")
 ```
+
+We get this report as the answer:
+```
+Based on current growth projections and energy consumption estimates, if LLM trainings continue to scale up at the 
+current rhythm until 2030:
+
+1. The electric power required to power the biggest training runs by 2030 would be approximately 303.74 GW, which 
+translates to about 2,660,762 GWh/year.
+
+2. Comparing this to countries' electricity consumption:
+   - It would be equivalent to about 34% of China's total electricity consumption.
+   - It would exceed the total electricity consumption of India (184%), Russia (267%), and Japan (291%).
+   - It would be nearly 9 times the electricity consumption of countries like Italy or Mexico.
+
+3. Source of numbers:
+   - The initial estimate of 5 GW for future LLM training comes from AWS CEO Matt Garman.
+   - The growth projection used a CAGR of 79.80% from market research by Springs.
+   - Country electricity consumption data is from the U.S. Energy Information Administration, primarily for the year 
+2021.
+```
+
+Seems like we'll need some sizeable powerplants if the scaling hypothesis continues.
 
 Our agents managed to efficiently collaborate towards solving the task! ✅
 

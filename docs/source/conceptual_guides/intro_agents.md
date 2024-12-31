@@ -97,14 +97,16 @@ But once you start going for more complicated behaviours like letting an LLM cal
 - for a multi-step agent where the LLM output determines the loop, you need to give a different prompt to the LLM based on what happened in the last loop iteration: so you need some kind of memory.
 
 See? With these two examples, we already found the need for a few items to help us:
-- of course an LLM that acts as the engine powering the system
-- a list of tools that the agent can access
-- a parser that extracts tool calls from the LLM output
-- system prompt synced with the parser
-- memory
-But wait, since we give room to LLMs in decisions, surely they will make mistakes, so for better performance we need error logging and retry mechanism?
 
-These will not be that straightforward to implement correctly, especially not together. That's why we decided that we needed to build a few abstractions to help people use these.
+- Of course, an LLM that acts as the engine powering the system
+- A list of tools that the agent can access
+- A parser that extracts tool calls from the LLM output
+- A system prompt synced with the parser
+- A memory
+
+But wait, since we give room to LLMs in decisions, surely they will make mistakes: so we need error logging and retry mechanisms.
+
+All these elements need tight coupling to make a well-functioning system. That's why we decided we needed to make basic building blocks to make all this stuff work together.
 
 ### Code agents
 

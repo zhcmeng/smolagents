@@ -115,7 +115,7 @@ def get_weather_api(location: str, date_time: str) -> str:
 
 In general, to ease the load on your LLM, the good question to ask yourself is: "How easy would it be for me, if I was dumb and using this tool for the first time ever, to program with this tool and correct my own errors?".
 
-### Give more stuff to the agent
+### Give more arguments to the agent
 
 To pass some additional objects to your agent than thes smple string that tells it the task to run, you can use argument `additional_args` to pass any type of object:
 

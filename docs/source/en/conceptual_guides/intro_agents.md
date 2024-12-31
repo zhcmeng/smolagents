@@ -15,7 +15,7 @@ rendered properly in your Markdown viewer.
 -->
 # Introduction to Agents
 
-### 🤔 What are agents?
+## 🤔 What are agents?
 
 Any efficient system using AI will need to provide LLMs some kind of access to the real world: for instance the possibility to call a search tool to get external information, or to act on certain programs in order to solve a task. In other words, LLMs should have ***agency***. Agentic programs are the gateway to the outside world for LLMs.
 
@@ -31,7 +31,7 @@ See in the table below how agency can vary across systems:
 | Agency Level | Description                                             | How that's called | Example Pattern                                    |
 | ------------ | ------------------------------------------------------- | ----------------- | -------------------------------------------------- |
 | ☆☆☆          | LLM output has no impact on program flow                | Simple Processor  | `process_llm_output(llm_response)`                 |
-| ★☆☆          | LLM output determines basic control flow                | Router            | `if llm_decision(): path_a() else: path_b()`       |
+| ★☆☆          | LLM output determines an if/else switch                 | Router            | `if llm_decision(): path_a() else: path_b()`       |
 | ★★☆          | LLM output determines function execution                | Tool Caller       | `run_function(llm_chosen_tool, llm_chosen_args)`   |
 | ★★★          | LLM output controls iteration and program continuation  | Multi-step Agent  | `while llm_should_continue(): execute_next_step()` |
 | ★★★          | One agentic workflow can start another agentic workflow | Multi-Agent       | `if llm_trigger(): execute_agent()`                |
@@ -53,35 +53,32 @@ This agentic system runs in a loop, executing a new action at each step (the act
 </div>
 
 
-### When to use an agentic system ?
+## ✅ When to use agents / ⛔ when to avoid them
 
-Agents are useful when you need an LLM to determine the workflow of an app.
-
-The question to ask is: "Do I really need flexibility in the workflow to efficiently solve the task at hand?"
-
-If a fixed workflow can work, you might as well build it all in good old no-AI code for 100% robustness. For the sake of simplicity and robstness, it's advised to regularize towards not using any agentic behaviour. On the opposite, agents are useful when the fixed workflow is not sufficient.
-
+Agents are useful when you need an LLM to determine the workflow of an app. But they’re often overkill. The question is: do I really need flexibility in the workflow to efficiently solve the task at hand?
+If the pre-determined workflow falls short too often, that means you need more flexibility.
 Let's take an example: say you're making an app that handles customer requests on a surfing trip website.
 
-You could know in advance that the requests will have to be classified in either of 2 buckets according to deterministic criteria, and you have a predefined workflow for each of these 2 cases.
-For instance, this is if you let the user click a button to determine their query, and it goes into either of these buckets:
+You could know in advance that the requests will can belong to either of 2 buckets (based on user choice), and you have a predefined workflow for each of these 2 cases.
 
-1. Want some knowledge on the trips? ⇒ Then you give them access to a search bar to search your knowledge base
-2. Wants to talk to sales? ⇒ Then you let them type in a contact form.
+1. Want some knowledge on the trips? ⇒ give them access to a search bar to search your knowledge base
+2. Wants to talk to sales? ⇒ let them type in a contact form.
 
-If that deterministic workflow fits all queries, by all means just code everything! This will give you a 100% reliable system with no risk of error introduced by letting unpredictable LLMs meddle in your workflow.
+If that deterministic workflow fits all queries, by all means just code everything! This will give you a 100% reliable system with no risk of error introduced by letting unpredictable LLMs meddle in your workflow. For the sake of simplicity and robustness, it's advised to regularize towards not using any agentic behaviour. 
 
-But what if the workflow can't be determined that well in advance? Say, 20% or 40% of users requests do not fit properly into your rigid categories, and are thus not handled properly by your program?
+But what if the workflow can't be determined that well in advance? 
 
-For instance, a user wants to ask : "I can come on Monday, but I forgot my passport so risk being delayed to Wednesday, is it possible to take me and my stuff to surf on Tuesday morning, with a cancellation insurance?" This question hinges on many factors, and probably none of the predetermined criteria above won't be sufficient for this request.
+For instance, a user wants to ask : `"I can come on Monday, but I forgot my passport so risk being delayed to Wednesday, is it possible to take me and my stuff to surf on Tuesday morning, with a cancellation insurance?"` This question hinges on many factors, and probably none of the predetermined criteria above will suffice for this request.
 
-If the pre-determined workflow falls short too often, that means you need more flexibility, which is just what an agentic setup provides. In the above example, you could just make a multi-step agent that has access to a weather API tool, a google maps API to compute travel distance, an employee availability dashboard and a RAG system on your knowledge base.
+If the pre-determined workflow falls short too often, that means you need more flexibility.
 
-Until recently, computer programs were restricted to pre-determined workflows (with possible piles of if/else switches), thus focused on extremely narrow tasks, like "compute the sum of these numbers" or "find the shortest path in this graph".
+That is where an agentic setup helps.
 
-But actually, most real-life tasks are like our trip example above, they do not fit in pre-determined workflows. Agentic systems open up the vast world of real-world tasks to programs!
+In the above example, you could just make a multi-step agent that has access to a weather API for weather forecasts, Google Maps API to compute travel distance, an employee availability dashboard and a RAG system on your knowledge base.
 
-### Why `smolagents`?
+Until recently, computer programs were restricted to pre-determined workflows, trying to handle complexity by piling up  if/else switches. They focused on extremely narrow tasks, like "compute the sum of these numbers" or "find the shortest path in this graph". But actually, most real-life tasks, like our trip example above, do not fit in pre-determined workflows. Agentic systems open up the vast world of real-world tasks to programs!
+
+## Why `smolagents`?
 
 For some low-level agentic use cases, like chains or routers, you can write all the code yourself. You'll be much better that way, since it will let you control and understand your system better.
 
@@ -101,11 +98,17 @@ But wait, since we give room to LLMs in decisions, surely they will make mistake
 
 All these elements need tight coupling to make a well-functioning system. That's why we decided we needed to make basic building blocks to make all this stuff work together.
 
-### Code agents
+## Code agents
 
-[Multiple](https://huggingface.co/papers/2402.01030) [research](https://huggingface.co/papers/2411.01747) [papers](https://huggingface.co/papers/2401.00812) have shown that having the LLM write its actions (the tool calls) in code is much better than the current standard format for tool calling, which is across the industry different shades of "writing actions as a JSON of tools names and arguments to use, which you then parse to know which tool to execute and with which arguments".
+In a multi-step agent, at each step, the LLM can write an action, in the form of some calls to external tools. A common format (used by Anthropic, OpenAI, and many others) for writing these actions is generally different shades of "writing actions as a JSON of tools names and arguments to use, which you then parse to know which tool to execute and with which arguments".
 
-Why is code better? Well, because we crafted our code languages specifically to be great at expressing actions performed by a computer. If JSON snippets were a better way, JSON would be the top programming language and programming would be hell on earth.
+[Multiple](https://huggingface.co/papers/2402.01030) [research](https://huggingface.co/papers/2411.01747) [papers](https://huggingface.co/papers/2401.00812) have shown that having the tool calling LLMs in code is much better.
+
+The reason for this simply that *we crafted our code languages specifically to be the best possible way to express actions performed by a computer*. If JSON snippets were a better expression, JSON would be the top programming language and programming would be hell on earth.
+
+The figure below, taken from [Executable Code Actions Elicit Better LLM Agents](https://huggingface.co/papers/2402.01030), illustrate some advantages of writing actions in code:
+
+<img src="https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/transformers/code_vs_json_actions.png">
 
 Writing actions in code rather than JSON-like snippets provides better:
 
@@ -113,9 +116,3 @@ Writing actions in code rather than JSON-like snippets provides better:
 - **Object management:** how do you store the output of an action like `generate_image` in JSON?
 - **Generality:** code is built to express simply anything you can have a computer do.
 - **Representation in LLM training data:** plenty of quality code actions is already included in LLMs’ training data which means they’re already trained for this!
-
-This is illustrated on the figure below, taken from [Executable Code Actions Elicit Better LLM Agents](https://huggingface.co/papers/2402.01030).
-
-<img src="https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/transformers/code_vs_json_actions.png">
-
-This is why we put emphasis on proposing code agents, in this case python agents, which meant building secure python interpreters.

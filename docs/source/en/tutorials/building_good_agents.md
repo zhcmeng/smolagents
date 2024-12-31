@@ -22,7 +22,7 @@ How to build into this latter category?
 In this guide, we're going to see best practices for building agents.
 
 > [!TIP]
-> If you're new to building agents, make sure to first read the [intro to agents](./intro_agents) and the [guided tour of smolagents](../guided_tour).
+> If you're new to building agents, make sure to first read the [intro to agents](../conceptual_guides/intro_agents) and the [guided tour of smolagents](../guided_tour).
 
 ### The best agentic systems are the simplest: simplify the workflow as much as you can
 

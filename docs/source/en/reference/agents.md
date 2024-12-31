@@ -103,7 +103,7 @@ print(model([{"role": "user", "content": "Ok!"}], stop_sequences=["great"]))
 
 ### HfApiModel
 
-The `HfApiModel` is an engine that wraps an [HF Inference API](https://huggingface.co/docs/api-inference/index) client for the execution of the LLM.
+The `HfApiModel` wraps an [HF Inference API](https://huggingface.co/docs/api-inference/index) client for the execution of the LLM.
 
 ```python
 from smolagents import HfApiModel
@@ -121,3 +121,22 @@ print(model(messages))
 >>> Of course! If you change your mind, feel free to reach out. Take care!
 ```
 [[autodoc]] HfApiModel
+
+### LiteLLMModel
+
+The `LiteLLMModel` leverages [LiteLLM](https://www.litellm.ai/) to support 100+ LLMs from various providers.
+
+```python
+from smolagents import LiteLLMModel
+
+messages = [
+  {"role": "user", "content": "Hello, how are you?"},
+  {"role": "assistant", "content": "I'm doing great. How can I help you today?"},
+  {"role": "user", "content": "No need to help, take it easy."},
+]
+
+model = LiteLLMModel("anthropic/claude-3-5-sonnet-latest")
+print(model(messages))
+```
+
+[[autodoc]] LiteLLMModel

@@ -21,7 +21,7 @@ Any efficient system using AI will need to provide LLMs some kind of access to t
 
 In other words, give them some ***agency***. Agentic programs are the gateway to the outside world for LLMs.
 
-For a regiorous definition, AI Agents are *“programs in which the workflow is determined by LLM outputs”*.
+For a rigorous definition, AI Agents are *“programs in which the workflow is determined by LLM outputs”*.
 
 Any system leveraging LLMs will integrate the LLM outputs into code. The influence of the LLM's input on the code workflow is the level of agency of LLMs in the system.
 

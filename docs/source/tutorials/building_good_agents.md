@@ -181,10 +181,16 @@ Put yourself in the shoes if your model: if you were the model solving the task,
 
 Would you need some added claritications ? 
 
-To provide extra information, we do not recommend modifying the system prompt compared to default : there are many adjustments there that you do not want to mess up except if you understand the prompt very well.
+To provide extra information, we do not recommend to change the system prompt right away: the default system prompt has many adjustments that you do not want to mess up except if you understand the prompt very well.
 Better ways to guide your LLM engine are:
 - If it 's about the task to solve: add all these details to the task. The task could be 100s of pages long.
 - If it's about how to use tools: the description attribute of your tools.
+
+If after trying the above, you still want to change the system prompt, your new system prompt passed to `system_prompt` upon agent initialization needs to contain the following placeholders that will be used to insert certain automatically generated descriptions when running the agent:
+- `"{{tool_descriptions}}"` to insert tool descriptions
+- `"{{managed_agents_description}}"` to insert the description for managed agents if there are any
+- For `CodeAgent` only: `"{{authorized_imports}}"` to insert the list of authorized imports.
+
 
 ### 3. Extra planning
 

@@ -187,8 +187,8 @@ Better ways to guide your LLM engine are:
 - If it's about how to use tools: the description attribute of your tools.
 
 If after trying the above, you still want to change the system prompt, your new system prompt passed to `system_prompt` upon agent initialization needs to contain the following placeholders that will be used to insert certain automatically generated descriptions when running the agent:
-- `"{{tool_descriptions}}"` to insert tool descriptions
-- `"{{managed_agents_description}}"` to insert the description for managed agents if there are any
+- `"{{tool_descriptions}}"` to insert tool descriptions.
+- `"{{managed_agents_description}}"` to insert the description for managed agents if there are any.
 - For `CodeAgent` only: `"{{authorized_imports}}"` to insert the list of authorized imports.
 
 

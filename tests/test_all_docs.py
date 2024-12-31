@@ -71,8 +71,6 @@ class DocCodeExtractor:
         assert len(combined_code) > 0, "Code is empty!"
         tmp_file = Path(tmp_dir) / "test_script.py"
 
-        print("COFF", combined_code)
-
         with open(tmp_file, "w", encoding="utf-8") as f:
             f.write(combined_code)
 
@@ -110,7 +108,20 @@ class TestDocs:
             content = f.read()
 
         code_blocks = self.extractor.extract_python_code(content)
-        if not code_blocks:
+        excluded_snippets = [
+            "ToolCollection",
+            "image_generation_tool",
+            "from_langchain",
+            "while llm_should_continue(memory):",
+        ]
+        code_blocks = [
+            block
+            for block in code_blocks
+            if not any(
+                [snippet in block for snippet in excluded_snippets]
+            )  # Exclude these tools that take longer to run and add dependencies
+        ]
+        if len(code_blocks) == 0:
             pytest.skip(f"No Python code blocks found in {doc_path.name}")
 
         # Validate syntax of each block individually by parsing it
@@ -119,20 +130,11 @@ class TestDocs:
 
         # Create and execute test script
         try:
-            excluded_snippets = [
-                "ToolCollection",
-                "image_generation_tool",
-                "from_langchain",
-                "while llm_should_continue(memory):",
-            ]
             code_blocks = [
                 block.replace("<YOUR_HUGGINGFACEHUB_API_TOKEN>", self.hf_token).replace(
                     "{your_username}", "m-ric"
                 )
                 for block in code_blocks
-                if not any(
-                    [snippet in block for snippet in excluded_snippets]
-                )  # Exclude these tools that take longer to run and add dependencies
             ]
             test_script = self.extractor.create_test_script(code_blocks, self._tmpdir)
             run_command(self.launch_args + [str(test_script)])

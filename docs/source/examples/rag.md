@@ -40,7 +40,7 @@ Run the line below to install required dependencies:
 To call the HF Inference API, you will need a valid token as your environment variable `HF_TOKEN`.
 We use python-dotenv to load it.
 ```py
-from python_dotenv import load_dotenv
+from dotenv import load_dotenv
 load_dotenv()
 ```
 

@@ -26,7 +26,6 @@ Here, we're going to see advanced tool usage.
     - [What is a tool, and how to build one?](#what-is-a-tool-and-how-to-build-one)
     - [Share your tool to the Hub](#share-your-tool-to-the-hub)
     - [Import a Space as a tool](#import-a-space-as-a-tool)
-    - [Use gradio-tools](#use-gradio-tools)
     - [Use LangChain tools](#use-langchain-tools)
     - [Manage your agent's toolbox](#manage-your-agents-toolbox)
     - [Use a collection of tools](#use-a-collection-of-tools)
@@ -158,25 +157,6 @@ final_answer(image)
 <img src="https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/transformers/rabbit_spacesuit_flux.webp">
 
 How cool is this? 🤩
-
-### Use gradio-tools
-
-[gradio-tools](https://github.com/freddyaboulton/gradio-tools) is a powerful library that allows using Hugging
-Face Spaces as tools. It supports many existing Spaces as well as custom Spaces.
-
-Transformers supports `gradio_tools` with the [`Tool.from_gradio`] method. For example, let's use the [`StableDiffusionPromptGeneratorTool`](https://github.com/freddyaboulton/gradio-tools/blob/main/gradio_tools/tools/prompt_generator.py) from `gradio-tools` toolkit for improving prompts to generate better images.
-
-Import and instantiate the tool, then pass it to the `Tool.from_gradio` method:
-
-```python
-from gradio_tools import StableDiffusionPromptGeneratorTool
-
-gradio_prompt_generator_tool = StableDiffusionPromptGeneratorTool()
-prompt_generator_tool = Tool.from_gradio(gradio_prompt_generator_tool)
-```
-
-> [!WARNING]
-> gradio-tools require *textual* inputs and outputs even when working with different modalities like image and audio objects. Image and audio inputs and outputs are currently incompatible.
 
 ### Use LangChain tools
 

@@ -65,7 +65,7 @@ class HFModelDownloadsTool(Tool):
         model = next(iter(list_models(filter=task, sort="downloads", direction=-1)))
         return model.id
 
-tool = HFModelDownloadsTool()
+model_downloads_tool = HFModelDownloadsTool()
 ```
 
 The custom tool subclasses [`Tool`] to inherit useful methods. The child class also defines:
@@ -86,7 +86,7 @@ In this case, you can build your tool by subclassing [`Tool`] as described above
 You can share your custom tool to the Hub by calling [`~Tool.push_to_hub`] on the tool. Make sure you've created a repository for it on the Hub and are using a token with read access.
 
 ```python
-tool.push_to_hub("{your_username}/hf-model-downloads", token="<YOUR_HUGGINGFACEHUB_API_TOKEN>")
+model_downloads_tool.push_to_hub("{your_username}/hf-model-downloads", token="<YOUR_HUGGINGFACEHUB_API_TOKEN>")
 ```
 
 For the push to Hub to work, your tool will need to respect some rules:
@@ -94,8 +94,13 @@ For the push to Hub to work, your tool will need to respect some rules:
 - As per the above point, **all imports should be defined directky within the tool's functions**, else you will get an error when trying to call [`~Tool.save`] or [`~Tool.push_to_hub`] with your custom tool.
 - If you subclass the `__init__` method, you can give it no other argument than `self`. This is because arguments set during a specific tool instance's initialization are hard to track, which prevents from sharing them properly to the hub. And anyway, the idea of making a specific class is that you can already set class attributes for anything you need to hard-code (just set `your_variable=(...)` directly under the `class YourTool(Tool):` line). And of course you can still create a class attribute anywhere in your code by assigning stuff to `self.your_variable`.
 
-Once your tool is pushed to Hub, you can load it with the [`~Tool.load_tool`] function and pass it to the `tools` parameter in your agent.
-Since running tools means running custom code, you need to make sure you trust the repository, and pass `trust_remote_code=True`.
+
+Once your tool is pushed to Hub, you can visualize it. [Here](https://huggingface.co/spaces/m-ric/hf-model-downloads) is the `model_downloads_tool` that I've pushed. It has a nice gradio interface.
+
+When diving into the tool files, you can find that all the tool's logic is under [tool.py](https://huggingface.co/spaces/m-ric/hf-model-downloads/blob/main/tool.py). That is where you can inspect a tool shared by someone else.
+
+Then you can load the tool with [`load_tool`] or create it with [`~Tool.from_hub`] and pass it to the `tools` parameter in your agent.
+Since running tools means running custom code, you need to make sure you trust the repository, thus we require to pass `trust_remote_code=True` to load a tool from the Hub.
 
 ```python
 from smolagents import load_tool, CodeAgent

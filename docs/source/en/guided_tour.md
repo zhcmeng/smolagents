@@ -155,7 +155,11 @@ Here are a few useful attributes to inspect what happened after a run:
 
 ## Tools
 
-A tool is an atomic function to be used by an agent.
+A tool is an atomic function to be used by an agent. To be used by an LLM, it also needs a few attributes that constitute its API and will be used to describe to the LLM how to call this tool:
+- A name
+- A description
+- Input types and descriptions
+- An output type
 
 You can for instance check the [`PythonInterpreterTool`]: it has a name, a description, input descriptions, an output type, and a `__call__` method to perform the action.
 
@@ -190,8 +194,8 @@ from huggingface_hub import list_models
 
 task = "text-classification"
 
-model = next(iter(list_models(filter=task, sort="downloads", direction=-1)))
-print(model.id)
+most_downloaded_model = next(iter(list_models(filter=task, sort="downloads", direction=-1)))
+print(most_downloaded_model.id)
 ```
 
 This code can quickly be converted into a tool, just by wrapping it in a function and adding the `tool` decorator:
@@ -209,8 +213,8 @@ def model_download_tool(task: str) -> str:
     Args:
         task: The task for which
     """
-    model = next(iter(list_models(filter="text-classification", sort="downloads", direction=-1)))
-    return model.id
+    most_downloaded_model = next(iter(list_models(filter=task, sort="downloads", direction=-1)))
+    return most_downloaded_model.id
 ```
 
 The function needs:
@@ -224,29 +228,48 @@ All these will be automatically baked into the agent's system prompt upon initia
 
 Then you can directly initialize your agent:
 ```py
-from smolagents import CodeAgent
-agent = CodeAgent(tools=[model_download_tool], model=model)
+from smolagents import CodeAgent, HfApiModel
+agent = CodeAgent(tools=[model_download_tool], model=HfApiModel())
 agent.run(
     "Can you give me the name of the model that has the most downloads in the 'text-to-video' task on the Hugging Face Hub?"
 )
 ```
 
-You get the following:
+You get the following logs:
 ```text
-======== New task ========
-Can you give me the name of the model that has the most downloads in the 'text-to-video' task on the Hugging Face Hub?
-==== Agent is executing the code below:
-most_downloaded_model = model_download_tool(task="text-to-video")
-print(f"The most downloaded model for the 'text-to-video' task is {most_downloaded_model}.")
-====
+╭──────────────────────────────────────── New run ─────────────────────────────────────────╮
+│                                                                                          │
+│ Can you give me the name of the model that has the most downloads in the 'text-to-video' │
+│ task on the Hugging Face Hub?                                                            │
+│                                                                                          │
+╰─ HfApiModel - Qwen/Qwen2.5-Coder-32B-Instruct ───────────────────────────────────────────╯
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ Step 0 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+╭─ Executing this code: ───────────────────────────────────────────────────────────────────╮
+│   1 model_name = model_download_tool(task="text-to-video")                               │
+│   2 print(model_name)                                                                    │
+╰──────────────────────────────────────────────────────────────────────────────────────────╯
+Execution logs:
+ByteDance/AnimateDiff-Lightning
+
+Out: None
+[Step 0: Duration 0.27 seconds| Input tokens: 2,069 | Output tokens: 60]
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ Step 1 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+╭─ Executing this code: ───────────────────────────────────────────────────────────────────╮
+│   1 final_answer("ByteDance/AnimateDiff-Lightning")                                      │
+╰──────────────────────────────────────────────────────────────────────────────────────────╯
+Out - Final answer: ByteDance/AnimateDiff-Lightning
+[Step 1: Duration 0.10 seconds| Input tokens: 4,288 | Output tokens: 148]
+Out[20]: 'ByteDance/AnimateDiff-Lightning'
 ```
 
-And the output:
-`"The most downloaded model for the 'text-to-video' task is ByteDance/AnimateDiff-Lightning."`
+This is not the only way to build the tool: you can directly define it as a subclass of [`Tool`], which gives you more flexibility, for instance the possibility to initialize heavy class attributes.
+
+Read more in the [dedicated tool tutorial](./tutorials/tools#what-is-a-tool-and-how-to-build-one)
 
 ## Multi-agents
 
-Multi-agent has been introduced in Microsoft's framework [Autogen](https://huggingface.co/papers/2308.08155).
+Multi-agent systems have been introduced with Microsoft's framework [Autogen](https://huggingface.co/papers/2308.08155).
+
 In this type of framework, you have several agents working together to solve your task instead of only one.
 It empirically yields better performance on most benchmarks. The reason for this better performance is conceptually simple: for many tasks, rather than using a do-it-all system, you would prefer to specialize units on sub-tasks. Here, having agents with separate tool sets and memories allows to achieve efficient specialization. For instance, why fill the memory of the code generating agent with all the content of webpages visited by the web search agent? It's better to keep them separate.
 

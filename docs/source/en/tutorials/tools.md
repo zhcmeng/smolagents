@@ -22,22 +22,26 @@ Here, we're going to see advanced tool usage.
 > [!TIP]
 > If you're new to building agents, make sure to first read the [intro to agents](../conceptual_guides/intro_agents) and the [guided tour of smolagents](../guided_tour).
 
-### Directly define a tool by subclassing Tool
+- [Tools](#tools)
+    - [What is a tool, and how to build one?](#what-is-a-tool-and-how-to-build-one)
+    - [Share your tool to the Hub](#share-your-tool-to-the-hub)
+    - [Import a Space as a tool](#import-a-space-as-a-tool)
+    - [Use gradio-tools](#use-gradio-tools)
+    - [Use LangChain tools](#use-langchain-tools)
+    - [Manage your agent's toolbox](#manage-your-agents-toolbox)
+    - [Use a collection of tools](#use-a-collection-of-tools)
 
-Let's take again the tool example from the [quicktour](../quicktour), for which we had implemented a `@tool` decorator. The `tool` decorator is the standard format, but sometimes you need more: use several methods in a class for more clarity, or using additional class attributes.
+### What is a tool, and how to build one?
 
-In this case, you can build your tool following the fine-grained method: building a class that inherits from the [`Tool`] superclass.
+A tool is mostly a function that an LLM can use in an agentic system.
 
-The custom tool needs:
-- An attribute `name`, which corresponds to the name of the tool itself. The name usually describes what the tool does. Since the code returns the model with the most downloads for a task, let's name it `model_download_counter`.
-- An attribute `description` is used to populate the agent's system prompt.
-- An `inputs` attribute, which is a dictionary with keys `"type"` and `"description"`. It contains information that helps the Python interpreter make educated choices about the input.
-- An `output_type` attribute, which specifies the output type.
-- A `forward` method which contains the inference code to be executed.
+But to use it, the LLM will need to be given an API: name, tool description, input types and descriptions, output type.
 
-The types for both `inputs` and `output_type` should be amongst [Pydantic formats](https://docs.pydantic.dev/latest/concepts/json_schema/#generating-json-schema), they can be either of these: [`~AUTHORIZED_TYPES`].
+So it cannot be only a function. It should be a class.
 
-Also, all imports should be put within the tool's forward function, else you will get an error.
+So at core, the tool is a class that wraps a function with metadata that helps the LLM understand how to use it.
+
+Here's how it looks:
 
 ```python
 from smolagents import Tool
@@ -47,7 +51,6 @@ class HFModelDownloadsTool(Tool):
     description = """
     This is a tool that returns the most downloaded model of a given task on the Hugging Face Hub.
     It returns the name of the checkpoint."""
-
     inputs = {
         "task": {
             "type": "string",
@@ -61,21 +64,34 @@ class HFModelDownloadsTool(Tool):
 
         model = next(iter(list_models(filter=task, sort="downloads", direction=-1)))
         return model.id
+
 tool = HFModelDownloadsTool()
 ```
 
-Now the custom `HfModelDownloadsTool` class is ready.
+The custom tool subclasses [`Tool`] to inherit useful methods. The child class also defines:
+- An attribute `name`, which corresponds to the name of the tool itself. The name usually describes what the tool does. Since the code returns the model with the most downloads for a task, let's name it `model_download_counter`.
+- An attribute `description` is used to populate the agent's system prompt.
+- An `inputs` attribute, which is a dictionary with keys `"type"` and `"description"`. It contains information that helps the Python interpreter make educated choices about the input.
+- An `output_type` attribute, which specifies the output type. The types for both `inputs` and `output_type` should be [Pydantic formats](https://docs.pydantic.dev/latest/concepts/json_schema/#generating-json-schema), they can be either of these: [`~AUTHORIZED_TYPES`].
+- A `forward` method which contains the inference code to be executed.
+
+And that's all it needs to be used in an agent!
+
+There's another way to build a tool. In the [guided_tour](../guided_tour), we implemented a tool using the `@tool` decorator. The [`tool`] decorator is the recommended way to define simple tools, but sometimes you need more than this: using several methods in a class for more clarity, or using additional class attributes.
+
+In this case, you can build your tool by subclassing [`Tool`] as described above.
 
 ### Share your tool to the Hub
 
-You can also share your custom tool to the Hub by calling [`~Tool.push_to_hub`] on the tool. Make sure you've created a repository for it on the Hub and are using a token with read access.
+You can share your custom tool to the Hub by calling [`~Tool.push_to_hub`] on the tool. Make sure you've created a repository for it on the Hub and are using a token with read access.
 
 ```python
 tool.push_to_hub("{your_username}/hf-model-downloads", token="<YOUR_HUGGINGFACEHUB_API_TOKEN>")
 ```
 
 For the push to Hub to work, your tool will need to respect some rules:
-- All method are self-contained, e.g. use variables that come either from their args, 
+- All method are self-contained, e.g. use variables that come either from their args.
+- As per the above point, **all imports should be defined directky within the tool's functions**, else you will get an error when trying to call [`~Tool.save`] or [`~Tool.push_to_hub`] with your custom tool.
 - If you subclass the `__init__` method, you can give it no other argument than `self`. This is because arguments set during a specific tool instance's initialization are hard to track, which prevents from sharing them properly to the hub. And anyway, the idea of making a specific class is that you can already set class attributes for anything you need to hard-code (just set `your_variable=(...)` directly under the `class YourTool(Tool):` line). And of course you can still create a class attribute anywhere in your code by assigning stuff to `self.your_variable`.
 
 Once your tool is pushed to Hub, you can load it with the [`~Tool.load_tool`] function and pass it to the `tools` parameter in your agent.

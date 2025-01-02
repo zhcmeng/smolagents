@@ -26,12 +26,12 @@ In this guide, we're going to see best practices for building agents.
 
 ### The best agentic systems are the simplest: simplify the workflow as much as you can
 
-Giving an LLM some agency in your workflow introducessome risk of errors.
+Giving an LLM some agency in your workflow introduces some risk of errors.
 
-Well-programmed agentic systems have good error logging and retry mechanisms anyway, so the LLM engine has a chance to self-correct their mistake. But to reduce the risk of LLM error to the maximum, you should simplify your worklow!
+Well-programmed agentic systems have good error logging and retry mechanisms anyway, so the LLM engine has a chance to self-correct their mistake. But to reduce the risk of LLM error to the maximum, you should simplify your workflow!
 
 Let's take again the example from [intro_agents]: a bot that answers user queries on a surf trip company.
-Instead of letting the agent do 2 different calls for "travel distance API" and "weather API" each time they are asked about a new surf spot, you could just make one unified tool "return_spot_information", a functions that calls both APIs at once and returns their concatenated outputs to the user.
+Instead of letting the agent do 2 different calls for "travel distance API" and "weather API" each time they are asked about a new surf spot, you could just make one unified tool "return_spot_information", a function that calls both APIs at once and returns their concatenated outputs to the user.
 
 This will reduce costs, latency, and error risk!
 
@@ -168,7 +168,7 @@ Final answer:
 /var/folders/6m/9b1tts6d5w960j80wbw9tx3m0000gn/T/tmpx09qfsdd/652f0007-3ee9-44e2-94ac-90dae6bb89a4.png
 ```
 The user sees, instead of an image being returned, a path being returned to them.
-It could look like a bug from the system, but actually the agentic system didn't cause the error: it's just that the LLM engine tid the mistake of not saving the image output into a variable.
+It could look like a bug from the system, but actually the agentic system didn't cause the error: it's just that the LLM engine did the mistake of not saving the image output into a variable.
 Thus it cannot access the image again except by leveraging the path that was logged while saving the image, so it returns the path instead of an image.
 
 The first step to debugging your agent is thus "Use a more powerful LLM". Alternatives like `Qwen2/5-72B-Instruct` wouldn't have made that mistake.
@@ -179,7 +179,7 @@ Then you can also use less powerful models but guide them better.
 
 Put yourself in the shoes of your model: if you were the model solving the task, would you struggle with the information available to you (from the system prompt + task formulation + tool description) ?
 
-Would you need some added claritications ? 
+Would you need some added clarifications? 
 
 To provide extra information, we do not recommend to change the system prompt right away: the default system prompt has many adjustments that you do not want to mess up except if you understand the prompt very well.
 Better ways to guide your LLM engine are:

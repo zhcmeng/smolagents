@@ -177,7 +177,7 @@ The first step to debugging your agent is thus "Use a more powerful LLM". Altern
 
 Then you can also use less powerful models but guide them better.
 
-Put yourself in the shoes if your model: if you were the model solving the task, would you struggle with the information available to you (from the system prompt + task formulation + tool description) ?
+Put yourself in the shoes of your model: if you were the model solving the task, would you struggle with the information available to you (from the system prompt + task formulation + tool description) ?
 
 Would you need some added claritications ? 
 

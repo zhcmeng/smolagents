@@ -206,12 +206,11 @@ class HfApiModel(Model):
     Example:
     ```python
     >>> engine = HfApiModel(
-    ...     model="Qwen/Qwen2.5-Coder-32B-Instruct",
+    ...     model_id="Qwen/Qwen2.5-Coder-32B-Instruct",
     ...     token="your_hf_token_here",
-    ...     max_tokens=2000
     ... )
     >>> messages = [{"role": "user", "content": "Explain quantum mechanics in simple terms."}]
-    >>> response = engine(messages, stop_sequences=["END"])
+    >>> response = engine(messages, stop_sequences=["END"], max_tokens=1500)
     >>> print(response)
     "Quantum mechanics is the branch of physics that studies..."
     ```

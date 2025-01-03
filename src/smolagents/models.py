@@ -283,7 +283,14 @@ class HfApiModel(Model):
 
 
 class TransformersModel(Model):
-    """This engine initializes a model and tokenizer from the given `model_id`."""
+    """This engine initializes a model and tokenizer from the given `model_id`.
+    
+        Parameters:
+            model_id (`str`, *optional*, defaults to `"HuggingFaceTB/SmolLM2-1.7B-Instruct"`):
+                The Hugging Face model ID to be used for inference. This can be a path or model identifier from the Hugging Face model hub.
+            device (`str`, optional, defaults to `"cuda"` if available, else `"cpu"`.): 
+                The device to load the model on (`"cpu"` or `"cuda"`). 
+    """
 
     def __init__(self, model_id: Optional[str] = None, device: Optional[str] = None):
         super().__init__()
@@ -297,6 +304,7 @@ class TransformersModel(Model):
         if device is None:
             device = "cuda" if torch.cuda.is_available() else "cpu"
         self.device = device
+        logger.info(f"Using device: {self.device}")
         try:
             self.tokenizer = AutoTokenizer.from_pretrained(model_id)
             self.model = AutoModelForCausalLM.from_pretrained(model_id).to(self.device)
@@ -305,7 +313,7 @@ class TransformersModel(Model):
                 f"Failed to load tokenizer and model for {model_id=}: {e}. Loading default tokenizer and model instead from {model_id=}."
             )
             self.tokenizer = AutoTokenizer.from_pretrained(default_model_id)
-            self.model = AutoModelForCausalLM.from_pretrained(default_model_id, device_map=device)
+            self.model = AutoModelForCausalLM.from_pretrained(default_model_id).to(self.device)
 
     def make_stopping_criteria(self, stop_sequences: List[str]) -> StoppingCriteriaList:
         class StopOnStrings(StoppingCriteria):

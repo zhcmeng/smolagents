@@ -189,14 +189,12 @@ class HfApiModel(Model):
     This engine allows you to communicate with Hugging Face's models using the Inference API. It can be used in both serverless mode or with a dedicated endpoint, supporting features like stop sequences and grammar customization.
 
     Parameters:
-        model (`str`, *optional*, defaults to `"Qwen/Qwen2.5-Coder-32B-Instruct"`):
+        model_id (`str`, *optional*, defaults to `"Qwen/Qwen2.5-Coder-32B-Instruct"`):
             The Hugging Face model ID to be used for inference. This can be a path or model identifier from the Hugging Face model hub.
         token (`str`, *optional*):
             Token used by the Hugging Face API for authentication. This token need to be authorized 'Make calls to the serverless Inference API'.
             If the model is gated (like Llama-3 models), the token also needs 'Read access to contents of all public gated repos you can access'.
             If not provided, the class will try to use environment variable 'HF_TOKEN', else use the token stored in the Hugging Face CLI configuration.
-        max_tokens (`int`, *optional*, defaults to 1500):
-            The maximum number of tokens allowed in the output.
         timeout (`int`, *optional*, defaults to 120):
             Timeout for the API request, in seconds.
 
@@ -207,12 +205,11 @@ class HfApiModel(Model):
     Example:
     ```python
     >>> engine = HfApiModel(
-    ...     model="Qwen/Qwen2.5-Coder-32B-Instruct",
+    ...     model_id="Qwen/Qwen2.5-Coder-32B-Instruct",
     ...     token="your_hf_token_here",
-    ...     max_tokens=2000
     ... )
     >>> messages = [{"role": "user", "content": "Explain quantum mechanics in simple terms."}]
-    >>> response = engine(messages, stop_sequences=["END"])
+    >>> response = engine(messages, stop_sequences=["END"], max_tokens=1500)
     >>> print(response)
     "Quantum mechanics is the branch of physics that studies..."
     ```

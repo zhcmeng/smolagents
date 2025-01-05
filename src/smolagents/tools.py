@@ -208,8 +208,8 @@ class Tool:
 
         # Validate forward function signature, except for PipelineTool
         if not (
-            hasattr(self, "is_pipeline_tool")
-            and getattr(self, "is_pipeline_tool") is True
+            hasattr(self, "skip_forward_signature_validation")
+            and getattr(self, "skip_forward_signature_validation") is True
         ):
             signature = inspect.signature(self.forward)
 
@@ -575,6 +575,9 @@ class Tool:
         from gradio_client import Client, handle_file
 
         class SpaceToolWrapper(Tool):
+            
+            skip_forward_signature_validation=True
+
             def __init__(
                 self,
                 space_id: str,
@@ -1098,7 +1101,7 @@ class PipelineTool(Tool):
     name = "pipeline"
     inputs = {"prompt": str}
     output_type = str
-    is_pipeline_tool = True
+    skip_forward_signature_validation = True
 
     def __init__(
         self,

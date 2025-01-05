@@ -206,7 +206,7 @@ class Tool:
 
         assert getattr(self, "output_type", None) in AUTHORIZED_TYPES
 
-        # Validate forward function signature, except for PipelineTool
+        # Validate forward function signature, except for Tools that use a "generic" signature (PipelineTool, SpaceToolWrapper)
         if not (
             hasattr(self, "skip_forward_signature_validation")
             and getattr(self, "skip_forward_signature_validation") is True

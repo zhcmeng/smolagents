@@ -576,7 +576,7 @@ class Tool:
 
         class SpaceToolWrapper(Tool):
             
-            skip_forward_signature_validation=True
+            skip_forward_signature_validation = True
 
             def __init__(
                 self,

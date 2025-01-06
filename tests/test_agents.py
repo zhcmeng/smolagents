@@ -130,6 +130,17 @@ final_answer("got an error")
 """
 
 
+def fake_code_model_import(messages, stop_sequences=None) -> str:
+    return """
+Thought: I can answer the question
+Code:
+```py
+import numpy as np
+final_answer("got an error")
+```<end_code>
+"""
+
+
 def fake_code_functiondef(messages, stop_sequences=None) -> str:
     prompt = str(messages)
     if "special_marker" not in prompt:
@@ -340,3 +351,13 @@ class AgentTests(unittest.TestCase):
         assert (
             "You can also give requests to team members." in manager_agent.system_prompt
         )
+
+    def test_code_agent_missing_import_triggers_advice_in_error_log(self):
+        agent = CodeAgent(tools=[], model=fake_code_model_import)
+
+        from smolagents.agents import console
+
+        with console.capture() as capture:
+            agent.run("Count to 3")
+        str_output = capture.get()
+        assert "import under additional_authorized_imports" in str_output

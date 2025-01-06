@@ -958,6 +958,12 @@ class CodeAgent(MultiStepAgent):
                 )
             else:
                 error_msg = f"Code execution failed: {str(e)}"
+            if "Import of " in str(e) and " is not allowed" in str(e):
+                console.print(
+                    "[bold red]Code execution failed due to an unauthorized import. Consider passing said import under additional_authorized_imports when initializing your CodeAgent."
+                )
+            else:
+                console.print("PLACEHOLDER" + str(e))
             raise AgentExecutionError(error_msg)
 
         truncated_output = truncate_content(str(output))

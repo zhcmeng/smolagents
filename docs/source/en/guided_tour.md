@@ -176,7 +176,7 @@ Transformers comes with a default toolbox for empowering agents, that you can ad
 You can manually use a tool by calling the [`load_tool`] function and a task to perform.
 
 ```python
-from transformers import load_tool
+from smolagents import load_tool
 
 search_tool = load_tool("web_search")
 print(search_tool("Who's the current president of Russia?"))
@@ -202,7 +202,7 @@ This code can quickly be converted into a tool, just by wrapping it in a functio
 
 
 ```py
-from transformers import tool
+from smolagents import tool
 
 @tool
 def model_download_tool(task: str) -> str:

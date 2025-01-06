@@ -369,21 +369,21 @@ class AgentTests(unittest.TestCase):
             ):
                 if len(messages) < 3:
                     return """
-        Thought: Let's call our search agent.
-        Code:
-        ```py
-        result = search_agent("Who is the current US president?")
-        ```<end_code>
-        """
+Thought: Let's call our search agent.
+Code:
+```py
+result = search_agent("Who is the current US president?")
+```<end_code>
+"""
                 else:
                     assert "Report on the current US president" in str(messages)
                     return """
-        Thought: Let's return the report.
-        Code:
-        ```py
-        final_answer("Final report.")
-        ```<end_code>
-        """
+Thought: Let's return the report.
+Code:
+```py
+final_answer("Final report.")
+```<end_code>
+"""
 
             def get_tool_call(
                 self, messages, available_tools, stop_sequences=None, grammar=None
@@ -398,7 +398,7 @@ class AgentTests(unittest.TestCase):
                     assert "Report on the current US president" in str(messages)
                     return (
                     "final_answer",
-                    {"prompt": "Final report."},
+                    "Final report.",
                     "call_0",
                 )
         manager_model = FakeModelMultiagentsManagerAgent()
@@ -409,7 +409,7 @@ class AgentTests(unittest.TestCase):
             ):
                 return (
                     "final_answer",
-                    {"prompt": "Report on the current US president"},
+                    {"report": "Report on the current US president"},
                     "call_0",
                 )
         managed_model = FakeModelMultiagentsManagedAgent()

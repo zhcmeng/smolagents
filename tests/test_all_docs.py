@@ -111,10 +111,10 @@ class TestDocs:
         code_blocks = self.extractor.extract_python_code(content)
         excluded_snippets = [
             "ToolCollection",
-            "image_generation_tool", # We don't want to run this expensive operation
-            "from_langchain", # Langchain is not a dependency
-            "while llm_should_continue(memory):", # This is pseudo code
-            "ollama_chat/llama3.2" # Exclude ollama building in guided tour
+            "image_generation_tool",  # We don't want to run this expensive operation
+            "from_langchain",  # Langchain is not a dependency
+            "while llm_should_continue(memory):",  # This is pseudo code
+            "ollama_chat/llama3.2",  # Exclude ollama building in guided tour
         ]
         code_blocks = [
             block

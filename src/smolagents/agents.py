@@ -372,7 +372,9 @@ class MultiStepAgent:
         except Exception as e:
             return f"Error in generating final LLM output:\n{e}"
 
-    def execute_tool_call(self, tool_name: str, arguments: Union[Dict[str, str], str]) -> Any:
+    def execute_tool_call(
+        self, tool_name: str, arguments: Union[Dict[str, str], str]
+    ) -> Any:
         """
         Execute tool with the provided input and returns the result.
         This method replaces arguments with the actual values from the state if they refer to state variables.
@@ -515,7 +517,9 @@ You have been provided with these additional arguments, that you can access usin
                     self.planning_interval is not None
                     and step_number % self.planning_interval == 0
                 ):
-                    self.planning_step(task, is_first_step=(step_number == 0), step=step_number)
+                    self.planning_step(
+                        task, is_first_step=(step_number == 0), step=step_number
+                    )
                 console.print(
                     Rule(f"[bold]Step {step_number}", characters="━", style=YELLOW_HEX)
                 )
@@ -562,7 +566,9 @@ You have been provided with these additional arguments, that you can access usin
                     self.planning_interval is not None
                     and step_number % self.planning_interval == 0
                 ):
-                    self.planning_step(task, is_first_step=(step_number == 0), step=step_number)
+                    self.planning_step(
+                        task, is_first_step=(step_number == 0), step=step_number
+                    )
                 console.print(
                     Rule(f"[bold]Step {step_number}", characters="━", style=YELLOW_HEX)
                 )

@@ -62,7 +62,7 @@ class FakeToolCallModelImage:
 
         else:  # We're at step 2
             return "final_answer", "image.png", "call_1"
-    
+
 
 def fake_code_model(messages, stop_sequences=None, grammar=None) -> str:
     prompt = str(messages)
@@ -364,9 +364,7 @@ class AgentTests(unittest.TestCase):
 
     def test_multiagents(self):
         class FakeModelMultiagentsManagerAgent:
-            def __call__(
-                self, messages, stop_sequences=None, grammar=None
-            ):
+            def __call__(self, messages, stop_sequences=None, grammar=None):
                 if len(messages) < 3:
                     return """
 Thought: Let's call our search agent.
@@ -397,10 +395,11 @@ final_answer("Final report.")
                 else:
                     assert "Report on the current US president" in str(messages)
                     return (
-                    "final_answer",
-                    "Final report.",
-                    "call_0",
-                )
+                        "final_answer",
+                        "Final report.",
+                        "call_0",
+                    )
+
         manager_model = FakeModelMultiagentsManagerAgent()
 
         class FakeModelMultiagentsManagedAgent:
@@ -412,6 +411,7 @@ final_answer("Final report.")
                     {"report": "Report on the current US president"},
                     "call_0",
                 )
+
         managed_model = FakeModelMultiagentsManagedAgent()
 
         web_agent = ToolCallingAgent(
@@ -435,7 +435,7 @@ final_answer("Final report.")
 
         report = manager_code_agent.run("Fake question.")
         assert report == "Final report."
-        
+
         manager_toolcalling_agent = ToolCallingAgent(
             tools=[],
             model=manager_model,

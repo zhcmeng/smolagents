@@ -14,24 +14,23 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-from copy import deepcopy
-from enum import Enum
 import json
-from typing import Dict, List, Optional
-from transformers import (
-    AutoTokenizer,
-    AutoModelForCausalLM,
-    StoppingCriteria,
-    StoppingCriteriaList,
-)
-
-import litellm
 import logging
 import os
 import random
-import torch
+from copy import deepcopy
+from enum import Enum
+from typing import Dict, List, Optional, Tuple, Union
 
+import litellm
+import torch
 from huggingface_hub import InferenceClient
+from transformers import (
+    AutoModelForCausalLM,
+    AutoTokenizer,
+    StoppingCriteria,
+    StoppingCriteriaList,
+)
 
 from .tools import Tool
 from .utils import parse_json_tool_call
@@ -352,16 +351,16 @@ class TransformersModel(Model):
         )
 
         # Get LLM output
-        prompt = self.tokenizer.apply_chat_template(
+        prompt_tensor = self.tokenizer.apply_chat_template(
             messages,
             return_tensors="pt",
             return_dict=True,
         )
-        prompt = prompt.to(self.model.device)
-        count_prompt_tokens = prompt["input_ids"].shape[1]
+        prompt_tensor = prompt_tensor.to(self.model.device)
+        count_prompt_tokens = prompt_tensor["input_ids"].shape[1]
 
         out = self.model.generate(
-            **prompt,
+            **prompt_tensor,
             max_new_tokens=max_tokens,
             stopping_criteria=(
                 self.make_stopping_criteria(stop_sequences) if stop_sequences else None
@@ -383,7 +382,7 @@ class TransformersModel(Model):
         available_tools: List[Tool],
         stop_sequences: Optional[List[str]] = None,
         max_tokens: int = 500,
-    ) -> str:
+    ) -> Tuple[str, Union[str, None], str]:
         messages = get_clean_message_list(
             messages, role_conversions=tool_role_conversions
         )

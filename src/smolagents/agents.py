@@ -15,49 +15,50 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import time
-from typing import Any, Callable, Dict, List, Optional, Union, Tuple
 from dataclasses import dataclass
-from rich.syntax import Syntax
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+
 from rich.console import Group
 from rich.panel import Panel
 from rich.rule import Rule
+from rich.syntax import Syntax
 from rich.text import Text
 
-from .utils import (
-    console,
-    parse_code_blob,
-    parse_json_tool_call,
-    truncate_content,
-    AgentError,
-    AgentParsingError,
-    AgentExecutionError,
-    AgentGenerationError,
-    AgentMaxStepsError,
-)
-from .types import AgentAudio, AgentImage, handle_agent_output_types
 from .default_tools import FinalAnswerTool
+from .e2b_executor import E2BExecutor
+from .local_python_executor import BASE_BUILTIN_MODULES, LocalPythonInterpreter
 from .models import MessageRole
 from .monitoring import Monitor
 from .prompts import (
     CODE_SYSTEM_PROMPT,
-    TOOL_CALLING_SYSTEM_PROMPT,
+    MANAGED_AGENT_PROMPT,
     PLAN_UPDATE_FINAL_PLAN_REDACTION,
     SYSTEM_PROMPT_FACTS,
     SYSTEM_PROMPT_FACTS_UPDATE,
-    USER_PROMPT_FACTS_UPDATE,
-    USER_PROMPT_PLAN_UPDATE,
-    USER_PROMPT_PLAN,
-    SYSTEM_PROMPT_PLAN_UPDATE,
     SYSTEM_PROMPT_PLAN,
-    MANAGED_AGENT_PROMPT,
+    SYSTEM_PROMPT_PLAN_UPDATE,
+    TOOL_CALLING_SYSTEM_PROMPT,
+    USER_PROMPT_FACTS_UPDATE,
+    USER_PROMPT_PLAN,
+    USER_PROMPT_PLAN_UPDATE,
 )
-from .local_python_executor import BASE_BUILTIN_MODULES, LocalPythonInterpreter
-from .e2b_executor import E2BExecutor
 from .tools import (
     DEFAULT_TOOL_DESCRIPTION_TEMPLATE,
     Tool,
-    get_tool_description_with_args,
     Toolbox,
+    get_tool_description_with_args,
+)
+from .types import AgentAudio, AgentImage, handle_agent_output_types
+from .utils import (
+    AgentError,
+    AgentExecutionError,
+    AgentGenerationError,
+    AgentMaxStepsError,
+    AgentParsingError,
+    console,
+    parse_code_blob,
+    parse_json_tool_call,
+    truncate_content,
 )
 
 

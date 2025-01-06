@@ -16,8 +16,8 @@
 import unittest
 
 from smolagents import (
-    AgentImage,
     AgentError,
+    AgentImage,
     CodeAgent,
     ToolCallingAgent,
     stream_to_gradio,

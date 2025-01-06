@@ -18,14 +18,16 @@ import ast
 import importlib
 import inspect
 import json
+import logging
 import os
 import sys
 import tempfile
-import torch
 import textwrap
 from functools import lru_cache, wraps
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Union, get_type_hints
+
+import torch
 from huggingface_hub import (
     create_repo,
     get_collection,
@@ -35,7 +37,8 @@ from huggingface_hub import (
 )
 from huggingface_hub.utils import RepositoryNotFoundError
 from packaging import version
-import logging
+from transformers import AutoProcessor
+from transformers.dynamic_module_utils import get_imports
 from transformers.utils import (
     TypeHintParsingException,
     cached_file,
@@ -45,13 +48,9 @@ from transformers.utils import (
 )
 from transformers.utils.chat_template_utils import _parse_type_hint
 
-from transformers.dynamic_module_utils import get_imports
-from transformers import AutoProcessor
-
+from .tool_validation import MethodChecker, validate_tool_attributes
 from .types import ImageType, handle_agent_input_types, handle_agent_output_types
 from .utils import instance_to_source
-from .tool_validation import validate_tool_attributes, MethodChecker
-
 
 logger = logging.getLogger(__name__)
 

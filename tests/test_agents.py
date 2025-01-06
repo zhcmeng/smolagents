@@ -16,22 +16,22 @@ import os
 import tempfile
 import unittest
 import uuid
-import pytest
-
 from pathlib import Path
 
-from smolagents.types import AgentText, AgentImage
+import pytest
+from transformers.testing_utils import get_tests_dir
+
 from smolagents.agents import (
     AgentMaxStepsError,
-    ManagedAgent,
     CodeAgent,
-    ToolCallingAgent,
+    ManagedAgent,
     Toolbox,
     ToolCall,
+    ToolCallingAgent,
 )
-from smolagents.tools import tool
 from smolagents.default_tools import PythonInterpreterTool
-from transformers.testing_utils import get_tests_dir
+from smolagents.tools import tool
+from smolagents.types import AgentImage, AgentText
 
 
 def get_new_path(suffix="") -> str:

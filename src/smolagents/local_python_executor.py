@@ -17,14 +17,15 @@
 import ast
 import builtins
 import difflib
+import math
 from collections.abc import Mapping
 from importlib import import_module
 from typing import Any, Callable, Dict, List, Optional, Tuple
-import math
+
 import numpy as np
 import pandas as pd
 
-from .utils import truncate_content, BASE_BUILTIN_MODULES
+from .utils import BASE_BUILTIN_MODULES, truncate_content
 
 
 class InterpreterError(ValueError):

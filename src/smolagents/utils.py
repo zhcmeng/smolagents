@@ -14,14 +14,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import ast
+import inspect
 import json
 import re
-from typing import Tuple, Dict, Union
-import ast
-from rich.console import Console
-import inspect
 import types
+from typing import Dict, Tuple, Union
 
+from rich.console import Console
 from transformers.utils.import_utils import _is_package_available
 
 _pygments_available = _is_package_available("pygments")

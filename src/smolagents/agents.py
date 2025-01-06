@@ -500,18 +500,18 @@ You have been provided with these additional arguments, that you can access usin
         Runs the agent in streaming mode, yielding steps as they are executed: should be launched only in the `run` method.
         """
         final_answer = None
-        step = 0
-        while final_answer is None and step < self.max_steps:
+        step_number = 0
+        while final_answer is None and step_number < self.max_steps:
             step_start_time = time.time()
-            step_log = ActionStep(step=step, start_time=step_start_time)
+            step_log = ActionStep(step=step_number, start_time=step_start_time)
             try:
                 if (
                     self.planning_interval is not None
-                    and step % self.planning_interval == 0
+                    and step_number % self.planning_interval == 0
                 ):
-                    self.planning_step(task, is_first_step=(step == 0), step=step)
+                    self.planning_step(task, is_first_step=(step_number == 0), step=step_number)
                 console.print(
-                    Rule(f"[bold]Step {step}", characters="━", style=YELLOW_HEX)
+                    Rule(f"[bold]Step {step_number}", characters="━", style=YELLOW_HEX)
                 )
 
                 # Run one step!
@@ -524,10 +524,10 @@ You have been provided with these additional arguments, that you can access usin
                 self.logs.append(step_log)
                 for callback in self.step_callbacks:
                     callback(step_log)
-                step += 1
+                step_number += 1
                 yield step_log
 
-        if final_answer is None and step == self.max_steps:
+        if final_answer is None and step_number == self.max_steps:
             error_message = "Reached max steps."
             final_step_log = ActionStep(error=AgentMaxStepsError(error_message))
             self.logs.append(final_step_log)
@@ -547,18 +547,18 @@ You have been provided with these additional arguments, that you can access usin
         Runs the agent in direct mode, returning outputs only at the end: should be launched only in the `run` method.
         """
         final_answer = None
-        step = 0
-        while final_answer is None and step < self.max_steps:
+        step_number = 0
+        while final_answer is None and step_number < self.max_steps:
             step_start_time = time.time()
-            step_log = ActionStep(step=step, start_time=step_start_time)
+            step_log = ActionStep(step=step_number, start_time=step_start_time)
             try:
                 if (
                     self.planning_interval is not None
-                    and step % self.planning_interval == 0
+                    and step_number % self.planning_interval == 0
                 ):
-                    self.planning_step(task, is_first_step=(step == 0), step=step)
+                    self.planning_step(task, is_first_step=(step_number == 0), step=step_number)
                 console.print(
-                    Rule(f"[bold]Step {step}", characters="━", style=YELLOW_HEX)
+                    Rule(f"[bold]Step {step_number}", characters="━", style=YELLOW_HEX)
                 )
 
                 # Run one step!
@@ -573,9 +573,9 @@ You have been provided with these additional arguments, that you can access usin
                 self.logs.append(step_log)
                 for callback in self.step_callbacks:
                     callback(step_log)
-                step += 1
+                step_number += 1
 
-        if final_answer is None and step == self.max_steps:
+        if final_answer is None and step_number == self.max_steps:
             error_message = "Reached max steps."
             final_step_log = ActionStep(error=AgentMaxStepsError(error_message))
             self.logs.append(final_step_log)

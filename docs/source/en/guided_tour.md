@@ -23,15 +23,12 @@ In this guided visit, you will learn how to build an agent, how to run it, and h
 
 To initialize a minimal agent, you need at least these two arguments:
 
-- An text-generation model to power your agent - because the agent is different from a simple LLM, it is a system that uses a LLM as its engine.
-- A list of tools - tools the agent can use to solve the task.
+- `model`, a text-generation model to power your agent - because the agent is different from a simple LLM, it is a system that uses a LLM as its engine. You can use any of these options:
+    - [`TransformersModel`] takes a pre-initialized `transformers` pipeline to run inference on your local machine using `transformers`.
+    - [`HfApiModel`] leverages a `huggingface_hub.InferenceClient` under the hood.
+    - [`LiteLLMModel`] lets you call 100+ different models through [LiteLLM](https://docs.litellm.ai/)!
 
-For your model, you can use any of these options:
-- [`TransformersModel`] takes a pre-initialized `transformers` pipeline to run inference on your local machine using `transformers`.
-- [`HfApiModel`] leverages a `huggingface_hub.InferenceClient` under the hood.
-- We also provide [`LiteLLMModel`], which lets you call 100+ different models through [LiteLLM](https://docs.litellm.ai/)!
-
-You will also need a `tools` argument which accepts a list of `Tools` - it can be an empty list. You can also add the default toolbox on top of your `tools` list by defining the optional argument `add_base_tools=True`.
+- `tools`, A list of `Tools` that the agent can use to solve the task. It can be an empty list. You can also add the default toolbox on top of your `tools` list by defining the optional argument `add_base_tools=True`.
 
 Once you have these two arguments, `tools` and `model`,  you can create an agent and run it. 
 

@@ -36,12 +36,27 @@ jobs:
       - name: Agent tests
         run: |
           uv run pytest -sv ./tests/test_agents.py
-      - name: Tool tests
-        run: |
-          uv run pytest -sv ./tests/test_toolss.py
-      - name: Python interpreter tests
-        run: |
-          uv run pytest -sv ./tests/test_python_interpreter.py
       - name: Final answer tests
         run: |
           uv run pytest -sv ./tests/test_final_answer.py
+      - name: Models tests
+        run: |
+          uv run pytest -sv ./tests/test_models.py
+      - name: Monitoring tests
+        run: |
+          uv run pytest -sv ./tests/test_monitoring.py
+      - name: Python interpreter tests
+        run: |
+          uv run pytest -sv ./tests/test_python_interpreter.py
+      - name: Search tests
+        run: |
+          uv run pytest -sv ./tests/test_search.py
+      - name: Tools tests
+        run: |
+          uv run pytest -sv ./tests/test_tools.py
+      - name: Types tests
+        run: |
+          uv run pytest -sv ./tests/test_types.py
+      - name: Utils tests
+        run: |
+          uv run pytest -sv ./tests/test_utils.py

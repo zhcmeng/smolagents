@@ -37,4 +37,5 @@ test = [
   "pytest>=8.1.0",
   "sqlalchemy",
   "ruff>=0.5.0",
+  "accelerate",
 ]

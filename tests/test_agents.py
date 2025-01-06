@@ -62,7 +62,7 @@ class FakeToolCallModelImage:
 
         else:  # We're at step 2
             return "final_answer", "image.png", "call_1"
-
+    
 
 def fake_code_model(messages, stop_sequences=None, grammar=None) -> str:
     prompt = str(messages)
@@ -361,3 +361,86 @@ class AgentTests(unittest.TestCase):
             agent.run("Count to 3")
         str_output = capture.get()
         assert "import under additional_authorized_imports" in str_output
+
+    def test_multiagents(self):
+        class FakeModelMultiagentsManagerAgent:
+            def __call__(
+                self, messages, stop_sequences=None, grammar=None
+            ):
+                if len(messages) < 3:
+                    return """
+        Thought: Let's call our search agent.
+        Code:
+        ```py
+        result = search_agent("Who is the current US president?")
+        ```<end_code>
+        """
+                else:
+                    assert "Report on the current US president" in str(messages)
+                    return """
+        Thought: Let's return the report.
+        Code:
+        ```py
+        final_answer("Final report.")
+        ```<end_code>
+        """
+
+            def get_tool_call(
+                self, messages, available_tools, stop_sequences=None, grammar=None
+            ):
+                if len(messages) < 3:
+                    return (
+                        "search_agent",
+                        "Who is the current US president?",
+                        "call_0",
+                    )
+                else:
+                    assert "Report on the current US president" in str(messages)
+                    return (
+                    "final_answer",
+                    {"prompt": "Final report."},
+                    "call_0",
+                )
+        manager_model = FakeModelMultiagentsManagerAgent()
+
+        class FakeModelMultiagentsManagedAgent:
+            def get_tool_call(
+                self, messages, available_tools, stop_sequences=None, grammar=None
+            ):
+                return (
+                    "final_answer",
+                    {"prompt": "Report on the current US president"},
+                    "call_0",
+                )
+        managed_model = FakeModelMultiagentsManagedAgent()
+
+        web_agent = ToolCallingAgent(
+            tools=[],
+            model=managed_model,
+            max_steps=10,
+        )
+
+        managed_web_agent = ManagedAgent(
+            agent=web_agent,
+            name="search_agent",
+            description="Runs web searches for you. Give it your request as an argument. Make the request as detailed as needed, you can ask for thorough reports",
+        )
+
+        manager_code_agent = CodeAgent(
+            tools=[],
+            model=manager_model,
+            managed_agents=[managed_web_agent],
+            additional_authorized_imports=["time", "numpy", "pandas"],
+        )
+
+        report = manager_code_agent.run("Fake question.")
+        assert report == "Final report."
+        
+        manager_toolcalling_agent = ToolCallingAgent(
+            tools=[],
+            model=manager_model,
+            managed_agents=[managed_web_agent],
+        )
+
+        report = manager_toolcalling_agent.run("Fake question.")
+        assert report == "Final report."

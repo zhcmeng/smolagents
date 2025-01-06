@@ -195,7 +195,7 @@ This is not the only way to build the tool: you can directly define it as a subc
 Let's see how it works for both options:
 
 <hfoptions id="build-a-tool">
-<hfoption id="@tool decorator">
+<hfoption id="Decorate a function with @tool">
 
 ```py
 from smolagents import tool
@@ -214,10 +214,10 @@ def model_download_tool(task: str) -> str:
 ```
 
 The function needs:
-- A clear name. The name usually describes what the tool does. Since the code returns the model with the most downloads for a task, let's put `model_download_tool`.
+- A clear name. The name should be descriptive enough of what this tool does to help the LLM brain powering the agent. Since this tool returns the model with the most downloads for a task, let's name it `model_download_tool`.
 - Type hints on both inputs and output
-- A description, that includes an 'Args:' part where each argument is described (without a type indication this time, it will be pulled from the type hint).
-All these will be automatically baked into the agent's system prompt upon initialization: so strive to make them as clear as possible!
+- A description, that includes an 'Args:' part where each argument is described (without a type indication this time, it will be pulled from the type hint). Same as for the tool name, this description is an instruction manual for the LLM powering you agent, so do not neglect it.
+All these elements will be automatically baked into the agent's system prompt upon initialization: so strive to make them as clear as possible!
 
 > [!TIP]
 > This definition format is the same as tool schemas used in `apply_chat_template`, the only difference is the added `tool` decorator: read more on our tool use API [here](https://huggingface.co/blog/unified-tool-use#passing-tools-to-a-chat-template).
@@ -237,6 +237,13 @@ class ModelDownloadTool(Tool):
         most_downloaded_model = next(iter(list_models(filter=task, sort="downloads", direction=-1)))
         return most_downloaded_model.id
 ```
+
+The subclass needs the following attributes:
+- A clear `name`. The name should be descriptive enough of what this tool does to help the LLM brain powering the agent. Since this tool returns the model with the most downloads for a task, let's name it `model_download_tool`.
+- A `description`. Same as for the `name`, this description is an instruction manual for the LLM powering you agent, so do not neglect it.
+- Input types and descriptions
+- Output type
+All these attributes will be automatically baked into the agent's system prompt upon initialization: so strive to make them as clear as possible!
 </hfoption>
 </hfoptions>
 

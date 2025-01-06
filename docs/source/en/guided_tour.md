@@ -137,7 +137,7 @@ For maximum flexibility, you can overwrite the whole system prompt template by p
 ```python
 from smolagents import ToolCallingAgent, PythonInterpreterTool, TOOL_CALLING_SYSTEM_PROMPT
 
-modified_prompt = TOOL_CALLING_SYSTEM_PROMPT
+modified_prompt = TOOL_CALLING_SYSTEM_PROMPT # This is where you can do your modifications
 
 agent = ToolCallingAgent(tools=[PythonInterpreterTool()], model=model, system_prompt=modified_prompt)
 ```

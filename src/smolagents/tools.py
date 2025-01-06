@@ -575,7 +575,6 @@ class Tool:
         from gradio_client import Client, handle_file
 
         class SpaceToolWrapper(Tool):
-            
             skip_forward_signature_validation = True
 
             def __init__(
@@ -907,12 +906,17 @@ class ToolCollection:
     ```
     """
 
-    def __init__(self, collection_slug: str, token: Optional[str] = None, trust_remote_code=False):
+    def __init__(
+        self, collection_slug: str, token: Optional[str] = None, trust_remote_code=False
+    ):
         self._collection = get_collection(collection_slug, token=token)
         self._hub_repo_ids = {
             item.item_id for item in self._collection.items if item.item_type == "space"
         }
-        self.tools = {Tool.from_hub(repo_id,token,trust_remote_code) for repo_id in self._hub_repo_ids}
+        self.tools = {
+            Tool.from_hub(repo_id, token, trust_remote_code)
+            for repo_id in self._hub_repo_ids
+        }
 
 
 def tool(tool_function: Callable) -> Tool:

@@ -194,7 +194,7 @@ If after trying the above, you still want to change the system prompt, your new 
 Then you can change the system prompt as follows:
 
 ```py
-from smolagents.prompts import CODE_SYSTEM_PROMPT, HfApiModel
+from smolagents.prompts import CODE_SYSTEM_PROMPT
 
 modified_system_prompt = CODE_SYSTEM_PROMPT + "\nHere you go!" # Change the system prompt here
 

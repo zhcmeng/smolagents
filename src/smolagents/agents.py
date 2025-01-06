@@ -136,7 +136,6 @@ def format_prompt_with_managed_agents_descriptions(
     if agent_descriptions_placeholder is None:
         agent_descriptions_placeholder = "{{managed_agents_descriptions}}"
     if agent_descriptions_placeholder not in prompt_template:
-        print("PROMPT TEMPLLL", prompt_template)
         raise ValueError(
             f"Provided prompt template does not contain the managed agents descriptions placeholder '{agent_descriptions_placeholder}'"
         )
@@ -964,8 +963,6 @@ class CodeAgent(MultiStepAgent):
                 console.print(
                     "[bold red]Code execution failed due to an unauthorized import. Consider passing said import under additional_authorized_imports when initializing your CodeAgent."
                 )
-            else:
-                console.print("PLACEHOLDER" + str(e))
             raise AgentExecutionError(error_msg)
 
         truncated_output = truncate_content(str(output))

@@ -284,7 +284,8 @@ Out - Final answer: ByteDance/AnimateDiff-Lightning
 Out[20]: 'ByteDance/AnimateDiff-Lightning'
 ```
 
-Read more on tools in the [dedicated tutorial](./tutorials/tools#what-is-a-tool-and-how-to-build-one)
+> [!TIP]
+> Read more on tools in the [dedicated tutorial](./tutorials/tools#what-is-a-tool-and-how-to-build-one).
 
 ## Multi-agents
 

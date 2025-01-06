@@ -838,7 +838,6 @@ parts_with_5_set_count[['Quantity', 'SetCount']].values[1]
 import pandas as pd
 
 df = pd.DataFrame.from_dict({"AtomicNumber": [111, 104, 105], "ok": [0, 1, 2]})
-print("HH0")
 
 # Filter the DataFrame to get only the rows with outdated atomic numbers
 filtered_df = df.loc[df['AtomicNumber'].isin([104])]

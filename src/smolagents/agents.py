@@ -965,10 +965,10 @@ class CodeAgent(MultiStepAgent):
                     f"Error: {str(e)}"
                 )
             else:
-                error_msg = f"Code execution failed: {str(e)}"
+                error_msg = str(e)
             if "Import of " in str(e) and " is not allowed" in str(e):
                 console.print(
-                    "[bold red]Code execution failed due to an unauthorized import. Consider passing said import under additional_authorized_imports when initializing your CodeAgent."
+                    "[bold red]Warning to user: Code execution failed due to an unauthorized import - Consider passing said import under `additional_authorized_imports` when initializing your CodeAgent."
                 )
             raise AgentExecutionError(error_msg)
 

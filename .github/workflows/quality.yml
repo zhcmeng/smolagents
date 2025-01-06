@@ -3,31 +3,31 @@ name: Quality Check
 on: [pull_request]
 
 jobs:
-  quality:
+  check_code_quality:
     runs-on: ubuntu-latest
-      env:
+    env:
       UV_HTTP_TIMEOUT: 600 # max 10min to install deps
-  
+
     steps:
-    - uses: actions/checkout@v2
-    - name: Set up Python
-      uses: actions/setup-python@v2
-      with:
-        python-version: 3.10
-  
-    - name: Install Python dependencies
-      run: pip install -e .[quality]
+      - uses: actions/checkout@v2
+      - name: Set up Python
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.10
+    
+      - name: Install Python dependencies
+        run: pip install -e .[quality]
 
-    - name: Run Quality check
-      run: make quality
-    - name: Check if failure
-      if: ${{ failure() }}
-      run: |
-        echo "Quality check failed. Please ensure the right dependency versions are installed with 'pip install -e .[quality]' and rerun 'make style; make quality;'" >> $GITHUB_STEP_SUMMARY
+      - name: Run Quality check
+        run: make quality
+      - name: Check if failure
+        if: ${{ failure() }}
+        run: |
+          echo "Quality check failed. Please ensure the right dependency versions are installed with 'pip install -e .[quality]' and rerun 'make style; make quality;'" >> $GITHUB_STEP_SUMMARY
 
-    - name: Run Style check
-      run: make style
-    - name: Check if failure
-      if: ${{ failure() }}
-      run: |
-        echo "Style check failed. Please ensure the right dependency versions are installed with 'pip install -e .[quality]' and rerun 'make style; make quality;'" >> $GITHUB_STEP_SUMMARY
+      - name: Run Style check
+        run: make style
+      - name: Check if failure
+        if: ${{ failure() }}
+        run: |
+          echo "Style check failed. Please ensure the right dependency versions are installed with 'pip install -e .[quality]' and rerun 'make style; make quality;'" >> $GITHUB_STEP_SUMMARY

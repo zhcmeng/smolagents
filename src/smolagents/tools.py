@@ -506,10 +506,10 @@ class Tool:
             with open(module_path, "w") as f:
                 f.write(tool_code)
 
-            print("TOOLCODE:\n", tool_code)
+            print("TOOL CODE:\n", tool_code)
 
             # Load module from file path
-            spec = importlib.util.spec_from_file_location("custom_tool", module_path)
+            spec = importlib.util.spec_from_file_location("tool", module_path)
             module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(module)
 

@@ -18,7 +18,7 @@ rendered properly in your Markdown viewer.
 [[open-in-colab]]
 
 There's a world of difference between building an agent that works and one that doesn't.
-How to build into this latter category?
+How can we build agents that fall into the latter category?
 In this guide, we're going to see best practices for building agents.
 
 > [!TIP]
@@ -30,7 +30,7 @@ Giving an LLM some agency in your workflow introduces some risk of errors.
 
 Well-programmed agentic systems have good error logging and retry mechanisms anyway, so the LLM engine has a chance to self-correct their mistake. But to reduce the risk of LLM error to the maximum, you should simplify your workflow!
 
-Let's take again the example from [intro_agents]: a bot that answers user queries on a surf trip company.
+Let's revisit the example from [intro_agents]: a bot that answers user queries for a surf trip company.
 Instead of letting the agent do 2 different calls for "travel distance API" and "weather API" each time they are asked about a new surf spot, you could just make one unified tool "return_spot_information", a function that calls both APIs at once and returns their concatenated outputs to the user.
 
 This will reduce costs, latency, and error risk!
@@ -56,7 +56,7 @@ Particular guidelines to follow:
 - Each tool should log (by simply using `print` statements inside the tool's `forward` method) everything that could be useful for the LLM engine.
   - In particular, logging detail on tool execution errors would help a lot!
 
-For instance, here's a tool that :
+For instance, here's a tool that retrieves weather data based on location and date-time:
 
 First, here's a poor version:
 ```python
@@ -91,7 +91,7 @@ Why is it bad?
 - there's no logging mechanism tying to explicit failure cases like location not being in a proper format, or date_time not being properly formatted.
 - the output format is hard to understand
 
-If the tool call fails, the error trace logged in memory can help the LLM reverse engineer the tool to fix the errors. But why leave it so much heavy lifting to do?
+If the tool call fails, the error trace logged in memory can help the LLM reverse engineer the tool to fix the errors. But why leave it with so much heavy lifting to do?
 
 A better way to build this tool would have been the following:
 ```python
@@ -117,7 +117,7 @@ In general, to ease the load on your LLM, the good question to ask yourself is: 
 
 ### Give more arguments to the agent
 
-To pass some additional objects to your agent than thes smple string that tells it the task to run, you can use argument `additional_args` to pass any type of object:
+To pass some additional objects to your agent beyond the simple string describing the task, you can use the `additional_args` argument to pass any type of object:
 
 ```py
 from smolagents import CodeAgent, HfApiModel
@@ -140,7 +140,7 @@ For instance, you can use this `additional_args` argument to pass images or stri
 ### 1. Use a stronger LLM
 
 In an agentic workflows, some of the errors are actual errors, some other are the fault of your LLM engine not reasoning properly.
-For instance, consider this trace for an `CodeAgent` that I asked to make me a car picture:
+For instance, consider this trace for an `CodeAgent` that I asked to create a car picture:
 ```
 ==================================================================================================== New task ====================================================================================================
 Make me a cool car picture
@@ -175,7 +175,7 @@ The first step to debugging your agent is thus "Use a more powerful LLM". Altern
 
 ### 2. Provide more guidance / more information
 
-Then you can also use less powerful models but guide them better.
+You can also use less powerful models, provided you guide them more effectively.
 
 Put yourself in the shoes of your model: if you were the model solving the task, would you struggle with the information available to you (from the system prompt + task formulation + tool description) ?
 

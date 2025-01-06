@@ -152,7 +152,7 @@ A tool is an atomic function to be used by an agent. To be used by an LLM, it al
 - Input types and descriptions
 - An output type
 
-You can for instance check the [`PythonInterpreterTool`]: it has a name, a description, input descriptions, an output type, and a `__call__` method to perform the action.
+You can for instance check the [`PythonInterpreterTool`]: it has a name, a description, input descriptions, an output type, and a `forward` method to perform the action.
 
 When the agent is initialized, the tool attributes are used to generate a tool description which is baked into the agent's system prompt. This lets the agent know which tools it can use and why.
 
@@ -190,7 +190,12 @@ print(most_downloaded_model.id)
 ```
 
 This code can quickly be converted into a tool, just by wrapping it in a function and adding the `tool` decorator:
+This is not the only way to build the tool: you can directly define it as a subclass of [`Tool`], which gives you more flexibility, for instance the possibility to initialize heavy class attributes.
 
+Let's see how it works for both options:
+
+<hfoptions id="build-a-tool">
+<hfoption id="@tool decorator">
 
 ```py
 from smolagents import tool
@@ -202,7 +207,7 @@ def model_download_tool(task: str) -> str:
     It returns the name of the checkpoint.
 
     Args:
-        task: The task for which
+        task: The task for which to get the download count.
     """
     most_downloaded_model = next(iter(list_models(filter=task, sort="downloads", direction=-1)))
     return most_downloaded_model.id
@@ -216,6 +221,25 @@ All these will be automatically baked into the agent's system prompt upon initia
 
 > [!TIP]
 > This definition format is the same as tool schemas used in `apply_chat_template`, the only difference is the added `tool` decorator: read more on our tool use API [here](https://huggingface.co/blog/unified-tool-use#passing-tools-to-a-chat-template).
+</hfoption>
+<hfoption id="Subclass Tool">
+
+```py
+from smolagents import Tool
+
+class ModelDownloadTool(Tool):
+    name = "model_download_tool"
+    description = "This is a tool that returns the most downloaded model of a given task on the Hugging Face Hub. It returns the name of the checkpoint."
+    inputs = {"task": {"type": "string", "description": "The task for which to get the download count."}}
+    output_type = "string"
+
+    def forward(self, task: str) -> str:
+        most_downloaded_model = next(iter(list_models(filter=task, sort="downloads", direction=-1)))
+        return most_downloaded_model.id
+```
+</hfoption>
+</hfoptions>
+
 
 Then you can directly initialize your agent:
 ```py
@@ -253,9 +277,7 @@ Out - Final answer: ByteDance/AnimateDiff-Lightning
 Out[20]: 'ByteDance/AnimateDiff-Lightning'
 ```
 
-This is not the only way to build the tool: you can directly define it as a subclass of [`Tool`], which gives you more flexibility, for instance the possibility to initialize heavy class attributes.
-
-Read more in the [dedicated tool tutorial](./tutorials/tools#what-is-a-tool-and-how-to-build-one)
+Read more on tools in the [dedicated tutorial](./tutorials/tools#what-is-a-tool-and-how-to-build-one)
 
 ## Multi-agents
 

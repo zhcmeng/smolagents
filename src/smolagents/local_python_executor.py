@@ -105,6 +105,7 @@ BASE_PYTHON_TOOLS = {
     "setattr": setattr,
     "issubclass": issubclass,
     "type": type,
+    "complex": complex,
 }
 
 

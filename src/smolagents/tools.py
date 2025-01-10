@@ -27,7 +27,6 @@ from functools import lru_cache, wraps
 from pathlib import Path
 from typing import Callable, Dict, Optional, Union, get_type_hints
 
-import torch
 from huggingface_hub import (
     create_repo,
     get_collection,
@@ -37,7 +36,6 @@ from huggingface_hub import (
 )
 from huggingface_hub.utils import RepositoryNotFoundError
 from packaging import version
-from transformers import AutoProcessor
 from transformers.dynamic_module_utils import get_imports
 from transformers.utils import (
     TypeHintParsingException,
@@ -54,13 +52,14 @@ from .utils import instance_to_source
 
 logger = logging.getLogger(__name__)
 
+if is_accelerate_available():
+    from accelerate import PartialState
+    from accelerate.utils import send_to_device
 
 if is_torch_available():
-    pass
-
-if is_accelerate_available():
-    pass
-
+    from transformers import AutoProcessor
+else:
+    AutoProcessor = object
 
 TOOL_CONFIG_FILE = "tool_config.json"
 
@@ -1026,8 +1025,6 @@ class PipelineTool(Tool):
         """
         Instantiates the `pre_processor`, `model` and `post_processor` if necessary.
         """
-        from accelerate import PartialState
-
         if isinstance(self.pre_processor, str):
             self.pre_processor = self.pre_processor_class.from_pretrained(
                 self.pre_processor, **self.hub_kwargs
@@ -1066,6 +1063,8 @@ class PipelineTool(Tool):
         """
         Sends the inputs through the `model`.
         """
+        import torch
+
         with torch.no_grad():
             return self.model(**inputs)
 
@@ -1076,15 +1075,14 @@ class PipelineTool(Tool):
         return self.post_processor(outputs)
 
     def __call__(self, *args, **kwargs):
+        import torch
+
         args, kwargs = handle_agent_input_types(*args, **kwargs)
 
         if not self.is_initialized:
             self.setup()
 
         encoded_inputs = self.encode(*args, **kwargs)
-
-        import torch
-        from accelerate.utils import send_to_device
 
         tensor_inputs = {
             k: v for k, v in encoded_inputs.items() if isinstance(v, torch.Tensor)

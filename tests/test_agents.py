@@ -367,9 +367,10 @@ class AgentTests(unittest.TestCase):
             model=fake_code_model_no_return,  # use this callable because it never ends
             max_steps=5,
         )
-        agent.run("What is 2 multiplied by 3.6452?")
+        answer = agent.run("What is 2 multiplied by 3.6452?")
         assert len(agent.logs) == 8
         assert type(agent.logs[-1].error) is AgentMaxStepsError
+        assert isinstance(answer, str)
 
     def test_tool_descriptions_get_baked_in_system_prompt(self):
         tool = PythonInterpreterTool()

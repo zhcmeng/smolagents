@@ -24,7 +24,8 @@ limitations under the License.
 </p>
 
 <h3 align="center">
-  <p>🤗 smolagents - a smol library to build great agents!</p>
+  <img src="https://huggingface.co/datasets/huggingface/documentation-images/resolve/main/smolagents/mascot.png" alt="Hugging Face mascot as James Bond" width=50px>
+  <p>smolagents - a smol library to build great agents!</p>
 </h3>
 
 `smolagents` is a library that enables you to run powerful agents in a few lines of code. It offers:

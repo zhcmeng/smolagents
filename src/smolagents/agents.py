@@ -75,12 +75,12 @@ class ToolCall:
     id: str
 
 
-class AgentStepLog:
+class AgentStep:
     pass
 
 
 @dataclass
-class ActionStep(AgentStepLog):
+class ActionStep(AgentStep):
     agent_memory: List[Dict[str, str]] | None = None
     tool_calls: List[ToolCall] | None = None
     start_time: float | None = None
@@ -90,24 +90,22 @@ class ActionStep(AgentStepLog):
     duration: float | None = None
     llm_output: str | None = None
     observations: str | None = None
-    observations_images: List[Image]
     action_output: Any = None
 
 
 @dataclass
-class PlanningStep(AgentStepLog):
+class PlanningStep(AgentStep):
     plan: str
     facts: str
 
 
 @dataclass
-class TaskStep(AgentStepLog):
+class TaskStep(AgentStep):
     task: str
-    task_images: List[Image]
 
 
 @dataclass
-class SystemPromptStep(AgentStepLog):
+class SystemPromptStep(AgentStep):
     system_prompt: str
 
 

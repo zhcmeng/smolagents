@@ -29,7 +29,7 @@ def is_pygments_available():
     return importlib.util.find_spec("soundfile") is not None
 
 
-console = Console(width=200)
+console = Console()
 
 BASE_BUILTIN_MODULES = [
     "collections",

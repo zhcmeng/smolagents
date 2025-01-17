@@ -567,7 +567,7 @@ class OpenAIServerModel(Model):
             The API key to use for authentication.
         custom_role_conversions (`Dict{str, str]`, *optional*):
             Custom role conversion mapping to convert message roles in others.
-            Useful for specific models that do not support specific message roles like "system". 
+            Useful for specific models that do not support specific message roles like "system".
         **kwargs:
             Additional keyword arguments to pass to the OpenAI API.
     """
@@ -603,9 +603,12 @@ class OpenAIServerModel(Model):
         tools_to_call_from: Optional[List[Tool]] = None,
     ) -> ChatMessage:
         messages = get_clean_message_list(
-            messages, role_conversions=(
-                self.custom_role_conversions if self.custom_role_conversions else tool_role_conversions
-            )
+            messages,
+            role_conversions=(
+                self.custom_role_conversions
+                if self.custom_role_conversions
+                else tool_role_conversions
+            ),
         )
         if tools_to_call_from:
             response = self.client.chat.completions.create(

@@ -35,53 +35,21 @@ from huggingface_hub import (
     metadata_update,
     upload_folder,
 )
-from huggingface_hub.utils import RepositoryNotFoundError
+from huggingface_hub.utils import is_torch_available
 from packaging import version
-from transformers.dynamic_module_utils import get_imports
-from transformers.utils import (
-    TypeHintParsingException,
-    cached_file,
-    get_json_schema,
-    is_accelerate_available,
-    is_torch_available,
-)
-from transformers.utils.chat_template_utils import _parse_type_hint
 
+from ._transformers_utils import (
+    TypeHintParsingException,
+    _parse_type_hint,
+    get_imports,
+    get_json_schema,
+)
 from .tool_validation import MethodChecker, validate_tool_attributes
-from .types import ImageType, handle_agent_input_types, handle_agent_output_types
-from .utils import instance_to_source
+from .types import handle_agent_input_types, handle_agent_output_types
+from .utils import _is_package_available, _is_pillow_available, instance_to_source
 
 
 logger = logging.getLogger(__name__)
-
-if is_accelerate_available():
-    from accelerate import PartialState
-    from accelerate.utils import send_to_device
-
-if is_torch_available():
-    from transformers import AutoProcessor
-else:
-    AutoProcessor = object
-
-TOOL_CONFIG_FILE = "tool_config.json"
-
-
-def get_repo_type(repo_id, repo_type=None, **hub_kwargs):
-    if repo_type is not None:
-        return repo_type
-    try:
-        hf_hub_download(repo_id, TOOL_CONFIG_FILE, repo_type="space", **hub_kwargs)
-        return "space"
-    except RepositoryNotFoundError:
-        try:
-            hf_hub_download(repo_id, TOOL_CONFIG_FILE, repo_type="model", **hub_kwargs)
-            return "model"
-        except RepositoryNotFoundError:
-            raise EnvironmentError(f"`{repo_id}` does not seem to be a valid repo identifier on the Hub.")
-        except Exception:
-            return "model"
-    except Exception:
-        return "space"
 
 
 def validate_after_init(cls):
@@ -337,12 +305,8 @@ class Tool:
             )
 
         # Save requirements file
+        imports = {el for el in get_imports(tool_file) if el not in sys.stdlib_module_names} | {"smolagents"}
         requirements_file = os.path.join(output_dir, "requirements.txt")
-
-        imports = []
-        for module in [tool_file]:
-            imports.extend(get_imports(module))
-        imports = list(set([el for el in imports + ["smolagents"] if el not in sys.stdlib_module_names]))
         with open(requirements_file, "w", encoding="utf-8") as f:
             f.write("\n".join(imports) + "\n")
 
@@ -439,53 +403,27 @@ class Tool:
                 `cache_dir`, `revision`, `subfolder`) will be used when downloading the files for your tool, and the
                 others will be passed along to its init.
         """
-        assert trust_remote_code, (
-            "Loading a tool from Hub requires to trust remote code. Make sure you've inspected the repo and pass `trust_remote_code=True` to load the tool."
-        )
-
-        hub_kwargs_names = [
-            "cache_dir",
-            "force_download",
-            "resume_download",
-            "proxies",
-            "revision",
-            "repo_type",
-            "subfolder",
-            "local_files_only",
-        ]
-        hub_kwargs = {k: v for k, v in kwargs.items() if k in hub_kwargs_names}
-
-        tool_file = "tool.py"
+        if not trust_remote_code:
+            raise ValueError(
+                "Loading a tool from Hub requires to trust remote code. Make sure you've inspected the repo and pass `trust_remote_code=True` to load the tool."
+            )
 
         # Get the tool's tool.py file.
-        hub_kwargs["repo_type"] = get_repo_type(repo_id, **hub_kwargs)
-        resolved_tool_file = cached_file(
+        tool_file = hf_hub_download(
             repo_id,
-            tool_file,
+            "tool.py",
             token=token,
-            **hub_kwargs,
-            _raise_exceptions_for_gated_repo=False,
-            _raise_exceptions_for_missing_entries=False,
-            _raise_exceptions_for_connection_errors=False,
+            repo_type="space",
+            cache_dir=kwargs.get("cache_dir"),
+            force_download=kwargs.get("force_download"),
+            resume_download=kwargs.get("resume_download"),
+            proxies=kwargs.get("proxies"),
+            revision=kwargs.get("revision"),
+            subfolder=kwargs.get("subfolder"),
+            local_files_only=kwargs.get("local_files_only"),
         )
-        tool_code = resolved_tool_file is not None
-        if resolved_tool_file is None:
-            resolved_tool_file = cached_file(
-                repo_id,
-                tool_file,
-                token=token,
-                **hub_kwargs,
-                _raise_exceptions_for_gated_repo=False,
-                _raise_exceptions_for_missing_entries=False,
-                _raise_exceptions_for_connection_errors=False,
-            )
-        if resolved_tool_file is None:
-            raise EnvironmentError(
-                f"{repo_id} does not appear to provide a valid configuration in `tool_config.json` or `config.json`."
-            )
 
-        with open(resolved_tool_file, encoding="utf-8") as reader:
-            tool_code = "".join(reader.readlines())
+        tool_code = Path(tool_file).read_text()
 
         # Find the Tool subclass in the namespace
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -613,7 +551,10 @@ class Tool:
             def sanitize_argument_for_prediction(self, arg):
                 from gradio_client.utils import is_http_url_like
 
-                if isinstance(arg, ImageType):
+                if _is_pillow_available():
+                    from PIL.Image import Image
+
+                if _is_pillow_available() and isinstance(arg, Image):
                     temp_file = tempfile.NamedTemporaryFile(suffix=".png", delete=False)
                     arg.save(temp_file.name)
                     arg = temp_file.name
@@ -988,13 +929,13 @@ class PipelineTool(Tool):
 
     - **model_class** (`type`) -- The class to use to load the model in this tool.
     - **default_checkpoint** (`str`) -- The default checkpoint that should be used when the user doesn't specify one.
-    - **pre_processor_class** (`type`, *optional*, defaults to [`AutoProcessor`]) -- The class to use to load the
+    - **pre_processor_class** (`type`, *optional*, defaults to [`transformers.AutoProcessor`]) -- The class to use to load the
       pre-processor
-    - **post_processor_class** (`type`, *optional*, defaults to [`AutoProcessor`]) -- The class to use to load the
+    - **post_processor_class** (`type`, *optional*, defaults to [`transformers.AutoProcessor`]) -- The class to use to load the
       post-processor (when different from the pre-processor).
 
     Args:
-        model (`str` or [`PreTrainedModel`], *optional*):
+        model (`str` or [`transformers.PreTrainedModel`], *optional*):
             The name of the checkpoint to use for the model, or the instantiated model. If unset, will default to the
             value of the class attribute `default_checkpoint`.
         pre_processor (`str` or `Any`, *optional*):
@@ -1019,9 +960,9 @@ class PipelineTool(Tool):
             Any additional keyword argument to send to the methods that will load the data from the Hub.
     """
 
-    pre_processor_class = AutoProcessor
+    pre_processor_class = None
     model_class = None
-    post_processor_class = AutoProcessor
+    post_processor_class = None
     default_checkpoint = None
     description = "This is a pipeline tool"
     name = "pipeline"
@@ -1040,11 +981,10 @@ class PipelineTool(Tool):
         token=None,
         **hub_kwargs,
     ):
-        if not is_torch_available():
-            raise ImportError("Please install torch in order to use this tool.")
-
-        if not is_accelerate_available():
-            raise ImportError("Please install accelerate in order to use this tool.")
+        if not is_torch_available() or not _is_package_available("accelerate"):
+            raise ModuleNotFoundError(
+                "Please install 'transformers' extra to use a PipelineTool: `pip install 'smolagents[transformers]'`"
+            )
 
         if model is None:
             if self.default_checkpoint is None:
@@ -1071,6 +1011,10 @@ class PipelineTool(Tool):
         Instantiates the `pre_processor`, `model` and `post_processor` if necessary.
         """
         if isinstance(self.pre_processor, str):
+            if self.pre_processor_class is None:
+                from transformers import AutoProcessor
+
+                self.pre_processor_class = AutoProcessor
             self.pre_processor = self.pre_processor_class.from_pretrained(self.pre_processor, **self.hub_kwargs)
 
         if isinstance(self.model, str):
@@ -1079,12 +1023,18 @@ class PipelineTool(Tool):
         if self.post_processor is None:
             self.post_processor = self.pre_processor
         elif isinstance(self.post_processor, str):
+            if self.post_processor_class is None:
+                from transformers import AutoProcessor
+
+                self.post_processor_class = AutoProcessor
             self.post_processor = self.post_processor_class.from_pretrained(self.post_processor, **self.hub_kwargs)
 
         if self.device is None:
             if self.device_map is not None:
                 self.device = list(self.model.hf_device_map.values())[0]
             else:
+                from accelerate import PartialState
+
                 self.device = PartialState().default_device
 
         if self.device_map is None:
@@ -1115,6 +1065,7 @@ class PipelineTool(Tool):
 
     def __call__(self, *args, **kwargs):
         import torch
+        from accelerate.utils import send_to_device
 
         args, kwargs = handle_agent_input_types(*args, **kwargs)
 

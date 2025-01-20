@@ -21,16 +21,12 @@ from unittest.mock import MagicMock, patch
 import mcp
 import numpy as np
 import pytest
+import torch
 from transformers import is_torch_available, is_vision_available
 from transformers.testing_utils import get_tests_dir
 
 from smolagents.tools import AUTHORIZED_TYPES, Tool, ToolCollection, tool
-from smolagents.types import (
-    AGENT_TYPE_MAPPING,
-    AgentAudio,
-    AgentImage,
-    AgentText,
-)
+from smolagents.types import _AGENT_TYPE_MAPPING, AgentAudio, AgentImage, AgentText
 
 
 if is_torch_available():
@@ -96,7 +92,7 @@ class ToolTesterMixin:
         inputs = create_inputs(self.tool.inputs)
         output = self.tool(**inputs, sanitize_inputs_outputs=True)
         if self.tool.output_type != "any":
-            agent_type = AGENT_TYPE_MAPPING[self.tool.output_type]
+            agent_type = _AGENT_TYPE_MAPPING[self.tool.output_type]
             self.assertTrue(isinstance(output, agent_type))
 
 

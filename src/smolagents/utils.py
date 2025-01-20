@@ -15,18 +15,30 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import ast
+import importlib.metadata
 import importlib.util
 import inspect
 import json
 import re
 import types
+from functools import lru_cache
 from typing import Dict, Tuple, Union
 
 from rich.console import Console
 
 
-def is_pygments_available():
-    return importlib.util.find_spec("soundfile") is not None
+@lru_cache
+def _is_package_available(package_name: str) -> bool:
+    try:
+        importlib.metadata.version(package_name)
+        return True
+    except importlib.metadata.PackageNotFoundError:
+        return False
+
+
+@lru_cache
+def _is_pillow_available():
+    return importlib.util.find_spec("PIL") is not None
 
 
 console = Console()

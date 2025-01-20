@@ -21,19 +21,17 @@ import random
 from copy import deepcopy
 from dataclasses import asdict, dataclass
 from enum import Enum
-from typing import Any, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
 from huggingface_hub import InferenceClient
-from transformers import (
-    AutoModelForCausalLM,
-    AutoTokenizer,
-    StoppingCriteria,
-    StoppingCriteriaList,
-    is_torch_available,
-)
+from huggingface_hub.utils import is_torch_available
 
 from .tools import Tool
+from .utils import _is_package_available
 
+
+if TYPE_CHECKING:
+    from transformers import StoppingCriteriaList
 
 logger = logging.getLogger(__name__)
 
@@ -320,6 +318,9 @@ class TransformersModel(Model):
 
     This model allows you to communicate with Hugging Face's models using the Inference API. It can be used in both serverless mode or with a dedicated endpoint, supporting features like stop sequences and grammar customization.
 
+    > [!TIP]
+    > You must have `transformers` and `torch` installed on your machine. Please run `pip install smolagents[transformers]` if it's not the case.
+
     Parameters:
         model_id (`str`, *optional*, defaults to `"Qwen/Qwen2.5-Coder-32B-Instruct"`):
             The Hugging Face model ID to be used for inference. This can be a path or model identifier from the Hugging Face model hub.
@@ -358,9 +359,12 @@ class TransformersModel(Model):
         **kwargs,
     ):
         super().__init__()
-        if not is_torch_available():
-            raise ImportError("Please install torch in order to use TransformersModel.")
+        if not is_torch_available() or not _is_package_available("transformers"):
+            raise ModuleNotFoundError(
+                "Please install 'transformers' extra to use 'TransformersModel': `pip install 'smolagents[transformers]'`"
+            )
         import torch
+        from transformers import AutoModelForCausalLM, AutoTokenizer
 
         default_model_id = "HuggingFaceTB/SmolLM2-1.7B-Instruct"
         if model_id is None:
@@ -387,7 +391,9 @@ class TransformersModel(Model):
             self.tokenizer = AutoTokenizer.from_pretrained(default_model_id)
             self.model = AutoModelForCausalLM.from_pretrained(model_id, device_map=device_map, torch_dtype=torch_dtype)
 
-    def make_stopping_criteria(self, stop_sequences: List[str]) -> StoppingCriteriaList:
+    def make_stopping_criteria(self, stop_sequences: List[str]) -> "StoppingCriteriaList":
+        from transformers import StoppingCriteria, StoppingCriteriaList
+
         class StopOnStrings(StoppingCriteria):
             def __init__(self, stop_strings: List[str], tokenizer):
                 self.stop_strings = stop_strings
@@ -491,6 +497,7 @@ class LiteLLMModel(Model):
             raise ModuleNotFoundError(
                 "Please install 'litellm' extra to use LiteLLMModel: `pip install 'smolagents[litellm]'`"
             )
+
         super().__init__()
         self.model_id = model_id
         # IMPORTANT - Set this to TRUE to add the function to the prompt for Non OpenAI LLMs
@@ -506,8 +513,9 @@ class LiteLLMModel(Model):
         grammar: Optional[str] = None,
         tools_to_call_from: Optional[List[Tool]] = None,
     ) -> ChatMessage:
-        messages = get_clean_message_list(messages, role_conversions=tool_role_conversions)
         import litellm
+
+        messages = get_clean_message_list(messages, role_conversions=tool_role_conversions)
 
         if tools_to_call_from:
             response = litellm.completion(

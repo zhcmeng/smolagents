@@ -19,14 +19,15 @@ import re
 import shutil
 from typing import Optional
 
-import gradio as gr
-
 from .agents import ActionStep, AgentStepLog, MultiStepAgent
 from .types import AgentAudio, AgentImage, AgentText, handle_agent_output_types
+from .utils import _is_package_available
 
 
 def pull_messages_from_step(step_log: AgentStepLog):
     """Extract ChatMessage objects from agent steps"""
+    import gradio as gr
+
     if isinstance(step_log, ActionStep):
         yield gr.ChatMessage(role="assistant", content=step_log.llm_output or "")
         if step_log.tool_calls is not None:
@@ -57,6 +58,11 @@ def stream_to_gradio(
     additional_args: Optional[dict] = None,
 ):
     """Runs an agent with the given task and streams the messages from the agent as gradio ChatMessages."""
+    if not _is_package_available("gradio"):
+        raise ModuleNotFoundError(
+            "Please install 'gradio' extra to use the GradioUI: `pip install 'smolagents[audio]'`"
+        )
+    import gradio as gr
 
     for step_log in agent.run(task, stream=True, reset=reset_agent_memory, additional_args=additional_args):
         for message in pull_messages_from_step(step_log):
@@ -88,6 +94,10 @@ class GradioUI:
     """A one-line interface to launch your agent in Gradio"""
 
     def __init__(self, agent: MultiStepAgent, file_upload_folder: str | None = None):
+        if not _is_package_available("gradio"):
+            raise ModuleNotFoundError(
+                "Please install 'gradio' extra to use the GradioUI: `pip install 'smolagents[audio]'`"
+            )
         self.agent = agent
         self.file_upload_folder = file_upload_folder
         if self.file_upload_folder is not None:
@@ -95,6 +105,8 @@ class GradioUI:
                 os.mkdir(file_upload_folder)
 
     def interact_with_agent(self, prompt, messages):
+        import gradio as gr
+
         messages.append(gr.ChatMessage(role="user", content=prompt))
         yield messages
         for msg in stream_to_gradio(self.agent, task=prompt, reset_agent_memory=False):
@@ -115,6 +127,7 @@ class GradioUI:
         """
         Handle file uploads, default allowed types are .pdf, .docx, and .txt
         """
+        import gradio as gr
 
         if file is None:
             return gr.Textbox("No file uploaded", visible=True), file_uploads_log
@@ -161,6 +174,8 @@ class GradioUI:
         )
 
     def launch(self):
+        import gradio as gr
+
         with gr.Blocks() as demo:
             stored_messages = gr.State([])
             file_uploads_log = gr.State([])

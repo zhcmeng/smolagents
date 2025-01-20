@@ -755,6 +755,8 @@ class ToolCallingAgent(MultiStepAgent):
                 tools_to_call_from=list(self.tools.values()),
                 stop_sequences=["Observation:"],
             )
+            if model_message.tool_calls is None or len(model_message.tool_calls) == 0:
+                raise Exception("Model did not call any tools. Call `final_answer` tool to return a final answer.")
             tool_call = model_message.tool_calls[0]
             tool_name, tool_call_id = tool_call.function.name, tool_call.id
             tool_arguments = tool_call.function.arguments
@@ -1022,9 +1024,9 @@ class ManagedAgent:
         """Adds additional prompting for the managed agent, like 'add more detail in your answer'."""
         full_task = self.managed_agent_prompt.format(name=self.name, task=task)
         if self.additional_prompting:
-            full_task = full_task.replace("\n{{additional_prompting}}", self.additional_prompting).strip()
+            full_task = full_task.replace("\n{additional_prompting}", self.additional_prompting).strip()
         else:
-            full_task = full_task.replace("\n{{additional_prompting}}", "").strip()
+            full_task = full_task.replace("\n{additional_prompting}", "").strip()
         return full_task
 
     def __call__(self, request, **kwargs):

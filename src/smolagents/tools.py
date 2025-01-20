@@ -188,7 +188,7 @@ class Tool:
 
         assert getattr(self, "output_type", None) in AUTHORIZED_TYPES
 
-        # Validate forward function signature, except for Tools that use a "generic" signature (PipelineTool, SpaceToolWrapper)
+        # Validate forward function signature, except for Tools that use a "generic" signature (PipelineTool, SpaceToolWrapper, LangChainToolWrapper)
         if not (
             hasattr(self, "skip_forward_signature_validation")
             and getattr(self, "skip_forward_signature_validation") is True
@@ -676,6 +676,8 @@ class Tool:
         """
 
         class LangChainToolWrapper(Tool):
+            skip_forward_signature_validation = True
+
             def __init__(self, _langchain_tool):
                 self.name = _langchain_tool.name.lower()
                 self.description = _langchain_tool.description
@@ -686,6 +688,7 @@ class Tool:
                     input_content["description"] = ""
                 self.output_type = "string"
                 self.langchain_tool = _langchain_tool
+                self.is_initialized = True
 
             def forward(self, *args, **kwargs):
                 tool_input = kwargs.copy()

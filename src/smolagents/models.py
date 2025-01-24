@@ -480,7 +480,6 @@ class TransformersModel(Model):
             messages=messages,
             stop_sequences=stop_sequences,
             grammar=grammar,
-            tools_to_call_from=tools_to_call_from,
             **kwargs,
         )
 
@@ -496,9 +495,6 @@ class TransformersModel(Model):
 
         if max_new_tokens:
             completion_kwargs["max_new_tokens"] = max_new_tokens
-
-        if stop_sequences:
-            completion_kwargs["stopping_criteria"] = self.make_stopping_criteria(stop_sequences)
 
         if tools_to_call_from is not None:
             prompt_tensor = self.tokenizer.apply_chat_template(
@@ -518,7 +514,11 @@ class TransformersModel(Model):
         prompt_tensor = prompt_tensor.to(self.model.device)
         count_prompt_tokens = prompt_tensor["input_ids"].shape[1]
 
-        out = self.model.generate(**prompt_tensor, **completion_kwargs)
+        out = self.model.generate(
+            **prompt_tensor,
+            stopping_criteria=(self.make_stopping_criteria(stop_sequences) if stop_sequences else None),
+            **completion_kwargs,
+        )
         generated_tokens = out[0, count_prompt_tokens:]
         output = self.tokenizer.decode(generated_tokens, skip_special_tokens=True)
         self.last_input_token_count = count_prompt_tokens

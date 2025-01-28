@@ -173,7 +173,7 @@ class GradioUI:
             "",
         )
 
-    def launch(self):
+    def launch(self, **kwargs):
         import gradio as gr
 
         with gr.Blocks() as demo:
@@ -204,7 +204,7 @@ class GradioUI:
                 [stored_messages, text_input],
             ).then(self.interact_with_agent, [stored_messages, chatbot], [chatbot])
 
-        demo.launch()
+        demo.launch(**kwargs)
 
 
 __all__ = ["stream_to_gradio", "GradioUI"]

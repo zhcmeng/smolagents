@@ -57,7 +57,7 @@ from .tools import (
     Tool,
     get_tool_description_with_args,
 )
-from .types import AgentAudio, AgentImage, handle_agent_output_types
+from .types import AgentAudio, AgentImage, AgentType, handle_agent_output_types
 from .utils import (
     AgentError,
     AgentExecutionError,
@@ -564,7 +564,7 @@ You have been provided with these additional arguments, that you can access usin
         # Outputs are returned only at the end as a string. We only look at the last step
         return deque(self._run(task=self.task, images=images), maxlen=1)[0]
 
-    def _run(self, task: str, images: List[str] | None = None) -> Generator[str, None, None]:
+    def _run(self, task: str, images: List[str] | None = None) -> Generator[ActionStep | AgentType, None, None]:
         """
         Run the agent in streaming mode and returns a generator of all the steps.
 

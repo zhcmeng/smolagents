@@ -117,19 +117,34 @@ class ManagedAgentPromptTemplate(TypedDict):
     report: str
 
 
+class FinalAnswerPromptTemplate(TypedDict):
+    """
+    Prompt templates for the final answer.
+
+    Args:
+        pre_messages (`str`): Pre-messages prompt.
+        post_messages (`str`): Post-messages prompt.
+    """
+
+    pre_messages: str
+    post_messages: str
+
+
 class PromptTemplates(TypedDict):
     """
     Prompt templates for the agent.
 
     Args:
         system_prompt (`str`): System prompt.
-        planning ([`~agents.PlanningPromptTemplate`]): Planning prompt template.
-        managed_agent ([`~agents.ManagedAgentPromptTemplate`]): Managed agent prompt template.
+        planning ([`~agents.PlanningPromptTemplate`]): Planning prompt templates.
+        managed_agent ([`~agents.ManagedAgentPromptTemplate`]): Managed agent prompt templates.
+        final_answer ([`~agents.FinalAnswerPromptTemplate`]): Final answer prompt templates.
     """
 
     system_prompt: str
     planning: PlanningPromptTemplate
     managed_agent: ManagedAgentPromptTemplate
+    final_answer: FinalAnswerPromptTemplate
 
 
 EMPTY_PROMPT_TEMPLATES = PromptTemplates(
@@ -143,6 +158,7 @@ EMPTY_PROMPT_TEMPLATES = PromptTemplates(
         update_plan_post_messages="",
     ),
     managed_agent=ManagedAgentPromptTemplate(task="", report=""),
+    final_answer=FinalAnswerPromptTemplate(pre_messages="", post_messages=""),
 )
 
 
@@ -290,46 +306,33 @@ class MultiStepAgent:
         Returns:
             `str`: Final answer to the task.
         """
-        messages = [{"role": MessageRole.SYSTEM, "content": []}]
+        messages = [
+            {
+                "role": MessageRole.SYSTEM,
+                "content": [
+                    {
+                        "type": "text",
+                        "text": self.prompt_templates["final_answer"]["pre_messages"],
+                    }
+                ],
+            }
+        ]
         if images:
-            messages[0]["content"] = [
-                {
-                    "type": "text",
-                    "text": "An agent tried to answer a user query but it got stuck and failed to do so. You are tasked with providing an answer instead. Here is the agent's memory:",
-                }
-            ]
             messages[0]["content"].append({"type": "image"})
-            messages += self.write_memory_to_messages()[1:]
-            messages += [
-                {
-                    "role": MessageRole.USER,
-                    "content": [
-                        {
-                            "type": "text",
-                            "text": f"Based on the above, please provide an answer to the following user request:\n{task}",
-                        }
-                    ],
-                }
-            ]
-        else:
-            messages[0]["content"] = [
-                {
-                    "type": "text",
-                    "text": "An agent tried to answer a user query but it got stuck and failed to do so. You are tasked with providing an answer instead. Here is the agent's memory:",
-                }
-            ]
-            messages += self.write_memory_to_messages()[1:]
-            messages += [
-                {
-                    "role": MessageRole.USER,
-                    "content": [
-                        {
-                            "type": "text",
-                            "text": f"Based on the above, please provide an answer to the following user request:\n{task}",
-                        }
-                    ],
-                }
-            ]
+        messages += self.write_memory_to_messages()[1:]
+        messages += [
+            {
+                "role": MessageRole.USER,
+                "content": [
+                    {
+                        "type": "text",
+                        "text": populate_template(
+                            self.prompt_templates["final_answer"]["post_messages"], variables={"task": task}
+                        ),
+                    }
+                ],
+            }
+        ]
         try:
             chat_message: ChatMessage = self.model(messages)
             return chat_message.content

@@ -49,16 +49,6 @@ Full documentation can be found [here](https://huggingface.co/docs/smolagents/in
 > [!NOTE]
 > Check the our [launch blog post](https://huggingface.co/blog/smolagents) to learn more about `smolagents`!
 
-## Table of Contents
-- [Introduction](#introduction)
-- [Quick Demo](#quick-demo)
-- [Command Line Interface](#command-line-interface)
-- [Code Agents](#code-agents)
-- [How smol is this library?](#how-smol-is-this-library)
-- [How Strong are Open Models for Agentic Workflows?](#how-strong-are-open-models-for-agentic-workflows)
-- [Contributing](#contributing)
-- [Citing smolagents](#citing-smolagents)
-
 ## Quick demo
 
 First install the package.

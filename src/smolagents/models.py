@@ -863,9 +863,8 @@ class LiteLLMModel(Model):
         import litellm
 
         model_info: dict = litellm.get_model_info(self.model_id)
-        if model_info["litellm_provider"] == "ollama":
+        if model_info["litellm_provider"] in ["ollama", "groq"]:
             return model_info["key"] != "llava"
-
         return False
 
     def __call__(

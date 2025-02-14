@@ -525,7 +525,7 @@ class MLXModel(Model):
 
     def _to_message(self, text, tools_to_call_from):
         if tools_to_call_from:
-            # tmp solution for extracting tool JSON without assuming a specific model output format
+            # solution for extracting tool JSON without assuming a specific model output format
             maybe_json = "{" + text.split("{", 1)[-1][::-1].split("}", 1)[-1][::-1] + "}"
             parsed_text = json.loads(maybe_json)
             tool_name = parsed_text.get(self.tool_name_key, None)
@@ -579,8 +579,9 @@ class MLXModel(Model):
             self.last_output_token_count += 1
             text += _.text
             for stop_sequence in prepared_stop_sequences:
-                if text.strip().endswith(stop_sequence):
-                    text = text[: -len(stop_sequence)]
+                stop_sequence_start = text.rfind(stop_sequence)
+                if stop_sequence_start != -1:
+                    text = text[:stop_sequence_start]
                     return self._to_message(text, tools_to_call_from)
 
         return self._to_message(text, tools_to_call_from)

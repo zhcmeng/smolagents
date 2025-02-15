@@ -67,6 +67,13 @@ agent.run("How many seconds would it take for a leopard at full speed to run thr
 
 https://github.com/user-attachments/assets/cd0226e2-7479-4102-aea0-57c22ca47884
 
+You can even share your agent to hub:
+```py
+agent.push_to_hub("m-ric/my_agent")
+
+# agent.from_hub("m-ric/my_agent") to load an agent from Hub
+```
+
 Our library is LLM-agnostic: you could switch the example above to any inference provider.
 
 <details>

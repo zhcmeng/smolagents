@@ -1229,8 +1229,14 @@ def evaluate_ast(
         # For loop -> execute the loop
         return evaluate_for(expression, *common_params)
     elif isinstance(expression, ast.FormattedValue):
-        # Formatted value (part of f-string) -> evaluate the content and return
-        return evaluate_ast(expression.value, *common_params)
+        # Formatted value (part of f-string) -> evaluate the content and format it
+        value = evaluate_ast(expression.value, *common_params)
+        # Early return if no format spec
+        if not expression.format_spec:
+            return value
+        # Apply format specification
+        format_spec = evaluate_ast(expression.format_spec, *common_params)
+        return format(value, format_spec)
     elif isinstance(expression, ast.If):
         # If -> execute the right branch
         return evaluate_if(expression, *common_params)

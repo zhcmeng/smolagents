@@ -391,7 +391,7 @@ class AgentTests(unittest.TestCase):
         assert "ValueError" in str(agent.memory.steps)
 
     def test_code_agent_code_error_saves_previous_print_outputs(self):
-        agent = CodeAgent(tools=[PythonInterpreterTool()], model=fake_code_model_error)
+        agent = CodeAgent(tools=[PythonInterpreterTool()], model=fake_code_model_error, verbosity_level=10)
         agent.run("What is 2 multiplied by 3.6452?")
         assert "Flag!" in str(agent.memory.steps[1].observations)
 
@@ -799,6 +799,41 @@ class TestCodeAgent:
         with agent.logger.console.capture() as capture:
             agent.run("Test request")
         assert "secret\\\\" in repr(capture.get())
+
+    def test_change_tools_after_init(self):
+        from smolagents import Tool, tool
+
+        @tool
+        def fake_tool_1() -> str:
+            """Fake tool"""
+            return "1"
+
+        @tool
+        def fake_tool_2() -> str:
+            """Fake tool"""
+            return "2"
+
+        def fake_code_model(messages, stop_sequences=None, grammar=None) -> str:
+            return ChatMessage(role="assistant", content="Code:\n```py\nfinal_answer(fake_tool_1())\n```")
+
+        agent = CodeAgent(tools=[fake_tool_1], model=fake_code_model)
+
+        class ModifiedFinalAnswerTool(Tool):
+            name = "final_answer"
+            description = "Provides a final answer to the given problem."
+            inputs = {"answer": {"type": "any", "description": "The final function that solves the problem"}}
+            output_type = "string"
+
+            def forward(self, answer) -> str:
+                return answer + "FLAG"
+
+        agent.tools["final_answer"] = ModifiedFinalAnswerTool()
+        agent.tools["fake_tool_1"] = fake_tool_2
+
+        answer = agent.run("Fake task.")
+        assert answer == "2FLAG"
+
+        agent = CodeAgent(tools=[], model=fake_code_model)
 
 
 class MultiAgentsTests(unittest.TestCase):

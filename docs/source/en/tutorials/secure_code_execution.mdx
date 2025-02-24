@@ -88,9 +88,24 @@ When working with AI agents that execute code, security is paramount. This guide
 pip install 'smolagents[e2b]'
 ```
 
-#### Running your agent in E2B
+#### Running your agent in E2B: mono agents
 
-Here's a complete example of running an agent in an E2B sandbox:
+We provide a simple way to use an E2B Sandbox: simply add `use_e2b_executor=True` to the agent initialization, like:
+```py
+from smolagents import HfApiModel, CodeAgent
+
+agent = CodeAgent(model=HfApiModel(), tools=[], use_e2b_executor=True)
+
+agent.run("Can you give me the 100th Fibonacci number?")
+```
+
+However, this does not work (yet) with more complicated multi-agent setups.
+
+#### Running your agent in E2B: multi-agents
+
+To use multi-agents in an E2B sandbox, you need to run your agents completely from within E2B.
+
+Here is how to do it:
 
 ```python
 from e2b_code_interpreter import Sandbox
@@ -119,14 +134,22 @@ agent_code = """
 import os
 from smolagents import CodeAgent, HfApiModel
 
-# Initialize the agent
+# Initialize the agents
 agent = CodeAgent(
     model=HfApiModel(token=os.getenv("HF_TOKEN"), provider="together"),
-    tools=[]
+    tools=[],
+    name="coder_agent",
+    description="This agent takes care of your difficult algorithmic problems using code."
+)
+
+manager_agent = CodeAgent(
+    model=HfApiModel(token=os.getenv("HF_TOKEN"), provider="together"),
+    tools=[],
+    managed_agents=[agent],
 )
 
 # Run the agent
-response = agent.run("What's the 20th Fibonacci number?")
+response = manager_agent.run("What's the 20th Fibonacci number?")
 print(response)
 """
 

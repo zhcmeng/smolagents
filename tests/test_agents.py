@@ -921,6 +921,8 @@ class MultiAgentsTests(unittest.TestCase):
             additional_authorized_imports=["pandas", "datetime"],
             managed_agents=[web_agent, code_agent],
             max_print_outputs_length=1000,
+            executor_type="local",
+            executor_kwargs={"max_workers": 2},
         )
         agent.save("agent_export")
 
@@ -958,7 +960,8 @@ class MultiAgentsTests(unittest.TestCase):
         assert agent2.planning_interval == 5  # Check that kwargs are used
         assert set(agent2.authorized_imports) == set(["pandas", "datetime"] + BASE_BUILTIN_MODULES)
         assert agent2.max_print_outputs_length == 1000
-        assert agent2.use_e2b_executor is False
+        assert agent2.executor_type == "local"
+        assert agent2.executor_kwargs == {"max_workers": 2}
         assert (
             agent2.managed_agents["web_agent"].tools["web_search"].max_results == 10
         )  # For now tool init parameters are forgotten
@@ -1088,7 +1091,9 @@ final_answer("Final report.")
         assert report == "Final report."
 
         # Test that visualization works
-        manager_code_agent.visualize()
+        with manager_toolcalling_agent.logger.console.capture() as capture:
+            manager_toolcalling_agent.visualize()
+        assert "├──" in capture.get()
 
 
 @pytest.fixture

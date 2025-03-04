@@ -137,15 +137,16 @@ DANGEROUS_PATTERNS = (
 )
 
 DANGEROUS_MODULES = [
+    "builtins",
+    "io",
+    "multiprocessing",
     "os",
-    "subprocess",
+    "pathlib",
     "pty",
     "shutil",
-    "sys",
-    "pathlib",
-    "io",
     "socket",
-    "multiprocessing",
+    "subprocess",
+    "sys",
 ]
 
 
@@ -245,14 +246,24 @@ def safer_eval(func: Callable):
         authorized_imports=BASE_BUILTIN_MODULES,
     ):
         result = func(expression, state, static_tools, custom_tools, authorized_imports=authorized_imports)
-        if (isinstance(result, ModuleType) and result is builtins) or (
-            isinstance(result, dict) and result == vars(builtins)
-        ):
-            raise InterpreterError("Forbidden return value: builtins")
-        if isinstance(result, ModuleType):
-            if "*" not in authorized_imports:
+        if "*" not in authorized_imports:
+            if isinstance(result, ModuleType):
                 for module in DANGEROUS_MODULES:
-                    if module not in authorized_imports and result is import_module(module):
+                    if (
+                        module not in authorized_imports
+                        and result.__name__ == module
+                        # builtins has no __file__ attribute
+                        and getattr(result, "__file__", "") == getattr(import_module(module), "__file__", "")
+                    ):
+                        raise InterpreterError(f"Forbidden return value: {module}")
+            elif isinstance(result, dict) and result.get("__name__"):
+                for module in DANGEROUS_MODULES:
+                    if (
+                        module not in authorized_imports
+                        and result["__name__"] == module
+                        # builtins has no __file__ attribute
+                        and result.get("__file__", "") == getattr(import_module(module), "__file__", "")
+                    ):
                         raise InterpreterError(f"Forbidden return value: {module}")
         return result
 

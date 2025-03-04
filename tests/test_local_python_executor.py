@@ -1421,26 +1421,42 @@ class TestLocalPythonExecutor:
 
 class TestLocalPythonExecutorSecurity:
     @pytest.mark.parametrize(
-        "additional_authorized_imports, expectation",
-        [([], pytest.raises(InterpreterError)), (["os"], does_not_raise())],
+        "additional_authorized_imports, expected_error",
+        [([], InterpreterError("Import of os is not allowed")), (["os"], None)],
     )
-    def test_vulnerability_import(self, additional_authorized_imports, expectation):
+    def test_vulnerability_import(self, additional_authorized_imports, expected_error):
         executor = LocalPythonExecutor(additional_authorized_imports)
-        with expectation:
+        with (
+            pytest.raises(type(expected_error), match=f".*{expected_error}")
+            if isinstance(expected_error, Exception)
+            else does_not_raise()
+        ):
             executor("import os")
 
-    def test_vulnerability_builtins(self):
-        executor = LocalPythonExecutor([])
-        with pytest.raises(InterpreterError):
+    @pytest.mark.parametrize(
+        "additional_authorized_imports, expected_error",
+        [([], InterpreterError("Import of builtins is not allowed")), (["builtins"], None)],
+    )
+    def test_vulnerability_builtins(self, additional_authorized_imports, expected_error):
+        executor = LocalPythonExecutor(additional_authorized_imports)
+        with (
+            pytest.raises(type(expected_error), match=f".*{expected_error}")
+            if isinstance(expected_error, Exception)
+            else does_not_raise()
+        ):
             executor("import builtins")
 
     @pytest.mark.parametrize(
-        "additional_authorized_imports, expectation",
-        [([], pytest.raises(InterpreterError)), (["os", "sys"], does_not_raise())],
+        "additional_authorized_imports, expected_error",
+        [([], InterpreterError("Import of sys is not allowed")), (["os", "sys"], None)],
     )
-    def test_vulnerability_via_sys(self, additional_authorized_imports, expectation):
+    def test_vulnerability_via_sys(self, additional_authorized_imports, expected_error):
         executor = LocalPythonExecutor(additional_authorized_imports)
-        with expectation:
+        with (
+            pytest.raises(type(expected_error), match=f".*{expected_error}")
+            if isinstance(expected_error, Exception)
+            else does_not_raise()
+        ):
             executor(
                 dedent(
                     """
@@ -1451,12 +1467,16 @@ class TestLocalPythonExecutorSecurity:
             )
 
     @pytest.mark.parametrize(
-        "additional_authorized_imports, expectation",
-        [(["importlib"], pytest.raises(InterpreterError)), (["importlib", "os"], does_not_raise())],
+        "additional_authorized_imports, expected_error",
+        [(["importlib"], InterpreterError("Forbidden return value: os")), (["importlib", "os"], None)],
     )
-    def test_vulnerability_via_importlib(self, additional_authorized_imports, expectation):
+    def test_vulnerability_via_importlib(self, additional_authorized_imports, expected_error):
         executor = LocalPythonExecutor(additional_authorized_imports)
-        with expectation:
+        with (
+            pytest.raises(type(expected_error), match=f".*{expected_error}")
+            if isinstance(expected_error, Exception)
+            else does_not_raise()
+        ):
             executor(
                 dedent(
                     """
@@ -1467,41 +1487,98 @@ class TestLocalPythonExecutorSecurity:
             )
 
     @pytest.mark.parametrize(
-        "code",
+        "additional_authorized_imports, additional_tools, expected_error",
         [
-            dedent(
-                """
-                try:
-                    1 / 0
-                except Exception as e:
-                    builtins = e.__traceback__.tb_frame.f_back.f_globals["__builtins__"]
-                    builtins_import = builtins["__import__"]
-                    os_module = builtins_import("os")
-                    os_module.system(":")
-                """
+            ([], [], InterpreterError("Import of sys is not allowed")),
+            (["sys"], [], InterpreterError("Forbidden return value: builtins")),
+            (
+                ["sys", "builtins"],
+                [],
+                InterpreterError(
+                    "Invoking a builtin function that has not been explicitly added as a tool is not allowed"
+                ),
             ),
-            dedent(
-                """
-                try:
-                    1 / 0
-                except Exception as e:
-                    builtins = e.__traceback__.tb_frame.f_back.f_globals["__builtins__"]
-                    builtins_import = builtins["__import__"]
-                    builtins_import.__module__ = None
-                    os_module = builtins_import("os")
-                    os_module.system(":")
-                """
-            ),
+            (["sys", "builtins"], ["__import__"], InterpreterError("Forbidden return value: os")),
+            (["sys", "builtins", "os"], ["__import__"], None),
         ],
     )
-    def test_vulnerability_builtins_via_traceback(self, code):
-        executor = LocalPythonExecutor([])
-        with pytest.raises(InterpreterError):
-            executor(code)
+    def test_vulnerability_builtins_via_sys(self, additional_authorized_imports, additional_tools, expected_error):
+        executor = LocalPythonExecutor(additional_authorized_imports)
+        if additional_tools:
+            from builtins import __import__
 
-    def test_vulnerability_builtins_via_class_catch_warnings(self):
-        executor = LocalPythonExecutor([])
-        with pytest.raises(InterpreterError):
+            executor.send_tools({"__import__": __import__})
+        with (
+            pytest.raises(type(expected_error), match=f".*{expected_error}")
+            if isinstance(expected_error, Exception)
+            else does_not_raise()
+        ):
+            executor(
+                dedent(
+                    """
+                    import sys
+                    builtins = sys._getframe().f_builtins
+                    builtins_import = builtins["__import__"]
+                    os_module = builtins_import("os")
+                    os_module.system(":")
+                    """
+                )
+            )
+
+    @pytest.mark.parametrize("patch_builtin_import_module", [False, True])  # builtins_import.__module__ = None
+    @pytest.mark.parametrize(
+        "additional_authorized_imports, additional_tools, expected_error",
+        [([], [], InterpreterError("Forbidden return value: builtins")), (["builtins", "os"], ["__import__"], None)],
+    )
+    def test_vulnerability_builtins_via_traceback(
+        self, patch_builtin_import_module, additional_authorized_imports, additional_tools, expected_error, monkeypatch
+    ):
+        if patch_builtin_import_module:
+            monkeypatch.setattr("builtins.__import__.__module__", None)  # inspect.getmodule(func) = None
+        executor = LocalPythonExecutor(additional_authorized_imports)
+        if additional_tools:
+            from builtins import __import__
+
+            executor.send_tools({"__import__": __import__})
+        with (
+            pytest.raises(type(expected_error), match=f".*{expected_error}")
+            if isinstance(expected_error, Exception)
+            else does_not_raise()
+        ):
+            executor(
+                dedent(
+                    """
+                    try:
+                        1 / 0
+                    except Exception as e:
+                        builtins = e.__traceback__.tb_frame.f_back.f_globals["__builtins__"]
+                        builtins_import = builtins["__import__"]
+                        os_module = builtins_import("os")
+                        os_module.system(":")
+                    """
+                )
+            )
+
+    @pytest.mark.parametrize("patch_builtin_import_module", [False, True])  # builtins_import.__module__ = None
+    @pytest.mark.parametrize(
+        "additional_authorized_imports, additional_tools, expected_error",
+        [([], [], InterpreterError("Forbidden return value: builtins")), (["builtins", "os"], ["__import__"], None)],
+    )
+    def test_vulnerability_builtins_via_class_catch_warnings(
+        self, patch_builtin_import_module, additional_authorized_imports, additional_tools, expected_error, monkeypatch
+    ):
+        if patch_builtin_import_module:
+            monkeypatch.setattr("builtins.__import__.__module__", None)  # inspect.getmodule(func) = None
+        executor = LocalPythonExecutor(additional_authorized_imports)
+        if additional_tools:
+            from builtins import __import__
+
+            executor.send_tools({"__import__": __import__})
+        with (
+            pytest.raises(type(expected_error), match=f".*{expected_error}")
+            if isinstance(expected_error, Exception)
+            else does_not_raise()
+        ):
             executor(
                 dedent(
                     """
@@ -1517,13 +1594,18 @@ class TestLocalPythonExecutorSecurity:
                 )
             )
 
+    @pytest.mark.filterwarnings("ignore::DeprecationWarning")
     @pytest.mark.parametrize(
-        "additional_authorized_imports, expectation",
-        [([], pytest.raises(InterpreterError)), (["os"], does_not_raise())],
+        "additional_authorized_imports, expected_error",
+        [([], InterpreterError("Forbidden return value: os")), (["os"], None)],
     )
-    def test_vulnerability_load_module_via_builtin_importer(self, additional_authorized_imports, expectation):
+    def test_vulnerability_load_module_via_builtin_importer(self, additional_authorized_imports, expected_error):
         executor = LocalPythonExecutor(additional_authorized_imports)
-        with expectation:
+        with (
+            pytest.raises(type(expected_error), match=f".*{expected_error}")
+            if isinstance(expected_error, Exception)
+            else does_not_raise()
+        ):
             executor(
                 dedent(
                     """

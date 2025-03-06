@@ -1423,6 +1423,44 @@ class TestLocalPythonExecutor:
         result, _, _ = executor(code)
         assert result == 11
 
+    @pytest.mark.parametrize(
+        "code",
+        [
+            "a = b = 1; a",
+            "a = b = 1; b",
+            "a, b = c, d = 1, 1; a",
+            "a, b = c, d = 1, 1; b",
+            "a, b = c, d = 1, 1; c",
+            "a, b = c, d = {1, 2}; a",
+            "a, b = c, d = {1, 2}; c",
+            "a, b = c, d = {1: 10, 2: 20}; a",
+            "a, b = c, d = {1: 10, 2: 20}; c",
+            "a = b = (lambda: 1)(); b",
+            "a = b = (lambda: 1)(); lambda x: 10; b",
+            "a = b = (lambda x: lambda y: x + y)(0)(1); b",
+            dedent("""
+            def foo():
+                return 1;
+            a = b = foo(); b"""),
+            dedent("""
+            def foo(*args, **kwargs):
+                return sum(args)
+            a = b = foo(1,-1,1); b"""),
+            "a, b = 1, 2; a, b = b, a; b",
+        ],
+    )
+    def test_chained_assignments(self, code):
+        executor = LocalPythonExecutor([])
+        executor.send_tools({})
+        result, _, _ = executor(code)
+        assert result == 1
+
+    def test_evaluate_assign_error(self):
+        code = "a, b = 1, 2, 3; a"
+        executor = LocalPythonExecutor([])
+        with pytest.raises(InterpreterError, match=".*Cannot unpack tuple of wrong size"):
+            executor(code)
+
 
 class TestLocalPythonExecutorSecurity:
     @pytest.mark.parametrize(

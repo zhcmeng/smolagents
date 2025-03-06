@@ -24,7 +24,7 @@ import re
 from collections.abc import Mapping
 from functools import wraps
 from importlib import import_module
-from types import ModuleType
+from types import BuiltinFunctionType, FunctionType, ModuleType
 from typing import Any, Callable, Dict, List, Optional, Set, Tuple
 
 import numpy as np
@@ -116,25 +116,15 @@ BASE_PYTHON_TOOLS = {
     "complex": complex,
 }
 
-DANGEROUS_PATTERNS = (
-    "_os",
-    "os",
-    "subprocess",
-    "_subprocess",
-    "pty",
-    "system",
-    "popen",
-    "spawn",
-    "shutil",
-    "sys",
-    "pathlib",
-    "io",
-    "socket",
-    "compile",
-    "eval",
-    "exec",
-    "multiprocessing",
-)
+DANGEROUS_FUNCTIONS = [
+    "builtins.compile",
+    "builtins.eval",
+    "builtins.exec",
+    "builtins.globalsbuiltins.locals",
+    "builtins.__import__",
+    "os.popen",
+    "os.system",
+]
 
 DANGEROUS_MODULES = [
     "builtins",
@@ -248,23 +238,32 @@ def safer_eval(func: Callable):
         result = func(expression, state, static_tools, custom_tools, authorized_imports=authorized_imports)
         if "*" not in authorized_imports:
             if isinstance(result, ModuleType):
-                for module in DANGEROUS_MODULES:
+                for module_name in DANGEROUS_MODULES:
                     if (
-                        module not in authorized_imports
-                        and result.__name__ == module
+                        module_name not in authorized_imports
+                        and result.__name__ == module_name
                         # builtins has no __file__ attribute
-                        and getattr(result, "__file__", "") == getattr(import_module(module), "__file__", "")
+                        and getattr(result, "__file__", "") == getattr(import_module(module_name), "__file__", "")
                     ):
-                        raise InterpreterError(f"Forbidden return value: {module}")
+                        raise InterpreterError(f"Forbidden access to module: {module_name}")
             elif isinstance(result, dict) and result.get("__name__"):
-                for module in DANGEROUS_MODULES:
+                for module_name in DANGEROUS_MODULES:
                     if (
-                        module not in authorized_imports
-                        and result["__name__"] == module
+                        module_name not in authorized_imports
+                        and result["__name__"] == module_name
                         # builtins has no __file__ attribute
-                        and result.get("__file__", "") == getattr(import_module(module), "__file__", "")
+                        and result.get("__file__", "") == getattr(import_module(module_name), "__file__", "")
                     ):
-                        raise InterpreterError(f"Forbidden return value: {module}")
+                        raise InterpreterError(f"Forbidden access to module: {module_name}")
+            elif isinstance(result, (FunctionType, BuiltinFunctionType)):
+                for qualified_function_name in DANGEROUS_FUNCTIONS:
+                    module_name, function_name = qualified_function_name.rsplit(".", 1)
+                    if (
+                        function_name not in static_tools
+                        and result.__name__ == function_name
+                        and result.__module__ == module_name
+                    ):
+                        raise InterpreterError(f"Forbidden access to function: {function_name}")
         return result
 
     return _check_return
@@ -1081,15 +1080,6 @@ def get_safe_module(raw_module, authorized_imports, visited=None):
 
     # Copy all attributes by reference, recursively checking modules
     for attr_name in dir(raw_module):
-        # Skip dangerous patterns at any level
-        if any(
-            pattern in raw_module.__name__.split(".") + [attr_name]
-            and not check_module_authorized(pattern, authorized_imports)
-            for pattern in DANGEROUS_PATTERNS
-        ):
-            logger.info(f"Skipping dangerous attribute {raw_module.__name__}.{attr_name}")
-            continue
-
         try:
             attr_value = getattr(raw_module, attr_name)
         except (ImportError, AttributeError) as e:
@@ -1112,8 +1102,6 @@ def check_module_authorized(module_name, authorized_imports):
         return True
     else:
         module_path = module_name.split(".")
-        if any([module in DANGEROUS_PATTERNS and module not in authorized_imports for module in module_path]):
-            return False
         # ["A", "B", "C"] -> ["A", "A.B", "A.B.C"]
         module_subpaths = [".".join(module_path[:i]) for i in range(1, len(module_path) + 1)]
         return any(subpath in authorized_imports for subpath in module_subpaths)

@@ -32,6 +32,7 @@ from smolagents.local_python_executor import (
     evaluate_condition,
     evaluate_delete,
     evaluate_python_code,
+    evaluate_subscript,
     fix_final_answer_code,
     get_safe_module,
 )
@@ -1130,7 +1131,7 @@ def test_evaluate_augassign_custom(operator, expected_result):
                 del x[2]
                 x[2]
             """),
-            "Index 2 out of bounds for list of length 2",
+            "IndexError: list index out of range",
         ),
         (
             dedent("""\
@@ -1299,6 +1300,123 @@ def test_evaluate_condition_with_pandas_exceptions(condition, state, expected_ex
     with pytest.raises(type(expected_exception)) as exception_info:
         _ = evaluate_condition(condition_ast, state, {}, {}, [])
     assert str(expected_exception) in str(exception_info.value)
+
+
+@pytest.mark.parametrize(
+    "subscript, state, expected_result",
+    [
+        ("dct[1]", {"dct": {1: 11, 2: 22}}, 11),
+        ("dct[2]", {"dct": {1: "a", 2: "b"}}, "b"),
+        ("dct['b']", {"dct": {"a": 1, "b": 2}}, 2),
+        ("dct['a']", {"dct": {"a": "aa", "b": "bb"}}, "aa"),
+        ("dct[1, 2]", {"dct": {(1, 2): 3}}, 3),  # tuple-index
+        ("dct['a']['b']", {"dct": {"a": {"b": 1}}}, 1),  # nested
+        ("lst[0]", {"lst": [1, 2, 3]}, 1),
+        ("lst[-1]", {"lst": [1, 2, 3]}, 3),
+        ("lst[1:3]", {"lst": [1, 2, 3, 4]}, [2, 3]),
+        ("lst[:]", {"lst": [1, 2, 3]}, [1, 2, 3]),
+        ("lst[::2]", {"lst": [1, 2, 3, 4]}, [1, 3]),
+        ("lst[::-1]", {"lst": [1, 2, 3]}, [3, 2, 1]),
+        ("tup[1]", {"tup": (1, 2, 3)}, 2),
+        ("tup[-1]", {"tup": (1, 2, 3)}, 3),
+        ("tup[1:3]", {"tup": (1, 2, 3, 4)}, (2, 3)),
+        ("tup[:]", {"tup": (1, 2, 3)}, (1, 2, 3)),
+        ("tup[::2]", {"tup": (1, 2, 3, 4)}, (1, 3)),
+        ("tup[::-1]", {"tup": (1, 2, 3)}, (3, 2, 1)),
+        ("st[1]", {"str": "abc"}, "b"),
+        ("st[-1]", {"str": "abc"}, "c"),
+        ("st[1:3]", {"str": "abcd"}, "bc"),
+        ("st[:]", {"str": "abc"}, "abc"),
+        ("st[::2]", {"str": "abcd"}, "ac"),
+        ("st[::-1]", {"str": "abc"}, "cba"),
+        ("arr[1]", {"arr": np.array([1, 2, 3])}, 2),
+        ("arr[1:3]", {"arr": np.array([1, 2, 3, 4])}, np.array([2, 3])),
+        ("arr[:]", {"arr": np.array([1, 2, 3])}, np.array([1, 2, 3])),
+        ("arr[::2]", {"arr": np.array([1, 2, 3, 4])}, np.array([1, 3])),
+        ("arr[::-1]", {"arr": np.array([1, 2, 3])}, np.array([3, 2, 1])),
+        ("arr[1, 2]", {"arr": np.array([[1, 2, 3], [4, 5, 6]])}, 6),
+        ("ser[1]", {"ser": pd.Series([1, 2, 3])}, 2),
+        ("ser.loc[1]", {"ser": pd.Series([1, 2, 3])}, 2),
+        ("ser.loc[1]", {"ser": pd.Series([1, 2, 3], index=[2, 3, 1])}, 3),
+        ("ser.iloc[1]", {"ser": pd.Series([1, 2, 3])}, 2),
+        ("ser.iloc[1]", {"ser": pd.Series([1, 2, 3], index=[2, 3, 1])}, 2),
+        ("ser.at[1]", {"ser": pd.Series([1, 2, 3])}, 2),
+        ("ser.at[1]", {"ser": pd.Series([1, 2, 3], index=[2, 3, 1])}, 3),
+        ("ser.iat[1]", {"ser": pd.Series([1, 2, 3])}, 2),
+        ("ser.iat[1]", {"ser": pd.Series([1, 2, 3], index=[2, 3, 1])}, 2),
+        ("ser[1:3]", {"ser": pd.Series([1, 2, 3, 4])}, pd.Series([2, 3], index=[1, 2])),
+        ("ser[:]", {"ser": pd.Series([1, 2, 3])}, pd.Series([1, 2, 3])),
+        ("ser[::2]", {"ser": pd.Series([1, 2, 3, 4])}, pd.Series([1, 3], index=[0, 2])),
+        ("ser[::-1]", {"ser": pd.Series([1, 2, 3])}, pd.Series([3, 2, 1], index=[2, 1, 0])),
+        ("df['y'][1]", {"df": pd.DataFrame({"x": [1, 2], "y": [3, 4]})}, 4),
+        ("df['y'][5]", {"df": pd.DataFrame({"x": [1, 2], "y": [3, 4]}, index=[5, 6])}, 3),
+        ("df.loc[1, 'y']", {"df": pd.DataFrame({"x": [1, 2], "y": [3, 4]})}, 4),
+        ("df.loc[5, 'y']", {"df": pd.DataFrame({"x": [1, 2], "y": [3, 4]}, index=[5, 6])}, 3),
+        ("df.iloc[1, 1]", {"df": pd.DataFrame({"x": [1, 2], "y": [3, 4]})}, 4),
+        ("df.iloc[1, 1]", {"df": pd.DataFrame({"x": [1, 2], "y": [3, 4]}, index=[5, 6])}, 4),
+        ("df.at[1, 'y']", {"df": pd.DataFrame({"x": [1, 2], "y": [3, 4]})}, 4),
+        ("df.at[5, 'y']", {"df": pd.DataFrame({"x": [1, 2], "y": [3, 4]}, index=[5, 6])}, 3),
+        ("df.iat[1, 1]", {"df": pd.DataFrame({"x": [1, 2], "y": [3, 4]})}, 4),
+        ("df.iat[1, 1]", {"df": pd.DataFrame({"x": [1, 2], "y": [3, 4]}, index=[5, 6])}, 4),
+    ],
+)
+def test_evaluate_subscript(subscript, state, expected_result):
+    subscript_ast = ast.parse(subscript).body[0].value
+    result = evaluate_subscript(subscript_ast, state, {}, {}, [])
+    try:
+        assert result == expected_result
+    except ValueError:
+        assert (result == expected_result).all()
+
+
+@pytest.mark.parametrize(
+    "subscript, state, expected_error_message",
+    [
+        ("dct['a']", {"dct": {}}, "KeyError: 'a'"),
+        ("dct[0]", {"dct": {}}, "KeyError: 0"),
+        ("dct['c']", {"dct": {"a": 1, "b": 2}}, "KeyError: 'c'"),
+        ("dct[1, 2, 3]", {"dct": {(1, 2): 3}}, "KeyError: (1, 2, 3)"),
+        ("lst[0]", {"lst": []}, "IndexError: list index out of range"),
+        ("lst[3]", {"lst": [1, 2, 3]}, "IndexError: list index out of range"),
+        ("lst[-4]", {"lst": [1, 2, 3]}, "IndexError: list index out of range"),
+        ("value[0]", {"value": 1}, "TypeError: 'int' object is not subscriptable"),
+    ],
+)
+def test_evaluate_subscript_error(subscript, state, expected_error_message):
+    subscript_ast = ast.parse(subscript).body[0].value
+    with pytest.raises(InterpreterError, match="Could not index") as exception_info:
+        _ = evaluate_subscript(subscript_ast, state, {}, {}, [])
+    assert expected_error_message in str(exception_info.value)
+
+
+@pytest.mark.parametrize(
+    "subscriptable_class, expectation",
+    [
+        (True, 20),
+        (False, InterpreterError("TypeError: 'Custom' object is not subscriptable")),
+    ],
+)
+def test_evaluate_subscript_with_custom_class(subscriptable_class, expectation):
+    if subscriptable_class:
+
+        class Custom:
+            def __getitem__(self, key):
+                return key * 10
+    else:
+
+        class Custom:
+            pass
+
+    state = {"obj": Custom()}
+    subscript = "obj[2]"
+    subscript_ast = ast.parse(subscript).body[0].value
+    if isinstance(expectation, Exception):
+        with pytest.raises(type(expectation), match="Could not index") as exception_info:
+            evaluate_subscript(subscript_ast, state, {}, {}, [])
+        assert "TypeError: 'Custom' object is not subscriptable" in str(exception_info.value)
+    else:
+        result = evaluate_subscript(subscript_ast, state, {}, {}, [])
+        assert result == expectation
 
 
 def test_get_safe_module_handle_lazy_imports():

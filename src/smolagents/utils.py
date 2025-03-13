@@ -323,8 +323,14 @@ def instance_to_source(instance, base_cls=None):
         name: func
         for name, func in cls.__dict__.items()
         if callable(func)
-        and not (
-            base_cls and hasattr(base_cls, name) and getattr(base_cls, name).__code__.co_code == func.__code__.co_code
+        and (
+            not base_cls
+            or not hasattr(base_cls, name)
+            or (
+                isinstance(func, staticmethod)
+                or isinstance(func, classmethod)
+                or (getattr(base_cls, name).__code__.co_code != func.__code__.co_code)
+            )
         )
     }
 
@@ -389,7 +395,9 @@ def get_source(obj) -> str:
 
     inspect_error = None
     try:
-        return dedent(inspect.getsource(obj)).strip()
+        # Handle dynamically created classes
+        source = obj.__source if hasattr(obj, "__source") else inspect.getsource(obj)
+        return dedent(source).strip()
     except OSError as e:
         # let's keep track of the exception to raise it if all further methods fail
         inspect_error = e

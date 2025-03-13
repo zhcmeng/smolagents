@@ -258,12 +258,19 @@ def get_tool_call_chat_message_from_text(text: str, tool_name_key: str, tool_arg
 
 
 class Model:
-    def __init__(self, tool_name_key: str = "name", tool_arguments_key: str = "arguments", **kwargs):
-        self.last_input_token_count = None
-        self.last_output_token_count = None
+    def __init__(
+        self,
+        flatten_messages_as_text: bool = False,
+        tool_name_key: str = "name",
+        tool_arguments_key: str = "arguments",
+        **kwargs,
+    ):
+        self.flatten_messages_as_text = flatten_messages_as_text
         self.tool_name_key = tool_name_key
         self.tool_arguments_key = tool_arguments_key
         self.kwargs = kwargs
+        self.last_input_token_count = None
+        self.last_output_token_count = None
 
     def _prepare_completion_kwargs(
         self,
@@ -273,7 +280,6 @@ class Model:
         tools_to_call_from: Optional[List[Tool]] = None,
         custom_role_conversions: Optional[Dict[str, str]] = None,
         convert_images_to_image_urls: bool = False,
-        flatten_messages_as_text: bool = False,
         **kwargs,
     ) -> Dict:
         """
@@ -289,7 +295,7 @@ class Model:
             messages,
             role_conversions=custom_role_conversions or tool_role_conversions,
             convert_images_to_image_urls=convert_images_to_image_urls,
-            flatten_messages_as_text=flatten_messages_as_text,
+            flatten_messages_as_text=self.flatten_messages_as_text,
         )
 
         # Use self.kwargs as the base configuration
@@ -632,7 +638,7 @@ class MLXModel(Model):
         trust_remote_code: bool = False,
         **kwargs,
     ):
-        super().__init__(**kwargs)
+        super().__init__(flatten_messages_as_text=True, **kwargs)  # mlx-lm doesn't support vision models
         if not _is_package_available("mlx_lm"):
             raise ModuleNotFoundError(
                 "Please install 'mlx-lm' extra to use 'MLXModel': `pip install 'smolagents[mlx-lm]'`"
@@ -655,7 +661,6 @@ class MLXModel(Model):
         **kwargs,
     ) -> ChatMessage:
         completion_kwargs = self._prepare_completion_kwargs(
-            flatten_messages_as_text=(not self._is_vlm),
             messages=messages,
             stop_sequences=stop_sequences,
             grammar=grammar,
@@ -747,7 +752,6 @@ class TransformersModel(Model):
         trust_remote_code: bool = False,
         **kwargs,
     ):
-        super().__init__(**kwargs)
         if not is_torch_available() or not _is_package_available("transformers"):
             raise ModuleNotFoundError(
                 "Please install 'transformers' extra to use 'TransformersModel': `pip install 'smolagents[transformers]'`"
@@ -772,7 +776,6 @@ class TransformersModel(Model):
             logger.warning(
                 f"`max_new_tokens` not provided, using this default value for `max_new_tokens`: {default_max_tokens}"
             )
-        self.kwargs = kwargs
 
         if device_map is None:
             device_map = "cuda" if torch.cuda.is_available() else "cpu"
@@ -795,6 +798,7 @@ class TransformersModel(Model):
                 raise e
         except Exception as e:
             raise ValueError(f"Failed to load tokenizer and model for {model_id=}: {e}") from e
+        super().__init__(flatten_messages_as_text=not self._is_vlm, **kwargs)
 
     def make_stopping_criteria(self, stop_sequences: List[str], tokenizer) -> "StoppingCriteriaList":
         from transformers import StoppingCriteria, StoppingCriteriaList
@@ -829,7 +833,6 @@ class TransformersModel(Model):
             messages=messages,
             stop_sequences=stop_sequences,
             grammar=grammar,
-            flatten_messages_as_text=(not self._is_vlm),
             **kwargs,
         )
 
@@ -915,6 +918,8 @@ class LiteLLMModel(Model):
         custom_role_conversions (`dict[str, str]`, *optional*):
             Custom role conversion mapping to convert message roles in others.
             Useful for specific models that do not support specific message roles like "system".
+        flatten_messages_as_text (`bool`, *optional*): Whether to flatten messages as text.
+            Defaults to `True` for models that start with "ollama", "groq", "cerebras".
         **kwargs:
             Additional keyword arguments to pass to the OpenAI API.
     """
@@ -925,9 +930,9 @@ class LiteLLMModel(Model):
         api_base=None,
         api_key=None,
         custom_role_conversions: Optional[Dict[str, str]] = None,
+        flatten_messages_as_text: bool | None = None,
         **kwargs,
     ):
-        super().__init__(**kwargs)
         if not model_id:
             warnings.warn(
                 "The 'model_id' parameter will be required in version 2.0.0. "
@@ -940,11 +945,12 @@ class LiteLLMModel(Model):
         self.api_base = api_base
         self.api_key = api_key
         self.custom_role_conversions = custom_role_conversions
-        self.flatten_messages_as_text = (
-            kwargs.get("flatten_messages_as_text")
-            if "flatten_messages_as_text" in kwargs
+        flatten_messages_as_text = (
+            flatten_messages_as_text
+            if flatten_messages_as_text is not None
             else self.model_id.startswith(("ollama", "groq", "cerebras"))
         )
+        super().__init__(flatten_messages_as_text=flatten_messages_as_text, **kwargs)
 
     def __call__(
         self,
@@ -970,7 +976,6 @@ class LiteLLMModel(Model):
             api_base=self.api_base,
             api_key=self.api_key,
             convert_images_to_image_urls=True,
-            flatten_messages_as_text=self.flatten_messages_as_text,
             custom_role_conversions=self.custom_role_conversions,
             **kwargs,
         )
@@ -1008,6 +1013,8 @@ class OpenAIServerModel(Model):
         custom_role_conversions (`dict[str, str]`, *optional*):
             Custom role conversion mapping to convert message roles in others.
             Useful for specific models that do not support specific message roles like "system".
+        flatten_messages_as_text (`bool`, default `False`):
+            Whether to flatten messages as text.
         **kwargs:
             Additional keyword arguments to pass to the OpenAI API.
     """
@@ -1021,13 +1028,14 @@ class OpenAIServerModel(Model):
         project: Optional[str] | None = None,
         client_kwargs: Optional[Dict[str, Any]] = None,
         custom_role_conversions: Optional[Dict[str, str]] = None,
+        flatten_messages_as_text: bool = False,
         **kwargs,
     ):
         if importlib.util.find_spec("openai") is None:
             raise ModuleNotFoundError(
                 "Please install 'openai' extra to use OpenAIServerModel: `pip install 'smolagents[openai]'`"
             )
-        super().__init__(**kwargs)
+        super().__init__(flatten_messages_as_text=flatten_messages_as_text, **kwargs)
         self.model_id = model_id
         self.custom_role_conversions = custom_role_conversions
         self.client_kwargs = client_kwargs or {}

@@ -24,7 +24,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from smolagents.default_tools import BASE_PYTHON_TOOLS
+from smolagents.default_tools import BASE_PYTHON_TOOLS, FinalAnswerTool
 from smolagents.local_python_executor import (
     DANGEROUS_FUNCTIONS,
     InterpreterError,
@@ -1063,6 +1063,24 @@ exec(compile('{unsafe_code}', 'no filename', 'exec'))
     def test_can_import_sklearn_if_explicitly_authorized(self):
         code = "import sklearn"
         evaluate_python_code(code, authorized_imports=["sklearn"])
+
+    def test_function_def_recovers_source_code(self):
+        executor = LocalPythonExecutor([])
+
+        executor.send_tools({"final_answer": FinalAnswerTool()})
+
+        res, _, _ = executor(
+            dedent(
+                """
+                def target_function():
+                    return "Hello world"
+
+                final_answer(target_function)
+                """
+            )
+        )
+        assert res.__name__ == "target_function"
+        assert res.__source__ == "def target_function():\n    return 'Hello world'"
 
 
 @pytest.mark.parametrize(

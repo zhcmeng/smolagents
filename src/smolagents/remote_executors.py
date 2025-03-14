@@ -91,7 +91,16 @@ locals().update(vars_dict)
 
 
 class E2BExecutor(RemotePythonExecutor):
-    def __init__(self, additional_imports: List[str], logger):
+    """
+    Executes Python code using E2B.
+
+    Args:
+        additional_imports (`list[str]`): Additional imports to install.
+        logger (`Logger`): Logger to use.
+        **kwargs: Additional arguments to pass to the E2B Sandbox.
+    """
+
+    def __init__(self, additional_imports: List[str], logger, **kwargs):
         super().__init__(additional_imports, logger)
         try:
             from e2b_code_interpreter import Sandbox
@@ -99,7 +108,7 @@ class E2BExecutor(RemotePythonExecutor):
             raise ModuleNotFoundError(
                 """Please install 'e2b' extra to use E2BExecutor: `pip install 'smolagents[e2b]'`"""
             )
-        self.sandbox = Sandbox()
+        self.sandbox = Sandbox(**kwargs)
         self.installed_packages = self.install_packages(additional_imports)
         self.logger.log("E2B is running", level=LogLevel.INFO)
 
@@ -115,7 +124,6 @@ class E2BExecutor(RemotePythonExecutor):
             logs += execution.error.value
             logs += execution.error.traceback
             raise ValueError(logs)
-        self.logger.log(execution.logs)
         execution_logs = "\n".join([str(log) for log in execution.logs.stdout])
         if not execution.results:
             return None, execution_logs

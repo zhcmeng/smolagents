@@ -1047,7 +1047,7 @@ class OpenAIServerModel(Model):
     def create_client(self):
         import openai
 
-        self.client = openai.OpenAI(**self.client_kwargs)
+        return openai.OpenAI(**self.client_kwargs)
 
     def __call__(
         self,
@@ -1133,7 +1133,7 @@ class AzureOpenAIServerModel(OpenAIServerModel):
     def create_client(self):
         import openai
 
-        self.client = openai.AzureOpenAI(**self.client_kwargs)
+        return openai.AzureOpenAI(**self.client_kwargs)
 
 
 __all__ = [

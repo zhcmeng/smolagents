@@ -27,7 +27,6 @@ import pytest
 from smolagents.default_tools import BASE_PYTHON_TOOLS
 from smolagents.local_python_executor import (
     DANGEROUS_FUNCTIONS,
-    DANGEROUS_MODULES,
     InterpreterError,
     LocalPythonExecutor,
     PrintContainer,
@@ -39,6 +38,21 @@ from smolagents.local_python_executor import (
     fix_final_answer_code,
     get_safe_module,
 )
+
+
+# Non-exhaustive list of dangerous modules that should not be imported
+DANGEROUS_MODULES = [
+    "builtins",
+    "io",
+    "multiprocessing",
+    "os",
+    "pathlib",
+    "pty",
+    "shutil",
+    "socket",
+    "subprocess",
+    "sys",
+]
 
 
 # Fake function we will use as tool
@@ -504,10 +518,10 @@ if char.isalpha():
 
         # Test submodules are handled properly, thus not raising error
         code = "import numpy.random as rd\nrng = rd.default_rng(12345)\nrng.random()"
-        result, _ = evaluate_python_code(code, BASE_PYTHON_TOOLS, state={}, authorized_imports=["numpy"])
+        result, _ = evaluate_python_code(code, BASE_PYTHON_TOOLS, state={}, authorized_imports=["numpy.random"])
 
         code = "from numpy.random import default_rng as d_rng\nrng = d_rng(12345)\nrng.random()"
-        result, _ = evaluate_python_code(code, BASE_PYTHON_TOOLS, state={}, authorized_imports=["numpy"])
+        result, _ = evaluate_python_code(code, BASE_PYTHON_TOOLS, state={}, authorized_imports=["numpy.random"])
 
     def test_additional_imports(self):
         code = "import numpy as np"
@@ -1773,7 +1787,16 @@ class TestLocalPythonExecutorSecurity:
         "code, additional_authorized_imports, expected_error",
         [
             # os submodule
-            ("import queue; queue.threading._os.system(':')", [], InterpreterError("Forbidden access to module: os")),
+            (
+                "import queue; queue.threading._os.system(':')",
+                [],
+                InterpreterError("Forbidden access to module: threading"),
+            ),
+            (
+                "import queue; queue.threading._os.system(':')",
+                ["threading"],
+                InterpreterError("Forbidden access to module: os"),
+            ),
             ("import random; random._os.system(':')", [], InterpreterError("Forbidden access to module: os")),
             (
                 "import random; random.__dict__['_os'].system(':')",
@@ -1783,22 +1806,42 @@ class TestLocalPythonExecutorSecurity:
             (
                 "import doctest; doctest.inspect.os.system(':')",
                 ["doctest"],
+                InterpreterError("Forbidden access to module: inspect"),
+            ),
+            (
+                "import doctest; doctest.inspect.os.system(':')",
+                ["doctest", "inspect"],
                 InterpreterError("Forbidden access to module: os"),
             ),
             # subprocess submodule
             (
                 "import asyncio; asyncio.base_events.events.subprocess",
                 ["asyncio"],
+                InterpreterError("Forbidden access to module: asyncio.base_events"),
+            ),
+            (
+                "import asyncio; asyncio.base_events.events.subprocess",
+                ["asyncio", "asyncio.base_events"],
+                InterpreterError("Forbidden access to module: asyncio.events"),
+            ),
+            (
+                "import asyncio; asyncio.base_events.events.subprocess",
+                ["asyncio", "asyncio.base_events", "asyncio.events"],
                 InterpreterError("Forbidden access to module: subprocess"),
             ),
             # sys submodule
             (
                 "import queue; queue.threading._sys.modules['os'].system(':')",
                 [],
+                InterpreterError("Forbidden access to module: threading"),
+            ),
+            (
+                "import queue; queue.threading._sys.modules['os'].system(':')",
+                ["threading"],
                 InterpreterError("Forbidden access to module: sys"),
             ),
             # Allowed
-            ("import pandas; pandas.io", ["pandas"], None),
+            ("import pandas; pandas.io", ["pandas", "pandas.io"], None),
         ],
     )
     def test_vulnerability_via_submodules(self, code, additional_authorized_imports, expected_error):
@@ -1851,8 +1894,12 @@ class TestLocalPythonExecutorSecurity:
     @pytest.mark.parametrize(
         "additional_authorized_imports, additional_tools, expected_error",
         [
-            ([], [], InterpreterError("Forbidden access to module: builtins")),
-            (["builtins", "os"], ["__import__"], None),
+            ([], [], InterpreterError("Forbidden access to module: smolagents.local_python_executor")),
+            (
+                ["builtins", "os"],
+                ["__import__"],
+                InterpreterError("Forbidden access to module: smolagents.local_python_executor"),
+            ),
         ],
     )
     def test_vulnerability_builtins_via_traceback(
@@ -1888,8 +1935,18 @@ class TestLocalPythonExecutorSecurity:
     @pytest.mark.parametrize(
         "additional_authorized_imports, additional_tools, expected_error",
         [
-            ([], [], InterpreterError("Forbidden access to module: builtins")),
-            (["builtins", "os"], ["__import__"], None),
+            ([], [], InterpreterError("Forbidden access to module: warnings")),
+            (["warnings"], [], InterpreterError("Forbidden access to module: builtins")),
+            (
+                ["warnings", "builtins"],
+                [],
+                (
+                    InterpreterError("Forbidden access to function: __import__"),
+                    InterpreterError("Forbidden access to module: os"),
+                ),
+            ),
+            (["warnings", "builtins", "os"], [], (InterpreterError("Forbidden access to function: __import__"), None)),
+            (["warnings", "builtins", "os"], ["__import__"], None),
         ],
     )
     def test_vulnerability_builtins_via_class_catch_warnings(
@@ -1902,20 +1959,22 @@ class TestLocalPythonExecutorSecurity:
             from builtins import __import__
 
             executor.send_tools({"__import__": __import__})
-        with (
-            pytest.raises(type(expected_error), match=f".*{expected_error}")
-            if isinstance(expected_error, Exception)
-            else does_not_raise()
-        ):
+        if isinstance(expected_error, tuple):  # different error depending on patch status
+            expected_error = expected_error[patch_builtin_import_module]
+        if isinstance(expected_error, Exception):
+            expectation = pytest.raises(type(expected_error), match=f".*{expected_error}")
+        elif expected_error is None:
+            expectation = does_not_raise()
+        with expectation:
             executor(
                 dedent(
                     """
                     classes = {}.__class__.__base__.__subclasses__()
                     for cls in classes:
                         if cls.__name__ == "catch_warnings":
-                            builtins = cls()._module.__builtins__
-                            builtins_import = builtins["__import__"]
                             break
+                    builtins = cls()._module.__builtins__
+                    builtins_import = builtins["__import__"]
                     os_module = builtins_import('os')
                     os_module.system(":")
                     """

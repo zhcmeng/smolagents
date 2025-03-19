@@ -643,20 +643,12 @@ class TestMultiStepAgent:
             (
                 1,
                 [
-                    [{"role": MessageRole.USER, "content": [{"type": "text", "text": "INITIAL_FACTS_USER_PROMPT"}]}],
                     [{"role": MessageRole.USER, "content": [{"type": "text", "text": "INITIAL_PLAN_USER_PROMPT"}]}],
                 ],
             ),
             (
                 2,
                 [
-                    [
-                        {
-                            "role": MessageRole.SYSTEM,
-                            "content": [{"type": "text", "text": "UPDATE_FACTS_SYSTEM_PROMPT"}],
-                        },
-                        {"role": MessageRole.USER, "content": [{"type": "text", "text": "UPDATE_FACTS_USER_PROMPT"}]},
-                    ],
                     [
                         {
                             "role": MessageRole.SYSTEM,
@@ -677,20 +669,15 @@ class TestMultiStepAgent:
         task = "Test task"
         agent.planning_step(task, is_first_step=(step == 1), step=step)
         expected_message_texts = {
-            "INITIAL_FACTS_USER_PROMPT": populate_template(
-                agent.prompt_templates["planning"]["initial_facts"], variables=dict(task=task)
-            ),
             "INITIAL_PLAN_USER_PROMPT": populate_template(
                 agent.prompt_templates["planning"]["initial_plan"],
                 variables=dict(
                     task=task,
                     tools=agent.tools,
                     managed_agents=agent.managed_agents,
-                    answer_facts=agent.memory.steps[0].model_output_message_facts.content,
+                    answer_facts=agent.memory.steps[0].model_output_message.content,
                 ),
             ),
-            "UPDATE_FACTS_SYSTEM_PROMPT": agent.prompt_templates["planning"]["update_facts_pre_messages"],
-            "UPDATE_FACTS_USER_PROMPT": agent.prompt_templates["planning"]["update_facts_post_messages"],
             "UPDATE_PLAN_SYSTEM_PROMPT": populate_template(
                 agent.prompt_templates["planning"]["update_plan_pre_messages"], variables=dict(task=task)
             ),
@@ -700,7 +687,7 @@ class TestMultiStepAgent:
                     task=task,
                     tools=agent.tools,
                     managed_agents=agent.managed_agents,
-                    facts_update=agent.memory.steps[0].model_output_message_facts.content,
+                    facts_update=agent.memory.steps[0].model_output_message.content,
                     remaining_steps=agent.max_steps - step,
                 ),
             ),
@@ -727,7 +714,7 @@ class TestMultiStepAgent:
             for content, expected_content in zip(message["content"], expected_message["content"]):
                 assert content == expected_content
         # Test calls to model
-        assert len(fake_model.call_args_list) == 2
+        assert len(fake_model.call_args_list) == 1
         for call_args, expected_messages in zip(fake_model.call_args_list, expected_messages_list):
             assert len(call_args.args) == 1
             messages = call_args.args[0]
@@ -1168,7 +1155,7 @@ final_answer("Final report.")
             ):
                 return ChatMessage(
                     role="assistant",
-                    content="",
+                    content="Here is the secret content: FLAG1",
                     tool_calls=[
                         ChatMessageToolCall(
                             id="call_0",
@@ -1189,6 +1176,7 @@ final_answer("Final report.")
             max_steps=10,
             name="search_agent",
             description="Runs web searches for you. Give it your request as an argument. Make the request as detailed as needed, you can ask for thorough reports",
+            verbosity_level=2,
         )
 
         manager_code_agent = CodeAgent(
@@ -1207,8 +1195,10 @@ final_answer("Final report.")
             managed_agents=[web_agent],
         )
 
-        report = manager_toolcalling_agent.run("Fake question.")
+        with web_agent.logger.console.capture() as capture:
+            report = manager_toolcalling_agent.run("Fake question.")
         assert report == "Final report."
+        assert "FLAG1" in capture.get()  # Check that managed agent's output is properly logged
 
         # Test that visualization works
         with manager_toolcalling_agent.logger.console.capture() as capture:

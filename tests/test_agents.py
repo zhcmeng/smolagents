@@ -21,7 +21,6 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
-from transformers.testing_utils import get_tests_dir
 
 from smolagents.agent_types import AgentImage, AgentText
 from smolagents.agents import (
@@ -328,7 +327,7 @@ class AgentTests(unittest.TestCase):
 
             import PIL.Image
 
-            return PIL.Image.open(Path("tests/fixtures/000000039769.png"))
+            return PIL.Image.open(Path("tests/data/000000039769.png"))
 
         agent = ToolCallingAgent(tools=[fake_image_generation_tool], model=FakeToolCallModelImage())
         output = agent.run("Make me an image.")
@@ -338,7 +337,7 @@ class AgentTests(unittest.TestCase):
     def test_toolcalling_agent_handles_image_inputs(self):
         import PIL.Image
 
-        image = PIL.Image.open(Path(get_tests_dir("fixtures")) / "000000039769.png")  # dummy input
+        image = PIL.Image.open(Path("tests/data/000000039769.png"))  # dummy input
 
         @tool
         def fake_image_understanding_tool(prompt: str, image: PIL.Image.Image) -> str:

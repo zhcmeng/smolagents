@@ -25,7 +25,7 @@ import time
 from collections import deque
 from logging import getLogger
 from pathlib import Path
-from typing import Any, Callable, Dict, Generator, List, Optional, Set, Tuple, TypedDict, Union
+from typing import TYPE_CHECKING, Any, Callable, Dict, Generator, List, Optional, Set, Tuple, TypedDict, Union
 
 import jinja2
 import yaml
@@ -35,6 +35,10 @@ from rich.console import Group
 from rich.panel import Panel
 from rich.rule import Rule
 from rich.text import Text
+
+
+if TYPE_CHECKING:
+    import PIL.Image
 
 from .agent_types import AgentAudio, AgentImage, AgentType, handle_agent_output_types
 from .default_tools import TOOL_MAPPING, FinalAnswerTool
@@ -264,7 +268,7 @@ class MultiStepAgent:
         task: str,
         stream: bool = False,
         reset: bool = True,
-        images: Optional[List[str]] = None,
+        images: Optional[List["PIL.Image.Image"]] = None,
         additional_args: Optional[Dict] = None,
         max_steps: Optional[int] = None,
     ):
@@ -275,7 +279,7 @@ class MultiStepAgent:
             task (`str`): Task to perform.
             stream (`bool`): Whether to run in a streaming way.
             reset (`bool`): Whether to reset the conversation or keep it going from previous run.
-            images (`list[str]`, *optional*): Paths to image(s).
+            images (`list[PIL.Image.Image]`, *optional*): Image(s) objects.
             additional_args (`dict`, *optional*): Any other variables that you want to pass to the agent run, for instance images or dataframes. Give them clear names!
             max_steps (`int`, *optional*): Maximum number of steps the agent can take to solve the task. if not provided, will use the agent's default value.
 
@@ -319,7 +323,7 @@ You have been provided with these additional arguments, that you can access usin
         return deque(self._run(task=self.task, max_steps=max_steps, images=images), maxlen=1)[0]
 
     def _run(
-        self, task: str, max_steps: int, images: List[str] | None = None
+        self, task: str, max_steps: int, images: List["PIL.Image.Image"] | None = None
     ) -> Generator[ActionStep | AgentType, None, None]:
         final_answer = None
         self.step_number = 1
@@ -344,7 +348,7 @@ You have been provided with these additional arguments, that you can access usin
             yield memory_step
         yield handle_agent_output_types(final_answer)
 
-    def _create_memory_step(self, step_start_time: float, images: List[str] | None) -> ActionStep:
+    def _create_memory_step(self, step_start_time: float, images: List["PIL.Image.Image"] | None) -> ActionStep:
         return ActionStep(step_number=self.step_number, start_time=step_start_time, observations_images=images)
 
     def _execute_step(self, task: str, memory_step: ActionStep) -> Union[None, Any]:
@@ -373,7 +377,7 @@ You have been provided with these additional arguments, that you can access usin
                 memory_step, agent=self
             )
 
-    def _handle_max_steps_reached(self, task: str, images: List[str], step_start_time: float) -> Any:
+    def _handle_max_steps_reached(self, task: str, images: List["PIL.Image.Image"], step_start_time: float) -> Any:
         final_answer = self.provide_final_answer(task, images)
         final_memory_step = ActionStep(
             step_number=self.step_number, error=AgentMaxStepsError("Reached max steps.", self.logger)
@@ -557,13 +561,13 @@ You have been provided with these additional arguments, that you can access usin
             )
         return rationale.strip(), action.strip()
 
-    def provide_final_answer(self, task: str, images: Optional[list[str]]) -> str:
+    def provide_final_answer(self, task: str, images: Optional[list["PIL.Image.Image"]]) -> str:
         """
         Provide the final answer to the task, based on the logs of the agent's interactions.
 
         Args:
             task (`str`): Task to perform.
-            images (`list[str]`, *optional*): Paths to image(s).
+            images (`list[PIL.Image.Image]`, *optional*): Image(s) objects.
 
         Returns:
             `str`: Final answer to the task.

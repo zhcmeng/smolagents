@@ -13,9 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import os
-from pathlib import Path
 from textwrap import dedent
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple
 from unittest.mock import MagicMock, patch
 
 import mcp
@@ -35,24 +34,6 @@ if is_torch_available():
     import torch
 
 
-def create_inputs(tool_inputs: Dict[str, Dict[Union[str, type], str]]):
-    inputs = {}
-
-    for input_name, input_desc in tool_inputs.items():
-        input_type = input_desc["type"]
-
-        if input_type == "string":
-            inputs[input_name] = "Text input"
-        elif input_type == "image":
-            inputs[input_name] = PIL.Image.open(Path("tests/data/000000039769.png")).resize((512, 512))
-        elif input_type == "audio":
-            inputs[input_name] = np.ones(3000)
-        else:
-            raise ValueError(f"Invalid type requested: {input_type}")
-
-    return inputs
-
-
 def output_type(output):
     if isinstance(output, (str, AgentText)):
         return "string"
@@ -66,33 +47,54 @@ def output_type(output):
 
 class ToolTesterMixin:
     def test_inputs_output(self):
-        self.assertTrue(hasattr(self.tool, "inputs"))
-        self.assertTrue(hasattr(self.tool, "output_type"))
+        assert hasattr(self.tool, "inputs")
+        assert hasattr(self.tool, "output_type")
 
         inputs = self.tool.inputs
-        self.assertTrue(isinstance(inputs, dict))
+        assert isinstance(inputs, dict)
 
         for _, input_spec in inputs.items():
-            self.assertTrue("type" in input_spec)
-            self.assertTrue("description" in input_spec)
-            self.assertTrue(input_spec["type"] in AUTHORIZED_TYPES)
-            self.assertTrue(isinstance(input_spec["description"], str))
+            assert "type" in input_spec
+            assert "description" in input_spec
+            assert input_spec["type"] in AUTHORIZED_TYPES
+            assert isinstance(input_spec["description"], str)
 
         output_type = self.tool.output_type
-        self.assertTrue(output_type in AUTHORIZED_TYPES)
+        assert output_type in AUTHORIZED_TYPES
 
     def test_common_attributes(self):
-        self.assertTrue(hasattr(self.tool, "description"))
-        self.assertTrue(hasattr(self.tool, "name"))
-        self.assertTrue(hasattr(self.tool, "inputs"))
-        self.assertTrue(hasattr(self.tool, "output_type"))
+        assert hasattr(self.tool, "description")
+        assert hasattr(self.tool, "name")
+        assert hasattr(self.tool, "inputs")
+        assert hasattr(self.tool, "output_type")
 
-    def test_agent_type_output(self):
+    def test_agent_type_output(self, create_inputs):
         inputs = create_inputs(self.tool.inputs)
         output = self.tool(**inputs, sanitize_inputs_outputs=True)
         if self.tool.output_type != "any":
             agent_type = _AGENT_TYPE_MAPPING[self.tool.output_type]
-            self.assertTrue(isinstance(output, agent_type))
+            assert isinstance(output, agent_type)
+
+    @pytest.fixture
+    def create_inputs(self, shared_datadir):
+        def _create_inputs(tool_inputs: dict[str, dict[str | type, str]]) -> dict[str, Any]:
+            inputs = {}
+
+            for input_name, input_desc in tool_inputs.items():
+                input_type = input_desc["type"]
+
+                if input_type == "string":
+                    inputs[input_name] = "Text input"
+                elif input_type == "image":
+                    inputs[input_name] = PIL.Image.open(shared_datadir / "000000039769.png").resize((512, 512))
+                elif input_type == "audio":
+                    inputs[input_name] = np.ones(3000)
+                else:
+                    raise ValueError(f"Invalid type requested: {input_type}")
+
+            return inputs
+
+        return _create_inputs
 
 
 class TestTool:

@@ -36,7 +36,6 @@ from huggingface_hub import (
     hf_hub_download,
     metadata_update,
 )
-from huggingface_hub.utils import is_torch_available
 
 from ._function_type_hints_utils import (
     TypeHintParsingException,
@@ -990,7 +989,7 @@ class PipelineTool(Tool):
         token=None,
         **hub_kwargs,
     ):
-        if not is_torch_available() or not _is_package_available("accelerate"):
+        if not _is_package_available("accelerate") or not _is_package_available("torch"):
             raise ModuleNotFoundError(
                 "Please install 'transformers' extra to use a PipelineTool: `pip install 'smolagents[transformers]'`"
             )

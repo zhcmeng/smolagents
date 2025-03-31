@@ -300,6 +300,7 @@ class MultiStepAgent:
         """
         max_steps = max_steps or self.max_steps
         self.task = task
+        self.interrupt_switch = False
         if additional_args is not None:
             self.state.update(additional_args)
             self.task += f"""
@@ -336,6 +337,8 @@ You have been provided with these additional arguments, that you can access usin
         final_answer = None
         self.step_number = 1
         while final_answer is None and self.step_number <= max_steps:
+            if self.interrupt_switch:
+                raise AgentError("Agent interrupted.", self.logger)
             step_start_time = time.time()
             if self.planning_interval is not None and self.step_number % self.planning_interval == 1:
                 planning_step = self._create_planning_step(
@@ -479,6 +482,10 @@ You have been provided with these additional arguments, that you can access usin
     def initialize_system_prompt(self):
         """To be implemented in child classes"""
         pass
+
+    def interrupt(self):
+        """Interrupts the agent execution."""
+        self.interrupt_switch = True
 
     def write_memory_to_messages(
         self,

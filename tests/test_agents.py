@@ -24,6 +24,7 @@ import pytest
 
 from smolagents.agent_types import AgentImage, AgentText
 from smolagents.agents import (
+    AgentError,
     AgentMaxStepsError,
     CodeAgent,
     MultiStepAgent,
@@ -795,6 +796,23 @@ class TestMultiStepAgent:
                 assert len(message["content"]) == len(expected_message["content"])
                 for content, expected_content in zip(message["content"], expected_message["content"]):
                     assert content == expected_content
+
+    def test_interrupt(self):
+        fake_model = MagicMock()
+        fake_model.return_value.content = "Model output."
+        fake_model.last_input_token_count = None
+
+        def interrupt_callback(memory_step, agent):
+            agent.interrupt()
+
+        agent = CodeAgent(
+            tools=[],
+            model=fake_model,
+            step_callbacks=[interrupt_callback],
+        )
+        with pytest.raises(AgentError) as e:
+            agent.run("Test task")
+        assert "Agent interrupted" in str(e)
 
     @pytest.mark.parametrize(
         "tools, managed_agents, name, expectation",

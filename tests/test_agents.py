@@ -913,6 +913,31 @@ class TestToolCallingAgent(unittest.TestCase):
         assert agent.memory.steps[1].tool_calls[0].arguments == {"location": "Paris", "date": "today"}
         assert agent.memory.steps[1].observations == "The weather in Paris on date:today is sunny."
 
+    @patch("huggingface_hub.InferenceClient")
+    def test_toolcalling_agent_api_misformatted_output(self, mock_inference_client):
+        """Test that even misformatted json blobs don't interrupt the run for a ToolCallingAgent."""
+        mock_client = mock_inference_client.return_value
+        mock_response = MagicMock()
+        mock_response.choices = [MagicMock()]
+        mock_response.choices[0].message = MagicMock()
+        mock_response.choices[
+            0
+        ].message.content = '{"name": weather_api", "arguments": {"location": "Paris", "date": "today"}}'
+        mock_client.chat_completion.return_value = mock_response
+        mock_response.usage.prompt_tokens = 10
+        mock_response.usage.completion_tokens = 20
+
+        model = HfApiModel(model_id="test-model")
+
+        agent = ToolCallingAgent(model=model, tools=[], max_steps=2, verbosity_level=1)
+        with agent.logger.console.capture() as capture:
+            agent.run("What's the weather in Paris?")
+        assert agent.memory.steps[0].task == "What's the weather in Paris?"
+        assert agent.memory.steps[1].tool_calls is None
+        assert "The JSON blob you used is invalid" in agent.memory.steps[1].error.message
+        assert "Error while generating or parsing output:" in capture.get()
+        assert len(agent.memory.steps) == 4
+
 
 class TestCodeAgent:
     @pytest.mark.parametrize("provide_run_summary", [False, True])

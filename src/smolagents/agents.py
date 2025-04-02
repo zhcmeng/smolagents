@@ -975,7 +975,7 @@ class ToolCallingAgent(MultiStepAgent):
             )
             memory_step.model_output_message = model_message
         except Exception as e:
-            raise AgentGenerationError(f"Error in generating tool call with model:\n{e}", self.logger) from e
+            raise AgentParsingError(f"Error while generating or parsing output:\n{e}", self.logger) from e
 
         self.logger.log_markdown(
             content=model_message.content if model_message.content else str(model_message.raw),

@@ -357,6 +357,7 @@ You have been provided with these additional arguments, that you can access usin
                 action_step.error = e
             finally:
                 self._finalize_step(action_step, step_start_time)
+                self.memory.steps.append(action_step)
                 yield action_step
                 self.step_number += 1
 
@@ -385,7 +386,6 @@ You have been provided with these additional arguments, that you can access usin
     def _finalize_step(self, memory_step: ActionStep, step_start_time: float):
         memory_step.end_time = time.time()
         memory_step.duration = memory_step.end_time - step_start_time
-        self.memory.steps.append(memory_step)
         for callback in self.step_callbacks:
             # For compatibility with old callbacks that don't take the agent as an argument
             callback(memory_step) if len(inspect.signature(callback).parameters) == 1 else callback(

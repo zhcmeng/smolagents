@@ -397,19 +397,29 @@ class VLLMModel(Model):
         model_id (`str`):
             The Hugging Face model ID to be used for inference.
             This can be a path or model identifier from the Hugging Face model hub.
+        model_kwargs (`dict[str, Any]`, *optional*):
+            Additional keyword arguments to pass to the vLLM model (like revision, max_model_len, etc.).
     """
 
-    def __init__(self, model_id, **kwargs):
+    def __init__(
+        self,
+        model_id,
+        model_kwargs: dict[str, Any] | None = None,
+        **kwargs,
+    ):
         if not _is_package_available("vllm"):
             raise ModuleNotFoundError("Please install 'vllm' extra to use VLLMModel: `pip install 'smolagents[vllm]'`")
 
         from vllm import LLM
         from vllm.transformers_utils.tokenizer import get_tokenizer
 
+        self.model_kwargs = {
+            **(model_kwargs or {}),
+            "model": model_id,
+        }
         super().__init__(**kwargs)
-
         self.model_id = model_id
-        self.model = LLM(model=model_id)
+        self.model = LLM(**self.model_kwargs)
         self.tokenizer = get_tokenizer(model_id)
         self._is_vlm = False  # VLLMModel does not support vision models yet.
 

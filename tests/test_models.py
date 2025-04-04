@@ -23,6 +23,7 @@ import pytest
 from huggingface_hub import ChatCompletionOutputMessage
 
 from smolagents.models import (
+    AmazonBedrockServerModel,
     AzureOpenAIServerModel,
     ChatMessage,
     ChatMessageToolCall,
@@ -202,6 +203,18 @@ class TestOpenAIServerModel:
             base_url=api_base, api_key=api_key, organization=organization, project=project, max_retries=5
         )
         assert model.client == MockOpenAI.return_value
+
+
+class TestAmazonBedrockServerModel:
+    def test_client_for_bedrock(self):
+        model_id = "us.amazon.nova-pro-v1:0"
+
+        with patch("boto3.client") as MockBoto3:
+            model = AmazonBedrockServerModel(
+                model_id=model_id,
+            )
+
+        assert model.client == MockBoto3.return_value
 
 
 class TestAzureOpenAIServerModel:

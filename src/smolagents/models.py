@@ -224,9 +224,14 @@ def get_clean_message_list(
         if len(output_message_list) > 0 and message["role"] == output_message_list[-1]["role"]:
             assert isinstance(message["content"], list), "Error: wrong content:" + str(message["content"])
             if flatten_messages_as_text:
-                output_message_list[-1]["content"] += message["content"][0]["text"]
+                output_message_list[-1]["content"] += "\n" + message["content"][0]["text"]
             else:
-                output_message_list[-1]["content"] += message["content"]
+                for el in message["content"]:
+                    if el["type"] == "text" and output_message_list[-1]["content"][-1]["type"] == "text":
+                        # Merge consecutive text messages rather than creating new ones
+                        output_message_list[-1]["content"][-1]["text"] += "\n" + el["text"]
+                    else:
+                        output_message_list[-1]["content"].append(el)
         else:
             if flatten_messages_as_text:
                 content = message["content"][0]["text"]

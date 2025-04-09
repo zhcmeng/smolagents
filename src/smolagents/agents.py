@@ -93,18 +93,12 @@ class PlanningPromptTemplate(TypedDict):
     Prompt templates for the planning step.
 
     Args:
-        initial_facts (`str`): Initial facts prompt.
-        initial_plan (`str`): Initial plan prompt.
-        update_facts_pre_messages (`str`): Update facts pre-messages prompt.
-        update_facts_post_messages (`str`): Update facts post-messages prompt.
+        plan (`str`): Initial plan prompt.
         update_plan_pre_messages (`str`): Update plan pre-messages prompt.
         update_plan_post_messages (`str`): Update plan post-messages prompt.
     """
 
-    initial_facts: str
-    initial_plan: str
-    update_facts_pre_messages: str
-    update_facts_post_messages: str
+    plan: str
     update_plan_pre_messages: str
     update_plan_post_messages: str
 
@@ -155,10 +149,7 @@ class PromptTemplates(TypedDict):
 EMPTY_PROMPT_TEMPLATES = PromptTemplates(
     system_prompt="",
     planning=PlanningPromptTemplate(
-        initial_facts="",
         initial_plan="",
-        update_facts_pre_messages="",
-        update_facts_post_messages="",
         update_plan_pre_messages="",
         update_plan_post_messages="",
     ),
@@ -210,6 +201,16 @@ class MultiStepAgent:
         self.agent_name = self.__class__.__name__
         self.model = model
         self.prompt_templates = prompt_templates or EMPTY_PROMPT_TEMPLATES
+        if prompt_templates is not None:
+            missing_keys = set(EMPTY_PROMPT_TEMPLATES.keys()) - set(prompt_templates.keys())
+            assert not missing_keys, (
+                f"Some prompt templates are missing from your custom `prompt_templates`: {missing_keys}"
+            )
+            for key in EMPTY_PROMPT_TEMPLATES.keys():
+                for subkey in EMPTY_PROMPT_TEMPLATES[key]:
+                    assert subkey in prompt_templates[key], (
+                        f"Some prompt templates are missing from your custom `prompt_templates`: {subkey} under {key}"
+                    )
         self.max_steps = max_steps
         self.step_number = 0
         self.grammar = grammar

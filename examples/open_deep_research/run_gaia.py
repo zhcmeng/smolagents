@@ -33,7 +33,6 @@ from tqdm import tqdm
 from smolagents import (
     CodeAgent,
     GoogleSearchTool,
-    # HfApiModel,
     LiteLLMModel,
     Model,
     ToolCallingAgent,
@@ -190,12 +189,7 @@ def answer_single_question(example, model_id, answers_file, visual_inspection_to
     else:
         model_params["max_tokens"] = 4096
     model = LiteLLMModel(**model_params)
-    # model = HfApiModel(model_id="Qwen/Qwen2.5-72B-Instruct", provider="together")
-    #     "https://lnxyuvj02bpe6mam.us-east-1.aws.endpoints.huggingface.cloud",
-    #     custom_role_conversions=custom_role_conversions,
-    #     # provider="sambanova",
-    #     max_tokens=8096,
-    # )
+    # model = HfApiModel(model_id="Qwen/Qwen2.5-Coder-32B-Instruct", provider="together", max_tokens=4096)
     document_inspection_tool = TextInspectorTool(model, 100000)
 
     agent = create_agent_team(model)
@@ -224,7 +218,7 @@ Here is the task:
         # Run agent 🚀
         final_result = agent.run(augmented_question)
 
-        agent_memory = agent.write_memory_to_messages(summary_mode=True)
+        agent_memory = agent.write_memory_to_messages()
 
         final_result = prepare_response(augmented_question, agent_memory, reformulation_model=model)
 
@@ -249,6 +243,12 @@ Here is the task:
         exception = e
         raised_exception = True
     end_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    token_counts_manager = agent.monitor.get_total_token_counts()
+    token_counts_web = list(agent.managed_agents.values())[0].monitor.get_total_token_counts()
+    total_token_counts = {
+        "input": token_counts_manager["input"] + token_counts_web["input"],
+        "output": token_counts_manager["output"] + token_counts_web["output"],
+    }
     annotated_example = {
         "agent_name": model.model_id,
         "question": example["question"],
@@ -258,11 +258,12 @@ Here is the task:
         "parsing_error": parsing_error,
         "iteration_limit_exceeded": iteration_limit_exceeded,
         "agent_error": str(exception) if raised_exception else None,
-        "start_time": start_time,
-        "end_time": end_time,
         "task": example["task"],
         "task_id": example["task_id"],
         "true_answer": example["true_answer"],
+        "start_time": start_time,
+        "end_time": end_time,
+        "token_counts": total_token_counts,
     }
     append_answer(annotated_example, answers_file)
 

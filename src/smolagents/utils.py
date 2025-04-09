@@ -158,7 +158,7 @@ def parse_json_blob(json_blob: str) -> Tuple[Dict[str, str], str]:
         json_data = json.loads(json_data, strict=False)
         return json_data, json_blob[:first_accolade_index]
     except IndexError:
-        raise ValueError("The JSON blob you used is invalid")
+        raise ValueError("The model output does not contain any JSON blob.")
     except json.JSONDecodeError as e:
         place = e.pos
         if json_blob[place - 1 : place + 2] == "},\n":

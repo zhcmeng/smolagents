@@ -26,7 +26,7 @@ import types
 from contextlib import contextmanager
 from functools import wraps
 from pathlib import Path
-from typing import TYPE_CHECKING, Callable, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any, Callable, Dict, List, Optional, Union
 
 from huggingface_hub import (
     CommitOperationAdd,
@@ -275,6 +275,22 @@ class Tool:
         requirements = {el for el in get_imports(tool_code) if el not in sys.stdlib_module_names} | {"smolagents"}
 
         return {"name": self.name, "code": tool_code, "requirements": sorted(requirements)}
+
+    @classmethod
+    def from_dict(cls, tool_dict: dict[str, Any], **kwargs) -> "Tool":
+        """
+        Create tool from a dictionary representation.
+
+        Args:
+            tool_dict (`dict[str, Any]`): Dictionary representation of the tool.
+            **kwargs: Additional keyword arguments to pass to the tool's constructor.
+
+        Returns:
+            `Tool`: Tool object.
+        """
+        if "code" not in tool_dict:
+            raise ValueError("Tool dictionary must contain 'code' key with the tool source code")
+        return cls.from_code(tool_dict["code"], **kwargs)
 
     def save(self, output_dir: str | Path, tool_file_name: str = "tool", make_gradio_app: bool = True):
         """

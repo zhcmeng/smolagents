@@ -97,6 +97,25 @@ class PythonInterpreterTester(unittest.TestCase):
         with pytest.raises(InterpreterError, match="Forbidden function evaluation: 'add_two'"):
             evaluate_python_code(code, {}, state=state)
 
+    def test_evaluate_class_def(self):
+        code = dedent('''\
+            class MyClass:
+                """A class with a value."""
+
+                def __init__(self, value):
+                    self.value = value
+
+                def get_value(self):
+                    return self.value
+
+            instance = MyClass(42)
+            result = instance.get_value()
+        ''')
+        state = {}
+        result, _ = evaluate_python_code(code, {}, state=state)
+        assert result == 42
+        assert state["instance"].__doc__ == "A class with a value."
+
     def test_evaluate_constant(self):
         code = "x = 3"
         state = {}

@@ -72,24 +72,24 @@ print(model([{"role": "user", "content": [{"type": "text", "text": "Ok!"}]}], st
 
 [[autodoc]] TransformersModel
 
-### HfApiModel
+### InferenceClientModel
 
 The `HfApiModel` wraps huggingface_hub's [InferenceClient](https://huggingface.co/docs/huggingface_hub/main/en/guides/inference) for the execution of the LLM. It supports all [Inference Providers](https://huggingface.co/docs/inference-providers/index) available on the Hub: Cerebras, Cohere, Fal, Fireworks, HF-Inference, Hyperbolic, Nebius, Novita, Replicate, SambaNova, Together, and more.
 
 ```python
-from smolagents import HfApiModel
+from smolagents import InferenceClientModel
 
 messages = [
   {"role": "user", "content": [{"type": "text", "text": "Hello, how are you?"}]}
 ]
 
-model = HfApiModel(provider="novita")
+model = InferenceClientModel(provider="novita")
 print(model(messages))
 ```
 ```text
 >>> Of course! If you change your mind, feel free to reach out. Take care!
 ```
-[[autodoc]] HfApiModel
+[[autodoc]] InferenceClientModel
 
 ### LiteLLMModel
 

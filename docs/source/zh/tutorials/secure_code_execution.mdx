@@ -68,10 +68,10 @@ rendered properly in your Markdown viewer.
 请注意，你应该将所有工具的依赖项添加到 `additional_authorized_imports` 中，以便执行器安装它们。
 
 ```py
-from smolagents import CodeAgent, VisitWebpageTool, HfApiModel
+from smolagents import CodeAgent, VisitWebpageTool, InferenceClientModel
 agent = CodeAgent(
     tools = [VisitWebpageTool()],
-    model=HfApiModel(),
+    model=InferenceClientModel(),
     additional_authorized_imports=["requests", "markdownify"],
     executor_type="e2b"
 )

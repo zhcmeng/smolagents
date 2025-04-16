@@ -120,11 +120,11 @@ In general, to ease the load on your LLM, the good question to ask yourself is: 
 To pass some additional objects to your agent beyond the simple string describing the task, you can use the `additional_args` argument to pass any type of object:
 
 ```py
-from smolagents import CodeAgent, HfApiModel
+from smolagents import CodeAgent, InferenceClientModel
 
 model_id = "meta-llama/Llama-3.3-70B-Instruct"
 
-agent = CodeAgent(tools=[], model=HfApiModel(model_id=model_id), add_base_tools=True)
+agent = CodeAgent(tools=[], model=InferenceClientModel(model_id=model_id), add_base_tools=True)
 
 agent.run(
     "Why does Mike not know many people in New York?",
@@ -412,7 +412,7 @@ This also works with the [`ToolCallingAgent`].
 We provide a model for a supplementary planning step, that an agent can run regularly in-between normal action steps. In this step, there is no tool call, the LLM is simply asked to update a list of facts it knows and to reflect on what steps it should take next based on those facts.
 
 ```py
-from smolagents import load_tool, CodeAgent, HfApiModel, DuckDuckGoSearchTool
+from smolagents import load_tool, CodeAgent, InferenceClientModel, DuckDuckGoSearchTool
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -424,7 +424,7 @@ search_tool = DuckDuckGoSearchTool()
 
 agent = CodeAgent(
     tools=[search_tool, image_generation_tool],
-    model=HfApiModel(model_id="Qwen/Qwen2.5-72B-Instruct"),
+    model=InferenceClientModel(model_id="Qwen/Qwen2.5-72B-Instruct"),
     planning_interval=3 # This is where you activate planning!
 )
 

@@ -47,7 +47,7 @@ from smolagents.models import (
     ChatMessage,
     ChatMessageToolCall,
     ChatMessageToolCallDefinition,
-    HfApiModel,
+    InferenceClientModel,
     MessageRole,
     TransformersModel,
 )
@@ -960,7 +960,7 @@ class TestToolCallingAgent(unittest.TestCase):
         mock_response.usage.prompt_tokens = 10
         mock_response.usage.completion_tokens = 20
 
-        model = HfApiModel(model_id="test-model")
+        model = InferenceClientModel(model_id="test-model")
 
         from smolagents import tool
 
@@ -1012,7 +1012,7 @@ class TestToolCallingAgent(unittest.TestCase):
         mock_response.usage.prompt_tokens = 10
         mock_response.usage.completion_tokens = 20
 
-        model = HfApiModel(model_id="test-model")
+        model = InferenceClientModel(model_id="test-model")
 
         agent = ToolCallingAgent(model=model, tools=[], max_steps=2, verbosity_level=1)
         with agent.logger.console.capture() as capture:
@@ -1134,7 +1134,10 @@ class TestCodeAgent:
     @pytest.mark.parametrize("agent_dict_version", ["v1.9", "v1.10"])
     def test_from_folder(self, agent_dict_version, get_agent_dict):
         agent_dict = get_agent_dict(agent_dict_version)
-        with patch("smolagents.agents.Path") as mock_path, patch("smolagents.models.HfApiModel") as mock_model:
+        with (
+            patch("smolagents.agents.Path") as mock_path,
+            patch("smolagents.models.InferenceClientModel") as mock_model,
+        ):
             import json
 
             mock_path.return_value.__truediv__.return_value.read_text.return_value = json.dumps(agent_dict)
@@ -1162,7 +1165,7 @@ class TestCodeAgent:
     def test_from_dict(self):
         # Create a test agent dictionary
         agent_dict = {
-            "model": {"class": "HfApiModel", "data": {"model_id": "Qwen/Qwen2.5-Coder-32B-Instruct"}},
+            "model": {"class": "InferenceClientModel", "data": {"model_id": "Qwen/Qwen2.5-Coder-32B-Instruct"}},
             "tools": [
                 {
                     "name": "valid_tool_function",
@@ -1185,7 +1188,7 @@ class TestCodeAgent:
         }
 
         # Call from_dict
-        with patch("smolagents.models.HfApiModel") as mock_model_class:
+        with patch("smolagents.models.InferenceClientModel") as mock_model_class:
             mock_model_instance = mock_model_class.from_dict.return_value
             agent = CodeAgent.from_dict(agent_dict)
 
@@ -1198,18 +1201,18 @@ class TestCodeAgent:
 
         # Test with missing optional parameters
         minimal_agent_dict = {
-            "model": {"class": "HfApiModel", "data": {"model_id": "Qwen/Qwen2.5-Coder-32B-Instruct"}},
+            "model": {"class": "InferenceClientModel", "data": {"model_id": "Qwen/Qwen2.5-Coder-32B-Instruct"}},
             "tools": [],
             "managed_agents": {},
         }
 
-        with patch("smolagents.models.HfApiModel"):
+        with patch("smolagents.models.InferenceClientModel"):
             agent = CodeAgent.from_dict(minimal_agent_dict)
         # Verify defaults are used
         assert agent.max_steps == 20  # default from MultiStepAgent.__init__
 
         # Test overriding with kwargs
-        with patch("smolagents.models.HfApiModel"):
+        with patch("smolagents.models.InferenceClientModel"):
             agent = CodeAgent.from_dict(
                 agent_dict, additional_authorized_imports=["matplotlib"], executor_kwargs={"max_workers": 4}
             )
@@ -1219,7 +1222,7 @@ class TestCodeAgent:
 
 class TestMultiAgents:
     def test_multiagents_save(self, tmp_path):
-        model = HfApiModel(model_id="Qwen/Qwen2.5-Coder-32B-Instruct", max_tokens=2096, temperature=0.5)
+        model = InferenceClientModel(model_id="Qwen/Qwen2.5-Coder-32B-Instruct", max_tokens=2096, temperature=0.5)
 
         web_agent = ToolCallingAgent(
             model=model,

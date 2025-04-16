@@ -53,7 +53,7 @@ login()
 ```
 
 ⚡️ HF的Inference API 可以快速轻松地运行任何开源模型，因此我们的agent将使用HF的Inference API
-中的`HfApiModel`类来调用
+中的`InferenceClientModel`类来调用
 [Qwen/Qwen2.5-Coder-32B-Instruct](https://huggingface.co/Qwen/Qwen2.5-Coder-32B-Instruct)模型。
 
 _Note:_ 基于多参数和部署模型的 Inference API 可能在没有预先通知的情况下更新或替换模型。了解更多信息，请参阅[这里](https://huggingface.co/docs/api-inference/supported-models)。
@@ -127,13 +127,13 @@ print(visit_webpage("https://en.wikipedia.org/wiki/Hugging_Face")[:500])
 from smolagents import (
     CodeAgent,
     ToolCallingAgent,
-    HfApiModel,
+    InferenceClientModel,
     ManagedAgent,
     DuckDuckGoSearchTool,
     LiteLLMModel,
 )
 
-model = HfApiModel(model_id=model_id)
+model = InferenceClientModel(model_id=model_id)
 
 web_agent = ToolCallingAgent(
     tools=[DuckDuckGoSearchTool(), visit_webpage],

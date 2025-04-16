@@ -135,10 +135,10 @@ retriever_tool = RetrieverTool(docs_processed)
 _नोट:_ Inference API विभिन्न मानदंडों के आधार पर मॉडल होस्ट करता है, और डिप्लॉय किए गए मॉडल बिना पूर्व सूचना के अपडेट या बदले जा सकते हैं। इसके बारे में अधिक जानें [यहां](https://huggingface.co/docs/api-inference/supported-models) पढ़ें।
 
 ```py
-from smolagents import HfApiModel, CodeAgent
+from smolagents import InferenceClientModel, CodeAgent
 
 agent = CodeAgent(
-    tools=[retriever_tool], model=HfApiModel(model_id="meta-llama/Llama-3.3-70B-Instruct"), max_steps=4, verbosity_level=2
+    tools=[retriever_tool], model=InferenceClientModel(model_id="meta-llama/Llama-3.3-70B-Instruct"), max_steps=4, verbosity_level=2
 )
 ```
 

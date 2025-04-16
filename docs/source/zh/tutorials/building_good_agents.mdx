@@ -120,11 +120,11 @@ def get_weather_api(location: str, date_time: str) -> str:
 除了简单的任务描述字符串外，你还可以使用 `additional_args` 参数传递任何类型的对象：
 
 ```py
-from smolagents import CodeAgent, HfApiModel
+from smolagents import CodeAgent, InferenceClientModel
 
 model_id = "meta-llama/Llama-3.3-70B-Instruct"
 
-agent = CodeAgent(tools=[], model=HfApiModel(model_id=model_id), add_base_tools=True)
+agent = CodeAgent(tools=[], model=InferenceClientModel(model_id=model_id), add_base_tools=True)
 
 agent.run(
     "Why does Mike not know many people in New York?",
@@ -410,7 +410,7 @@ agent.prompt_templates["system_prompt"] = agent.prompt_templates["system_prompt"
 我们提供了一个用于补充规划步骤的模型，agent 可以在正常操作步骤之间定期运行。在此步骤中，没有工具调用，LLM 只是被要求更新它知道的事实列表，并根据这些事实反推它应该采取的下一步。
 
 ```py
-from smolagents import load_tool, CodeAgent, HfApiModel, DuckDuckGoSearchTool
+from smolagents import load_tool, CodeAgent, InferenceClientModel, DuckDuckGoSearchTool
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -422,7 +422,7 @@ search_tool = DuckDuckGoSearchTool()
 
 agent = CodeAgent(
     tools=[search_tool],
-    model=HfApiModel(model_id="Qwen/Qwen2.5-72B-Instruct"),
+    model=InferenceClientModel(model_id="Qwen/Qwen2.5-72B-Instruct"),
     planning_interval=3 # 这是你激活规划的地方！
 )
 

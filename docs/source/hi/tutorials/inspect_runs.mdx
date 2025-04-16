@@ -73,10 +73,10 @@ from smolagents import (
     ToolCallingAgent,
     DuckDuckGoSearchTool,
     VisitWebpageTool,
-    HfApiModel,
+    InferenceClientModel,
 )
 
-model = HfApiModel()
+model = InferenceClientModel()
 
 managed_agent = ToolCallingAgent(
     tools=[DuckDuckGoSearchTool(), VisitWebpageTool()],

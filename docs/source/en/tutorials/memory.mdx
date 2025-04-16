@@ -30,9 +30,9 @@ You can also use `agent.replay()`, as follows:
 
 After the agent has run:
 ```py
-from smolagents import HfApiModel, CodeAgent
+from smolagents import InferenceClientModel, CodeAgent
 
-agent = CodeAgent(tools=[], model=HfApiModel(), verbosity_level=0)
+agent = CodeAgent(tools=[], model=InferenceClientModel(), verbosity_level=0)
 
 result = agent.run("What's the 20th Fibonacci number?")
 ```
@@ -115,9 +115,9 @@ This can be useful in case you have tool calls that take days: you can just run 
 This will also let you update the memory on each step.
 
 ```py
-from smolagents import HfApiModel, CodeAgent, ActionStep, TaskStep
+from smolagents import InferenceClientModel, CodeAgent, ActionStep, TaskStep
 
-agent = CodeAgent(tools=[], model=HfApiModel(), verbosity_level=1)
+agent = CodeAgent(tools=[], model=InferenceClientModel(), verbosity_level=1)
 agent.python_executor.send_tools({**agent.tools})
 print(agent.memory.system_prompt)
 

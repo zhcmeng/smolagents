@@ -134,9 +134,9 @@ image_generation_tool("A sunny beach")
 फिर आप इस टूल का उपयोग किसी अन्य टूल की तरह कर सकते हैं। उदाहरण के लिए, चलिए प्रॉम्प्ट `a rabbit wearing a space suit` को सुधारें और इसकी एक इमेज जनरेट करें। यह उदाहरण यह भी दिखाता है कि आप एजेंट को अतिरिक्त आर्ग्यूमेंट्स कैसे पास कर सकते हैं।
 
 ```python
-from smolagents import CodeAgent, HfApiModel
+from smolagents import CodeAgent, InferenceClientModel
 
-model = HfApiModel(model_id="Qwen/Qwen2.5-Coder-32B-Instruct")
+model = InferenceClientModel(model_id="Qwen/Qwen2.5-Coder-32B-Instruct")
 agent = CodeAgent(tools=[image_generation_tool], model=model)
 
 agent.run(
@@ -182,9 +182,9 @@ agent.run("How many more blocks (also denoted as layers) are in BERT base encode
 चलिए केवल डिफ़ॉल्ट टूलबॉक्स के साथ इनिशियलाइज़ किए गए मौजूदा एजेंट में `model_download_tool` जोड़ें।
 
 ```python
-from smolagents import HfApiModel
+from smolagents import InferenceClientModel
 
-model = HfApiModel(model_id="Qwen/Qwen2.5-Coder-32B-Instruct")
+model = InferenceClientModel(model_id="Qwen/Qwen2.5-Coder-32B-Instruct")
 
 agent = CodeAgent(tools=[], model=model, add_base_tools=True)
 agent.tools[model_download_tool.name] = model_download_tool

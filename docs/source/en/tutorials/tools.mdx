@@ -134,9 +134,9 @@ And voilà, here's your image! 🏖️
 Then you can use this tool just like any other tool.  For example, let's improve the prompt `a rabbit wearing a space suit` and generate an image of it. This example also shows how you can pass additional arguments to the agent.
 
 ```python
-from smolagents import CodeAgent, HfApiModel
+from smolagents import CodeAgent, InferenceClientModel
 
-model = HfApiModel(model_id="Qwen/Qwen2.5-Coder-32B-Instruct")
+model = InferenceClientModel(model_id="Qwen/Qwen2.5-Coder-32B-Instruct")
 agent = CodeAgent(tools=[image_generation_tool], model=model)
 
 agent.run(
@@ -182,9 +182,9 @@ You can manage an agent's toolbox by adding or replacing a tool in attribute `ag
 Let's add the `model_download_tool` to an existing agent initialized with only the default toolbox.
 
 ```python
-from smolagents import HfApiModel
+from smolagents import InferenceClientModel
 
-model = HfApiModel(model_id="Qwen/Qwen2.5-Coder-32B-Instruct")
+model = InferenceClientModel(model_id="Qwen/Qwen2.5-Coder-32B-Instruct")
 
 agent = CodeAgent(tools=[], model=model, add_base_tools=True)
 agent.tools[model_download_tool.name] = model_download_tool

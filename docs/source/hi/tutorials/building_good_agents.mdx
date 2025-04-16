@@ -122,11 +122,11 @@ def get_weather_api(location: str, date_time: str) -> str:
 
 
 ```py
-from smolagents import CodeAgent, HfApiModel
+from smolagents import CodeAgent, InferenceClientModel
 
 model_id = "meta-llama/Llama-3.3-70B-Instruct"
 
-agent = CodeAgent(tools=[], model=HfApiModel(model_id=model_id), add_base_tools=True)
+agent = CodeAgent(tools=[], model=InferenceClientModel(model_id=model_id), add_base_tools=True)
 
 agent.run(
     "Why does Mike not know many people in New York?",
@@ -412,7 +412,7 @@ This also works with the [`ToolCallingAgent`].
 हम पूरक योजना चरण के लिए एक मॉडल प्रदान करते हैं, जिसे एजेंट सामान्य क्रियाओं के चरणों के बीच नियमित रूप से चला सकता है। इस चरण में कोई टूल कॉल नहीं होती है, LLM से केवल उन तथ्यों की सूची को अपडेट करने के लिए कहा जाता है जो उसे ज्ञात हैं और इन तथ्यों के आधार पर उसे अगले कदमों के बारे में विचार करना होता है।
 
 ```py
-from smolagents import load_tool, CodeAgent, HfApiModel, DuckDuckGoSearchTool
+from smolagents import load_tool, CodeAgent, InferenceClientModel, DuckDuckGoSearchTool
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -424,7 +424,7 @@ search_tool = DuckDuckGoSearchTool()
 
 agent = CodeAgent(
     tools=[search_tool],
-    model=HfApiModel(model_id="Qwen/Qwen2.5-72B-Instruct"),
+    model=InferenceClientModel(model_id="Qwen/Qwen2.5-72B-Instruct"),
     planning_interval=3 # This is where you activate planning!
 )
 

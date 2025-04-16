@@ -71,24 +71,24 @@ print(model([{"role": "user", "content": [{"type": "text", "text": "Ok!"}]}], st
 
 [[autodoc]] TransformersModel
 
-### HfApiModel
+### InferenceClientModel
 
-`HfApiModel` 封装了 huggingface_hub 的 [InferenceClient](https://huggingface.co/docs/huggingface_hub/main/en/guides/inference)，用于执行 LLM。它支持 HF 的 [Inference API](https://huggingface.co/docs/api-inference/index) 以及 Hub 上所有可用的[Inference Providers](https://huggingface.co/blog/inference-providers)。
+`InferenceClientModel` 封装了 huggingface_hub 的 [InferenceClient](https://huggingface.co/docs/huggingface_hub/main/en/guides/inference)，用于执行 LLM。它支持 HF 的 [Inference API](https://huggingface.co/docs/api-inference/index) 以及 Hub 上所有可用的[Inference Providers](https://huggingface.co/blog/inference-providers)。
 
 ```python
-from smolagents import HfApiModel
+from smolagents import InferenceClientModel
 
 messages = [
   {"role": "user", "content": [{"type": "text", "text": "Hello, how are you?"}]}
 ]
 
-model = HfApiModel()
+model = InferenceClientModel()
 print(model(messages))
 ```
 ```text
 >>> Of course! If you change your mind, feel free to reach out. Take care!
 ```
-[[autodoc]] HfApiModel
+[[autodoc]] InferenceClientModel
 
 ### LiteLLMModel
 

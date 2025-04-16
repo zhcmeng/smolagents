@@ -54,7 +54,7 @@ from huggingface_hub import login
 login()
 ```
 
-⚡️ हमारा एजेंट [Qwen/Qwen2.5-Coder-32B-Instruct](https://huggingface.co/Qwen/Qwen2.5-Coder-32B-Instruct) द्वारा संचालित होगा जो `HfApiModel` क्लास का उपयोग करता है जो HF के Inference API का उपयोग करता है: Inference API किसी भी OS मॉडल को जल्दी और आसानी से चलाने की अनुमति देता है।
+⚡️ हमारा एजेंट [Qwen/Qwen2.5-Coder-32B-Instruct](https://huggingface.co/Qwen/Qwen2.5-Coder-32B-Instruct) द्वारा संचालित होगा जो `InferenceClientModel` क्लास का उपयोग करता है जो HF के Inference API का उपयोग करता है: Inference API किसी भी OS मॉडल को जल्दी और आसानी से चलाने की अनुमति देता है।
 
 _नोट:_ The Inference API विभिन्न मानदंडों के आधार पर मॉडल होस्ट करता है, और डिप्लॉय किए गए मॉडल बिना पूर्व सूचना के अपडेट या बदले जा सकते हैं। इसके बारे में अधिक जानें [यहां](https://huggingface.co/docs/api-inference/supported-models)।
 
@@ -126,13 +126,13 @@ print(visit_webpage("https://en.wikipedia.org/wiki/Hugging_Face")[:500])
 from smolagents import (
     CodeAgent,
     ToolCallingAgent,
-    HfApiModel,
+    InferenceClientModel,
     ManagedAgent,
     DuckDuckGoSearchTool,
     LiteLLMModel,
 )
 
-model = HfApiModel(model_id=model_id)
+model = InferenceClientModel(model_id=model_id)
 
 web_agent = ToolCallingAgent(
     tools=[DuckDuckGoSearchTool(), visit_webpage],

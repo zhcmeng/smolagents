@@ -98,12 +98,12 @@ print(model([{"role": "user", "content": "Ok!"}], stop_sequences=["great"]))
 
 [[autodoc]] TransformersModel
 
-### HfApiModel
+### InferenceClientModel
 
-`HfApiModel` LLM के एक्जीक्यूशन के लिए [HF Inference API](https://huggingface.co/docs/api-inference/index) क्लाइंट को रैप करता है।
+`InferenceClientModel` LLM के एक्जीक्यूशन के लिए [HF Inference API](https://huggingface.co/docs/api-inference/index) क्लाइंट को रैप करता है।
 
 ```python
-from smolagents import HfApiModel
+from smolagents import InferenceClientModel
 
 messages = [
   {"role": "user", "content": "Hello, how are you?"},
@@ -111,13 +111,13 @@ messages = [
   {"role": "user", "content": "No need to help, take it easy."},
 ]
 
-model = HfApiModel()
+model = InferenceClientModel()
 print(model(messages))
 ```
 ```text
 >>> Of course! If you change your mind, feel free to reach out. Take care!
 ```
-[[autodoc]] HfApiModel
+[[autodoc]] InferenceClientModel
 
 ### LiteLLMModel
 

@@ -68,10 +68,10 @@ rendered properly in your Markdown viewer.
 ध्यान दें कि आपको `additional_authorized_imports` में सभी टूल की डिपेंडेंसीज़ जोड़नी चाहिए, ताकि एक्जीक्यूटर उन्हें इंस्टॉल करे।
 
 ```py
-from smolagents import CodeAgent, VisitWebpageTool, HfApiModel
+from smolagents import CodeAgent, VisitWebpageTool, InferenceClientModel
 agent = CodeAgent(
     tools = [VisitWebpageTool()],
-    model=HfApiModel(),
+    model=InferenceClientModel(),
     additional_authorized_imports=["requests", "markdownify"],
     executor_type="e2b"
 )

@@ -126,10 +126,10 @@ BM25 检索方法是一个经典的检索方法，因为它的设置速度非常
 _Note:_ 此 Inference API 托管基于各种标准的模型，部署的模型可能会在没有事先通知的情况下进行更新或替换。了解更多信息，请点击[这里](https://huggingface.co/docs/api-inference/supported-models)。
 
 ```py
-from smolagents import HfApiModel, CodeAgent
+from smolagents import InferenceClientModel, CodeAgent
 
 agent = CodeAgent(
-    tools=[retriever_tool], model=HfApiModel(model_id="meta-llama/Llama-3.3-70B-Instruct"), max_steps=4, verbose=True
+    tools=[retriever_tool], model=InferenceClientModel(model_id="meta-llama/Llama-3.3-70B-Instruct"), max_steps=4, verbose=True
 )
 ```
 

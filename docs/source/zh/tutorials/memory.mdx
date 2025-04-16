@@ -29,9 +29,9 @@ rendered properly in your Markdown viewer.
 
 当Agent完成运行后：
 ```py
-from smolagents import HfApiModel, CodeAgent
+from smolagents import InferenceClientModel, CodeAgent
 
-agent = CodeAgent(tools=[], model=HfApiModel(), verbosity_level=0)
+agent = CodeAgent(tools=[], model=InferenceClientModel(), verbosity_level=0)
 
 result = agent.run("What's the 20th Fibonacci number?")
 ```
@@ -113,9 +113,9 @@ CodeAgent(
 当您需要处理耗时数天的工具调用时，这种方式特别有用：您可以逐步执行Agents。这还允许您在每一步更新记忆。
 
 ```py
-from smolagents import HfApiModel, CodeAgent, ActionStep, TaskStep
+from smolagents import InferenceClientModel, CodeAgent, ActionStep, TaskStep
 
-agent = CodeAgent(tools=[], model=HfApiModel(), verbosity_level=1)
+agent = CodeAgent(tools=[], model=InferenceClientModel(), verbosity_level=1)
 print(agent.memory.system_prompt)
 
 task = "What is the 20th Fibonacci number?"

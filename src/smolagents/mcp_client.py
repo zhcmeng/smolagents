@@ -14,22 +14,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-try:
-    from mcp import (
-        StdioServerParameters,
-    )
-    from mcpadapt.core import MCPAdapt
-    from mcpadapt.smolagents_adapter import SmolAgentsAdapter
-except ImportError:
-    raise ImportError("MCPClient needs optional dependencies to be installed, run `pip install smolagents[mcp]`")
+
+from __future__ import annotations
 
 from types import TracebackType
-from typing import Any, Optional, Type
+from typing import TYPE_CHECKING, Any, Optional, Type
 
 from smolagents.tools import Tool
 
 
 __all__ = ["MCPClient"]
+
+if TYPE_CHECKING:
+    from mcpadapt.core import StdioServerParameters
 
 
 class MCPClient:
@@ -66,12 +63,15 @@ class MCPClient:
 
     def __init__(
         self,
-        server_parameters: StdioServerParameters | dict[str, Any] | list[StdioServerParameters | dict[str, Any]],
+        server_parameters: "StdioServerParameters" | dict[str, Any] | list["StdioServerParameters" | dict[str, Any]],
     ):
-        super().__init__()
+        try:
+            from mcpadapt.core import MCPAdapt
+            from mcpadapt.smolagents_adapter import SmolAgentsAdapter
+        except ModuleNotFoundError:
+            raise ModuleNotFoundError("Please install 'mcp' extra to use MCPClient: `pip install 'smolagents[mcp]'`")
         self._adapter = MCPAdapt(server_parameters, SmolAgentsAdapter())
         self._tools: list[Tool] | None = None
-
         self.connect()
 
     def connect(self):

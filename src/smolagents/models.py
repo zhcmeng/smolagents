@@ -984,6 +984,99 @@ class LiteLLMModel(ApiModel):
         return self.postprocess_message(first_message, tools_to_call_from)
 
 
+class LiteLLMRouterModel(LiteLLMModel):
+    """Router‑based client for interacting with the [LiteLLM Python SDK Router](https://docs.litellm.ai/docs/routing).
+
+    This class provides a high-level interface for distributing requests among multiple language models using
+    the LiteLLM SDK's routing capabilities. It is responsible for initializing and configuring the router client,
+    applying custom role conversions, and managing message formatting to ensure seamless integration with various LLMs.
+
+    Parameters:
+        model_id (`str`):
+            Identifier for the model group to use from the model list (e.g., "model-group-1").
+        model_list (`list[dict[str, Any]]`):
+            Model configurations to be used for routing.
+            Each configuration should include the model group name and any necessary parameters.
+            For more details, refer to the [LiteLLM Routing](https://docs.litellm.ai/docs/routing#quick-start) documentation.
+        client_kwargs (`dict[str, Any]`, *optional*):
+            Additional configuration parameters for the Router client. For more details, see the
+            [LiteLLM Routing Configurations](https://docs.litellm.ai/docs/routing).
+        custom_role_conversions (`dict[str, str]`, *optional*):
+            Custom role conversion mapping to convert message roles in others.
+            Useful for specific models that do not support specific message roles like "system".
+        flatten_messages_as_text (`bool`, *optional*): Whether to flatten messages as text.
+            Defaults to `True` for models that start with "ollama", "groq", "cerebras".
+        **kwargs:
+            Additional keyword arguments to pass to the LiteLLM Router completion method.
+
+    Example:
+    ```python
+    >>> import os
+    >>> from smolagents import CodeAgent, DuckDuckGoSearchTool, LiteLLMRouterModel
+    >>> os.environ["OPENAI_API_KEY"] = ""
+    >>> os.environ["AWS_ACCESS_KEY_ID"] = ""
+    >>> os.environ["AWS_SECRET_ACCESS_KEY"] = ""
+    >>> os.environ["AWS_REGION"] = ""
+    >>> llm_loadbalancer_model_list = [
+    ...     {
+    ...         "model_name": "model-group-1",
+    ...         "litellm_params": {
+    ...             "model": "gpt-4o-mini",
+    ...             "api_key": os.getenv("OPENAI_API_KEY"),
+    ...         },
+    ...     },
+    ...     {
+    ...         "model_name": "model-group-1",
+    ...         "litellm_params": {
+    ...             "model": "bedrock/anthropic.claude-3-sonnet-20240229-v1:0",
+    ...             "aws_access_key_id": os.getenv("AWS_ACCESS_KEY_ID"),
+    ...             "aws_secret_access_key": os.getenv("AWS_SECRET_ACCESS_KEY"),
+    ...             "aws_region_name": os.getenv("AWS_REGION"),
+    ...         },
+    ...     },
+    >>> ]
+    >>> model = LiteLLMRouterModel(
+    ...    model_id="model-group-1",
+    ...    model_list=llm_loadbalancer_model_list,
+    ...    client_kwargs={
+    ...        "routing_strategy":"simple-shuffle"
+    ...    }
+    >>> )
+    >>> agent = CodeAgent(tools=[DuckDuckGoSearchTool()], model=model)
+    >>> agent.run("How many seconds would it take for a leopard at full speed to run through Pont des Arts?")
+    ```
+    """
+
+    def __init__(
+        self,
+        model_id: str,
+        model_list: list[dict[str, Any]],
+        client_kwargs: Optional[dict[str, Any]] = None,
+        custom_role_conversions: Optional[Dict[str, str]] = None,
+        flatten_messages_as_text: bool | None = None,
+        **kwargs,
+    ):
+        self.client_kwargs = {
+            "model_list": model_list,
+            **(client_kwargs or {}),
+        }
+        super().__init__(
+            model_id=model_id,
+            custom_role_conversions=custom_role_conversions,
+            flatten_messages_as_text=flatten_messages_as_text,
+            **kwargs,
+        )
+
+    def create_client(self):
+        try:
+            from litellm import Router
+        except ModuleNotFoundError as e:
+            raise ModuleNotFoundError(
+                "Please install 'litellm' extra to use LiteLLMRouterModel: `pip install 'smolagents[litellm]'`"
+            ) from e
+        return Router(**self.client_kwargs)
+
+
 class InferenceClientModel(ApiModel):
     """A class to interact with Hugging Face's Inference Providers for language model interaction.
 
@@ -1433,6 +1526,7 @@ __all__ = [
     "InferenceClientModel",
     "HfApiModel",
     "LiteLLMModel",
+    "LiteLLMRouterModel",
     "OpenAIServerModel",
     "VLLMModel",
     "AzureOpenAIServerModel",

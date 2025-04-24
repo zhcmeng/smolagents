@@ -91,7 +91,7 @@ class AgentLogger:
         else:
             self.console = console
 
-    def log(self, *args, level: str | LogLevel = LogLevel.INFO, **kwargs) -> None:
+    def log(self, *args, level: int | str | LogLevel = LogLevel.INFO, **kwargs) -> None:
         """Logs a message to the console.
 
         Args:
@@ -153,7 +153,9 @@ class AgentLogger:
             level=LogLevel.INFO,
         )
 
-    def log_task(self, content: str, subtitle: str, title: Optional[str] = None, level: int = LogLevel.INFO) -> None:
+    def log_task(
+        self, content: str, subtitle: str, title: Optional[str] = None, level: LogLevel = LogLevel.INFO
+    ) -> None:
         self.log(
             Panel(
                 f"\n[bold]{escape_code_brackets(content)}\n",
@@ -165,7 +167,7 @@ class AgentLogger:
             level=level,
         )
 
-    def log_messages(self, messages: List) -> None:
+    def log_messages(self, messages: List[dict], level: LogLevel = LogLevel.DEBUG) -> None:
         messages_as_string = "\n".join([json.dumps(dict(message), indent=4) for message in messages])
         self.log(
             Syntax(
@@ -173,7 +175,8 @@ class AgentLogger:
                 lexer="markdown",
                 theme="github-dark",
                 word_wrap=True,
-            )
+            ),
+            level=level,
         )
 
     def visualize_agent_tree(self, agent):

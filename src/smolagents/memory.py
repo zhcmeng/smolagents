@@ -19,7 +19,7 @@ logger = getLogger(__name__)
 
 class Message(TypedDict):
     role: MessageRole
-    content: str | list[dict]
+    content: str | list[Dict[str, Any]]
 
 
 @dataclass
@@ -44,7 +44,7 @@ class MemoryStep:
     def dict(self):
         return asdict(self)
 
-    def to_messages(self, **kwargs) -> List[Dict[str, Any]]:
+    def to_messages(self, summary_mode: bool = False) -> List[Message]:
         raise NotImplementedError
 
 
@@ -57,7 +57,7 @@ class ActionStep(MemoryStep):
     step_number: int | None = None
     error: AgentError | None = None
     duration: float | None = None
-    model_output_message: ChatMessage = None
+    model_output_message: ChatMessage | None = None
     model_output: str | None = None
     observations: str | None = None
     observations_images: List["PIL.Image.Image"] | None = None
@@ -79,10 +79,8 @@ class ActionStep(MemoryStep):
             "action_output": make_json_serializable(self.action_output),
         }
 
-    def to_messages(self, summary_mode: bool = False, show_model_input_messages: bool = False) -> List[Message]:
+    def to_messages(self, summary_mode: bool = False) -> List[Message]:
         messages = []
-        if self.model_input_messages is not None and show_model_input_messages:
-            messages.append(Message(role=MessageRole.SYSTEM, content=self.model_input_messages))
         if self.model_output is not None and not summary_mode:
             messages.append(
                 Message(role=MessageRole.ASSISTANT, content=[{"type": "text", "text": self.model_output.strip()}])
@@ -148,7 +146,7 @@ class PlanningStep(MemoryStep):
     model_output_message: ChatMessage
     plan: str
 
-    def to_messages(self, summary_mode: bool, **kwargs) -> List[Message]:
+    def to_messages(self, summary_mode: bool = False) -> List[Message]:
         if summary_mode:
             return []
         return [
@@ -163,7 +161,7 @@ class TaskStep(MemoryStep):
     task: str
     task_images: List["PIL.Image.Image"] | None = None
 
-    def to_messages(self, summary_mode: bool = False, **kwargs) -> List[Message]:
+    def to_messages(self, summary_mode: bool = False) -> List[Message]:
         content = [{"type": "text", "text": f"New task:\n{self.task}"}]
         if self.task_images:
             for image in self.task_images:
@@ -176,7 +174,7 @@ class TaskStep(MemoryStep):
 class SystemPromptStep(MemoryStep):
     system_prompt: str
 
-    def to_messages(self, summary_mode: bool = False, **kwargs) -> List[Message]:
+    def to_messages(self, summary_mode: bool = False) -> List[Message]:
         if summary_mode:
             return []
         return [Message(role=MessageRole.SYSTEM, content=[{"type": "text", "text": self.system_prompt}])]
@@ -219,14 +217,15 @@ class AgentMemory:
                 logger.log_task(step.task, "", level=LogLevel.ERROR)
             elif isinstance(step, ActionStep):
                 logger.log_rule(f"Step {step.step_number}", level=LogLevel.ERROR)
-                if detailed:
-                    logger.log_messages(step.model_input_messages)
-                logger.log_markdown(title="Agent output:", content=step.model_output, level=LogLevel.ERROR)
+                if detailed and step.model_input_messages is not None:
+                    logger.log_messages(step.model_input_messages, level=LogLevel.ERROR)
+                if step.model_output is not None:
+                    logger.log_markdown(title="Agent output:", content=step.model_output, level=LogLevel.ERROR)
             elif isinstance(step, PlanningStep):
                 logger.log_rule("Planning step", level=LogLevel.ERROR)
-                if detailed:
+                if detailed and step.model_input_messages is not None:
                     logger.log_messages(step.model_input_messages, level=LogLevel.ERROR)
-                logger.log_markdown(title="Agent output:", content=step.facts + "\n" + step.plan, level=LogLevel.ERROR)
+                logger.log_markdown(title="Agent output:", content=step.plan, level=LogLevel.ERROR)
 
 
 __all__ = ["AgentMemory"]

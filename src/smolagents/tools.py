@@ -956,7 +956,7 @@ def tool(tool_function: Callable) -> Tool:
     forward_method_source = f"def forward{str(new_sig)}:\n{textwrap.indent(tool_source_body, '    ')}"
     # - Create the class source
     class_source = (
-        textwrap.dedent(f'''
+        textwrap.dedent(f"""
         class SimpleTool(Tool):
             name: str = "{tool_json_schema["name"]}"
             description: str = {json.dumps(textwrap.dedent(tool_json_schema["description"]).strip())}
@@ -966,7 +966,7 @@ def tool(tool_function: Callable) -> Tool:
             def __init__(self):
                 self.is_initialized = True
 
-        ''')
+        """)
         + textwrap.indent(forward_method_source, "    ")  # indent for class method
     )
     # - Store the source code on both class and method for inspection

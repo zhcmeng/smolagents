@@ -12,13 +12,17 @@ contains the API docs for the underlying classes.
 
 ## Models
 
+### Your custom Model
+
 You're free to create and use your own models to power your agent.
 
-You could use any `model` callable for your agent, as long as:
-1. It follows the [messages format](./chat_templating) (`List[Dict[str, str]]`) for its input `messages`, and it returns a `str`.
-2. It stops generating outputs *before* the sequences passed in the argument `stop_sequences`
+You could subclass the base `Model` class to create a model for your agent.
+The main criteria is to subclass the `generate` method, with these two criteria:
+1. It follows the [messages format](./chat_templating) (`List[Dict[str, str]]`) for its input `messages`, and it returns an object with a `.content` attribute.
+2. It stops generating outputs at the sequences passed in the argument `stop_sequences`.
 
-For defining your LLM, you can make a `custom_model` method which accepts a list of [messages](./chat_templating) and returns an object with a .content attribute containing the text. This callable also needs to accept a `stop_sequences` argument that indicates when to stop generating.
+For defining your LLM, you can make a `CustomModel` class that inherits from the base `Model` class.
+It should have a generate method that takes a list of [messages](./chat_templating) and returns an object with a .content attribute containing the text. The `generate` method also needs to accept a `stop_sequences` argument that indicates when to stop generating.
 
 ```python
 from huggingface_hub import login, InferenceClient
@@ -29,13 +33,16 @@ model_id = "meta-llama/Llama-3.3-70B-Instruct"
 
 client = InferenceClient(model=model_id)
 
-def custom_model(messages, stop_sequences=["Task"]):
-    response = client.chat_completion(messages, stop=stop_sequences, max_tokens=1024)
-    answer = response.choices[0].message
-    return answer
+class CustomModel(Model):
+    def generate(messages, stop_sequences=["Task"]):
+        response = client.chat_completion(messages, stop=stop_sequences, max_tokens=1024)
+        answer = response.choices[0].message
+        return answer
+
+custom_model = CustomModel()
 ```
 
-Additionally, `custom_model` can also take a `grammar` argument. In the case where you specify a `grammar` upon agent initialization, this argument will be passed to the calls to model, with the `grammar` that you defined upon initialization, to allow [constrained generation](https://huggingface.co/docs/text-generation-inference/conceptual/guidance) in order to force properly-formatted agent outputs.
+Additionally, `generate` can also take a `grammar` argument. In the case where you specify a `grammar` upon agent initialization, this argument will be passed to the calls to model, with the `grammar` that you defined upon initialization, to allow [constrained generation](https://huggingface.co/docs/text-generation-inference/conceptual/guidance) in order to force properly-formatted agent outputs.
 
 ### TransformersModel
 

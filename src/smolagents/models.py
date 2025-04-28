@@ -1193,6 +1193,9 @@ class InferenceClientModel(ApiModel):
         api_key (`str`, *optional*):
             Token to use for authentication. This is a duplicated argument from `token` to make [`InferenceClientModel`]
             follow the same pattern as `openai.OpenAI` client. Cannot be used if `token` is set. Defaults to None.
+        bill_to (`str`, *optional*):
+            The billing account to use for the requests. By default the requests are billed on the user’s account. Requests can only be billed to
+            an organization the user is a member of, and which has subscribed to Enterprise Hub.
         **kwargs:
             Additional keyword arguments to pass to the Hugging Face API.
 
@@ -1224,6 +1227,7 @@ class InferenceClientModel(ApiModel):
         client_kwargs: dict[str, Any] | None = None,
         custom_role_conversions: dict[str, str] | None = None,
         api_key: str | None = None,
+        bill_to: str | None = None,
         **kwargs,
     ):
         if token is not None and api_key is not None:
@@ -1241,6 +1245,7 @@ class InferenceClientModel(ApiModel):
             "provider": provider,
             "token": token,
             "timeout": timeout,
+            "bill_to": bill_to,
         }
         super().__init__(model_id=model_id, custom_role_conversions=custom_role_conversions, **kwargs)
 

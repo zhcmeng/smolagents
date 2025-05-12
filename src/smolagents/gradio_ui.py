@@ -164,7 +164,7 @@ def _process_action_step(step_log: ActionStep, skip_model_outputs: bool = False)
     yield gr.ChatMessage(role="assistant", content="-----", metadata={"status": "done"})
 
 
-def _process_planning_step(step_log: PlanningStep) -> Generator:
+def _process_planning_step(step_log: PlanningStep, skip_model_outputs: bool = False) -> Generator:
     """
     Process a [`PlanningStep`] and yield appropriate gradio.ChatMessage objects.
 
@@ -176,8 +176,9 @@ def _process_planning_step(step_log: PlanningStep) -> Generator:
     """
     import gradio as gr
 
-    yield gr.ChatMessage(role="assistant", content="**Planning step**", metadata={"status": "done"})
-    yield gr.ChatMessage(role="assistant", content=step_log.plan, metadata={"status": "done"})
+    if not skip_model_outputs:
+        yield gr.ChatMessage(role="assistant", content="**Planning step**", metadata={"status": "done"})
+        yield gr.ChatMessage(role="assistant", content=step_log.plan, metadata={"status": "done"})
     yield gr.ChatMessage(
         role="assistant", content=get_step_footnote_content(step_log, "Planning step"), metadata={"status": "done"}
     )
@@ -236,7 +237,7 @@ def pull_messages_from_step(step_log: MemoryStep, skip_model_outputs: bool = Fal
     if isinstance(step_log, ActionStep):
         yield from _process_action_step(step_log, skip_model_outputs)
     elif isinstance(step_log, PlanningStep):
-        yield from _process_planning_step(step_log)
+        yield from _process_planning_step(step_log, skip_model_outputs)
     elif isinstance(step_log, FinalAnswerStep):
         yield from _process_final_answer_step(step_log)
     else:

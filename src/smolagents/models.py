@@ -1061,10 +1061,7 @@ class LiteLLMModel(ApiModel):
         )
         for event in self.client.completion(**completion_kwargs, stream=True, stream_options={"include_usage": True}):
             if event.choices:
-                if event.choices[0].delta is None:
-                    if not getattr(event.choices[0], "finish_reason", None):
-                        raise ValueError(f"No content or tool calls in event: {event}")
-                else:
+                if event.choices[0].delta.content:
                     yield ChatMessageStreamDelta(
                         content=event.choices[0].delta.content,
                     )

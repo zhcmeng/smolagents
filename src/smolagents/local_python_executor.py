@@ -491,6 +491,8 @@ def evaluate_class_def(
                 elif isinstance(target, ast.Attribute):
                     obj = evaluate_ast(target.value, class_dict, static_tools, custom_tools, authorized_imports)
                     setattr(obj, target.attr, value)
+        elif isinstance(stmt, ast.Pass):
+            pass
         elif (
             isinstance(stmt, ast.Expr)
             and stmt == class_def.body[0]

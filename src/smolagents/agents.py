@@ -22,6 +22,7 @@ import re
 import tempfile
 import textwrap
 import time
+import warnings
 from abc import ABC, abstractmethod
 from collections.abc import Callable, Generator
 from dataclasses import dataclass
@@ -59,7 +60,14 @@ from .memory import (
     TokenUsage,
     ToolCall,
 )
-from .models import ChatMessage, ChatMessageStreamDelta, MessageRole, Model, parse_json_if_needed
+from .models import (
+    CODEAGENT_RESPONSE_FORMAT,
+    ChatMessage,
+    ChatMessageStreamDelta,
+    MessageRole,
+    Model,
+    parse_json_if_needed,
+)
 from .monitoring import (
     YELLOW_HEX,
     AgentLogger,
@@ -76,6 +84,7 @@ from .utils import (
     AgentParsingError,
     AgentToolCallError,
     AgentToolExecutionError,
+    extract_code_from_text,
     is_valid_name,
     make_init_file,
     parse_code_blobs,
@@ -206,6 +215,9 @@ class MultiStepAgent(ABC):
         add_base_tools (`bool`, default `False`): Whether to add the base tools to the agent's tools.
         verbosity_level (`LogLevel`, default `LogLevel.INFO`): Level of verbosity of the agent's logs.
         grammar (`dict[str, str]`, *optional*): Grammar used to parse the LLM output.
+            <Deprecated version="1.17.0">
+            Parameter `grammar` is deprecated and will be removed in version 1.20.
+            </Deprecated>
         managed_agents (`list`, *optional*): Managed agents that the agent can call.
         step_callbacks (`list[Callable]`, *optional*): Callbacks that will be called at each step.
         planning_interval (`int`, *optional*): Interval at which the agent will run a planning step.
@@ -251,6 +263,11 @@ class MultiStepAgent(ABC):
 
         self.max_steps = max_steps
         self.step_number = 0
+        if grammar is not None:
+            warnings.warn(
+                "Parameter 'grammar' is deprecated and will be removed in version 1.20.",
+                FutureWarning,
+            )
         self.grammar = grammar
         self.planning_interval = planning_interval
         self.state: dict[str, Any] = {}
@@ -1333,13 +1350,17 @@ class CodeAgent(MultiStepAgent):
         tools (`list[Tool]`): [`Tool`]s that the agent can use.
         model (`Model`): Model that will generate the agent's actions.
         prompt_templates ([`~agents.PromptTemplates`], *optional*): Prompt templates.
-        grammar (`dict[str, str]`, *optional*): Grammar used to parse the LLM output.
         additional_authorized_imports (`list[str]`, *optional*): Additional authorized imports for the agent.
         planning_interval (`int`, *optional*): Interval at which the agent will run a planning step.
         executor_type (`str`, default `"local"`): Which executor type to use between `"local"`, `"e2b"`, or `"docker"`.
         executor_kwargs (`dict`, *optional*): Additional arguments to pass to initialize the executor.
         max_print_outputs_length (`int`, *optional*): Maximum length of the print outputs.
         stream_outputs (`bool`, *optional*, default `False`): Whether to stream outputs during execution.
+        use_structured_outputs_internally (`bool`, default `False`): Whether to use structured generation at each action step: improves performance for many models.
+        grammar (`dict[str, str]`, *optional*): Grammar used to parse the LLM output.
+            <Deprecated version="1.17.0">
+            Parameter `grammar` is deprecated and will be removed in version 1.20.
+            </Deprecated>
         **kwargs: Additional keyword arguments.
     """
 
@@ -1348,21 +1369,30 @@ class CodeAgent(MultiStepAgent):
         tools: list[Tool],
         model: Model,
         prompt_templates: PromptTemplates | None = None,
-        grammar: dict[str, str] | None = None,
         additional_authorized_imports: list[str] | None = None,
         planning_interval: int | None = None,
         executor_type: str | None = "local",
         executor_kwargs: dict[str, Any] | None = None,
         max_print_outputs_length: int | None = None,
         stream_outputs: bool = False,
+        use_structured_outputs_internally: bool = False,
+        grammar: dict[str, str] | None = None,
         **kwargs,
     ):
         self.additional_authorized_imports = additional_authorized_imports if additional_authorized_imports else []
         self.authorized_imports = sorted(set(BASE_BUILTIN_MODULES) | set(self.additional_authorized_imports))
         self.max_print_outputs_length = max_print_outputs_length
-        prompt_templates = prompt_templates or yaml.safe_load(
-            importlib.resources.files("smolagents.prompts").joinpath("code_agent.yaml").read_text()
-        )
+        self._use_structured_outputs_internally = use_structured_outputs_internally
+        if use_structured_outputs_internally:
+            prompt_templates = prompt_templates or yaml.safe_load(
+                importlib.resources.files("smolagents.prompts").joinpath("structured_code_agent.yaml").read_text()
+            )
+        else:
+            prompt_templates = prompt_templates or yaml.safe_load(
+                importlib.resources.files("smolagents.prompts").joinpath("code_agent.yaml").read_text()
+            )
+        if grammar and use_structured_outputs_internally:
+            raise ValueError("You cannot use 'grammar' and 'use_structured_outputs_internally' at the same time.")
         super().__init__(
             tools=tools,
             model=model,
@@ -1429,7 +1459,11 @@ class CodeAgent(MultiStepAgent):
         ### Generate model output ###
         memory_step.model_input_messages = input_messages
         try:
-            additional_args = {"grammar": self.grammar} if self.grammar is not None else {}
+            additional_args: dict[str, Any] = {}
+            if self.grammar:
+                additional_args["grammar"] = self.grammar
+            if self._use_structured_outputs_internally:
+                additional_args["response_format"] = CODEAGENT_RESPONSE_FORMAT
             if self.stream_outputs:
                 output_stream = self.model.generate_stream(
                     input_messages,
@@ -1449,14 +1483,13 @@ class CodeAgent(MultiStepAgent):
                         assert isinstance(event, ChatMessageStreamDelta)
                         yield event
 
-                model_output = output_text
                 chat_message = ChatMessage(
                     role="assistant",
-                    content=model_output,
+                    content=output_text,
                     token_usage=TokenUsage(input_tokens=input_tokens, output_tokens=output_tokens),
                 )
                 memory_step.model_output_message = chat_message
-                model_output = chat_message.content
+                output_text = chat_message.content
             else:
                 chat_message: ChatMessage = self.model.generate(
                     input_messages,
@@ -1464,27 +1497,32 @@ class CodeAgent(MultiStepAgent):
                     **additional_args,
                 )
                 memory_step.model_output_message = chat_message
-                model_output = chat_message.content
+                output_text = chat_message.content
                 self.logger.log_markdown(
-                    content=model_output,
+                    content=output_text,
                     title="Output message of the LLM:",
                     level=LogLevel.DEBUG,
                 )
 
             # This adds <end_code> sequence to the history.
             # This will nudge ulterior LLM calls to finish with <end_code>, thus efficiently stopping generation.
-            if model_output and model_output.strip().endswith("```"):
-                model_output += "<end_code>"
-                memory_step.model_output_message.content = model_output
+            if output_text and output_text.strip().endswith("```"):
+                output_text += "<end_code>"
+                memory_step.model_output_message.content = output_text
 
             memory_step.token_usage = chat_message.token_usage
-            memory_step.model_output = model_output
+            memory_step.model_output = output_text
         except Exception as e:
             raise AgentGenerationError(f"Error in generating model output:\n{e}", self.logger) from e
 
         ### Parse output ###
         try:
-            code_action = fix_final_answer_code(parse_code_blobs(model_output))
+            if self._use_structured_outputs_internally:
+                code_action = json.loads(output_text)["code"]
+                code_action = extract_code_from_text(code_action) or code_action
+            else:
+                code_action = parse_code_blobs(output_text)
+            code_action = fix_final_answer_code(code_action)
         except Exception as e:
             error_msg = f"Error in code parsing:\n{e}\nMake sure to provide correct code blobs."
             raise AgentParsingError(error_msg, self.logger)

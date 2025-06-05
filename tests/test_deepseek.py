@@ -5,7 +5,7 @@
 """
 
 import os
-from smolagents import OpenAIServerModel, ChatMessage
+from smolagents import OpenAIServerModel
 
 def test_deepseek():
     print("=== DeepSeek API 测试 ===")
@@ -30,7 +30,7 @@ def test_deepseek():
         # 测试简单对话
         print("正在测试API连接...")
         
-        messages = [ChatMessage(role="user", content="你好！请简短回答你是什么模型？")]
+        messages = [{"role": "user", "content": "你好！请简短回答你是什么模型？"}]
         response = model.generate(messages)
         
         print("✅ API测试成功！")

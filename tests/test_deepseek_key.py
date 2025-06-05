@@ -34,11 +34,10 @@ def test_deepseek_api_key():
             api_key=api_key,
         )
         
-        # 发送一个简单的测试请求
-        from smolagents.types import ChatMessage
-        test_message = ChatMessage(role="user", content="Hello!")
+        # 发送一个简单的测试请求（使用字典格式）
+        messages = [{"role": "user", "content": "Hello!"}]
         
-        response = model.generate([test_message])
+        response = model.generate(messages)
         
         print("✅ API连接成功!")
         print(f"测试响应: {response.content[:100]}...")
@@ -77,10 +76,9 @@ def test_different_models():
                 api_key=api_key,
             )
             
-            from smolagents.types import ChatMessage
-            test_message = ChatMessage(role="user", content="简短回答：你是什么模型？")
+            messages = [{"role": "user", "content": "简短回答：你是什么模型？"}]
             
-            response = model.generate([test_message])
+            response = model.generate(messages)
             print(f"✅ {description}响应: {response.content[:50]}...")
             
         except Exception as e:

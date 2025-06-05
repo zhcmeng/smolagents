@@ -24,13 +24,14 @@ def example_openai_server_model():
         model_id="deepseek-chat",
         api_base="https://api.deepseek.com",  # 或者使用 "https://api.deepseek.com/v1"
         api_key=os.getenv("DEEPSEEK_API_KEY"),  # 从环境变量获取API密钥
+        max_tokens=8192,  # DeepSeek API最大支持8192 tokens
     )
     
     # 创建智能体
     agent = CodeAgent(
         tools=[PythonInterpreterTool(), WebSearchTool()],
         model=model,
-        verbose=1
+        verbosity_level=1
     )
     
     # 测试运行
@@ -51,12 +52,13 @@ def example_deepseek_reasoner():
         api_key=os.getenv("DEEPSEEK_API_KEY"),
         # 可以调整推理强度
         reasoning_effort="medium",  # 选项: "low", "medium", "high", "none"
+        max_tokens=8192,  # DeepSeek API最大支持8192 tokens，推理模型也需遵循此限制
     )
     
     agent = CodeAgent(
         tools=[PythonInterpreterTool()],
         model=model,
-        verbose=2
+        verbosity_level=2
     )
     
     # 测试推理能力
@@ -77,7 +79,7 @@ def example_litellm_model():
         model_id="deepseek/deepseek-chat",  # LiteLLM格式
         api_key=os.getenv("DEEPSEEK_API_KEY"),
         temperature=0.7,
-        max_tokens=4096,
+        max_tokens=8192,  # DeepSeek API最大支持8192 tokens
     )
     
     agent = CodeAgent(
@@ -158,7 +160,8 @@ def example_custom_deepseek_class():
     # 使用自定义类
     model = DeepSeekModel(
         model_type="chat",
-        temperature=0.7
+        temperature=0.7,
+        max_tokens=8192  # DeepSeek API最大支持8192 tokens
     )
     
     agent = CodeAgent(
@@ -220,8 +223,8 @@ def main():
     
     try:
         # 演示各种集成方式
-        example_openai_server_model()
-        print("\n" + "="*50 + "\n")
+        # example_openai_server_model()
+        # print("\n" + "="*50 + "\n")
         
         example_deepseek_reasoner()
         print("\n" + "="*50 + "\n")

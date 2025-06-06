@@ -14,6 +14,29 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+"""
+工具函数模块 - smolagents 的核心工具函数库
+
+本模块提供了 smolagents 框架中使用的各种实用工具函数，包括：
+- 代码解析和提取
+- JSON 处理和序列化
+- 错误异常类定义
+- 动态源码获取
+- 图像编码处理
+- 安全验证函数
+
+主要功能:
+- 从 LLM 输出中提取和解析代码块
+- 处理工具调用的 JSON 格式数据
+- 提供代理相关的异常类
+- 支持动态环境（如 Jupyter）中的源码获取
+- 图像的 base64 编码转换
+
+作者: HuggingFace 团队
+版本: 1.0
+"""
+
 import ast
 import base64
 import importlib.metadata
@@ -76,7 +99,15 @@ def escape_code_brackets(text: str) -> str:
 
 
 class AgentError(Exception):
-    """Base class for other agent-related exceptions"""
+    """
+    代理异常基类 - 所有代理相关异常的基础类
+    
+    该类为所有代理相关的异常提供统一的基础功能，包括错误消息记录和序列化。
+    
+    参数:
+        message (str): 错误消息
+        logger (AgentLogger): 用于记录错误的日志记录器
+    """
 
     def __init__(self, message, logger: "AgentLogger"):
         super().__init__(message)
@@ -84,42 +115,42 @@ class AgentError(Exception):
         logger.log_error(message)
 
     def dict(self) -> dict[str, str]:
+        """
+        返回异常的字典表示
+        
+        返回:
+            dict[str, str]: 包含异常类型和消息的字典
+        """
         return {"type": self.__class__.__name__, "message": str(self.message)}
 
 
 class AgentParsingError(AgentError):
-    """Exception raised for errors in parsing in the agent"""
-
+    """代理解析错误 - 当代理无法正确解析 LLM 输出时抛出"""
     pass
 
 
 class AgentExecutionError(AgentError):
-    """Exception raised for errors in execution in the agent"""
-
+    """代理执行错误 - 当代理执行过程中发生错误时抛出"""
     pass
 
 
 class AgentMaxStepsError(AgentError):
-    """Exception raised for errors in execution in the agent"""
-
+    """代理最大步数错误 - 当代理达到最大执行步数限制时抛出"""
     pass
 
 
 class AgentToolCallError(AgentExecutionError):
-    """Exception raised for errors when incorrect arguments are passed to the tool"""
-
+    """工具调用错误 - 当向工具传递错误参数时抛出"""
     pass
 
 
 class AgentToolExecutionError(AgentExecutionError):
-    """Exception raised for errors when executing a tool"""
-
+    """工具执行错误 - 当工具执行过程中发生错误时抛出"""
     pass
 
 
 class AgentGenerationError(AgentError):
-    """Exception raised for errors in generation in the agent"""
-
+    """代理生成错误 - 当 LLM 生成过程中发生错误时抛出"""
     pass
 
 

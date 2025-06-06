@@ -14,6 +14,26 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+"""
+工具模块 - smolagents 的工具定义和管理系统
+
+本模块提供了工具的基础框架和各种工具包装器，允许用户：
+- 定义自定义工具
+- 从 Hugging Face Hub 加载工具
+- 创建 Gradio 演示
+- 管理工具集合
+- 与 LangChain 和其他框架集成
+
+主要类：
+- Tool: 工具的基础抽象类
+- ToolCollection: 工具集合管理器
+- PipelineTool: 基于 Transformers 管道的工具
+
+作者: HuggingFace 团队
+版本: 1.0
+"""
+
 from __future__ import annotations
 
 import ast
@@ -89,24 +109,36 @@ CONVERSION_DICT = {"str": "string", "int": "integer", "float": "number"}
 
 class Tool:
     """
-    A base class for the functions used by the agent. Subclass this and implement the `forward` method as well as the
-    following class attributes:
-
-    - **description** (`str`) -- A short description of what your tool does, the inputs it expects and the output(s) it
-      will return. For instance 'This is a tool that downloads a file from a `url`. It takes the `url` as input, and
-      returns the text contained in the file'.
-    - **name** (`str`) -- A performative name that will be used for your tool in the prompt to the agent. For instance
-      `"text-classifier"` or `"image_generator"`.
-    - **inputs** (`Dict[str, Dict[str, Union[str, type, bool]]]`) -- The dict of modalities expected for the inputs.
-      It has one `type`key and a `description`key.
-      This is used by `launch_gradio_demo` or to make a nice space from your tool, and also can be used in the generated
-      description for your tool.
-    - **output_type** (`type`) -- The type of the tool output. This is used by `launch_gradio_demo`
-      or to make a nice space from your tool, and also can be used in the generated description for your tool.
-
-    You can also override the method [`~Tool.setup`] if your tool has an expensive operation to perform before being
-    usable (such as loading a model). [`~Tool.setup`] will be called the first time you use your tool, but not at
-    instantiation.
+    代理使用的工具基类
+    
+    继承此类并实现 `forward` 方法以及以下类属性：
+    
+    必需属性：
+    - **description** (`str`) -- 工具功能的简短描述，包括期望的输入和返回的输出。
+      例如："这是一个从 `url` 下载文件的工具。它接受 `url` 作为输入，并返回文件中包含的文本"。
+    - **name** (`str`) -- 在代理提示中使用的工具名称。
+      例如："text-classifier" 或 "image_generator"。
+    - **inputs** (`Dict[str, Dict[str, Union[str, type, bool]]]`) -- 输入参数的字典。
+      每个输入包含 `type` 和 `description` 键。
+      用于 `launch_gradio_demo` 创建工具的用户界面，也可用于生成工具描述。
+    - **output_type** (`type`) -- 工具输出的类型。
+      用于 `launch_gradio_demo` 创建用户界面，也可用于生成工具描述。
+    
+    可选方法：
+    - 如果工具需要在使用前执行耗时操作（如加载模型），可以重写 [`~Tool.setup`] 方法。
+    - [`~Tool.setup`] 将在首次使用工具时被调用，而不是在实例化时调用。
+    
+    使用示例：
+    ```python
+    class MyTool(Tool):
+        name = "my_tool"
+        description = "这是我的自定义工具"
+        inputs = {"text": {"type": "string", "description": "输入文本"}}
+        output_type = "string"
+        
+        def forward(self, text: str) -> str:
+            return f"处理后的文本: {text}"
+    ```
     """
 
     name: str

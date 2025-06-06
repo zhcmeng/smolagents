@@ -14,6 +14,33 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+"""
+默认工具模块 - smolagents 的内置工具集合
+
+本模块提供了 smolagents 框架中的默认工具实现，包括：
+
+核心工具:
+- PythonInterpreterTool: Python 代码解释器
+- FinalAnswerTool: 最终答案提供工具
+- UserInputTool: 用户输入工具
+
+网络工具:
+- WebSearchTool: 通用网络搜索工具（支持多种搜索引擎）
+- DuckDuckGoSearchTool: DuckDuckGo 搜索工具
+- GoogleSearchTool: Google 搜索工具（需要 API 密钥）
+- VisitWebpageTool: 网页访问和内容提取工具
+- WikipediaSearchTool: 维基百科搜索工具
+
+多媒体工具:
+- SpeechToTextTool: 语音转文本工具
+
+这些工具可以直接使用，也可以作为自定义工具的参考实现。
+
+作者: HuggingFace 团队
+版本: 1.0
+"""
+
 from dataclasses import dataclass
 from typing import Any
 
@@ -36,6 +63,19 @@ class PreTool:
 
 
 class PythonInterpreterTool(Tool):
+    """
+    Python 代码解释器工具
+    
+    这是一个用于执行 Python 代码的工具，可以进行计算、数据处理等操作。
+    它提供了一个安全的 Python 执行环境，只允许导入预授权的模块。
+    
+    特性:
+    - 安全的代码执行环境
+    - 可配置的授权导入模块
+    - 支持变量状态保持
+    - 详细的执行输出和错误信息
+    """
+    
     name = "python_interpreter"
     description = "This is a tool that evaluates python code. It can be used to perform calculations."
     inputs = {
@@ -78,6 +118,13 @@ class PythonInterpreterTool(Tool):
 
 
 class FinalAnswerTool(Tool):
+    """
+    最终答案工具
+    
+    这是一个特殊工具，用于提供问题的最终答案。
+    当代理完成任务并准备返回结果时会使用此工具。
+    """
+    
     name = "final_answer"
     description = "Provides a final answer to the given problem."
     inputs = {"answer": {"type": "any", "description": "The final answer to the problem"}}
@@ -88,6 +135,13 @@ class FinalAnswerTool(Tool):
 
 
 class UserInputTool(Tool):
+    """
+    用户输入工具
+    
+    这个工具允许代理向用户询问特定问题并获取用户的输入。
+    适用于需要人机交互的场景。
+    """
+    
     name = "user_input"
     description = "Asks for user's input on a specific question"
     inputs = {"question": {"type": "string", "description": "The question to ask the user"}}

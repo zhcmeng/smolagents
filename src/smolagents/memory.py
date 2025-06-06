@@ -1,3 +1,26 @@
+"""
+内存管理模块 - smolagents 的代理记忆系统
+
+本模块实现了代理的内存管理功能，用于跟踪和存储代理执行过程中的所有步骤和状态。
+
+主要功能:
+- 记录代理的每个执行步骤
+- 管理工具调用历史
+- 存储观察结果和错误信息
+- 支持记忆回放和调试
+- 提供消息格式转换
+
+主要类：
+- AgentMemory: 代理记忆的主要管理类
+- ActionStep: 行动步骤记录
+- PlanningStep: 规划步骤记录
+- TaskStep: 任务步骤记录
+- ToolCall: 工具调用记录
+
+作者: HuggingFace 团队
+版本: 1.0
+"""
+
 from dataclasses import asdict, dataclass
 from logging import getLogger
 from typing import TYPE_CHECKING, Any, TypedDict
@@ -186,28 +209,59 @@ class FinalAnswerStep(MemoryStep):
 
 
 class AgentMemory:
+    """
+    代理记忆管理器 - 管理代理执行过程中的所有步骤和状态
+    
+    该类负责跟踪和存储代理的完整执行历史，包括系统提示、任务、
+    行动步骤、规划步骤等。提供了记忆回放、步骤检索和格式转换等功能。
+    
+    属性:
+        system_prompt (SystemPromptStep): 系统提示步骤
+        steps (list): 所有执行步骤的列表
+    
+    参数:
+        system_prompt (str): 代理的系统提示内容
+    """
+    
     def __init__(self, system_prompt: str):
         self.system_prompt = SystemPromptStep(system_prompt=system_prompt)
         self.steps: list[TaskStep | ActionStep | PlanningStep] = []
 
     def reset(self):
+        """重置记忆，清空所有步骤"""
         self.steps = []
 
     def get_succinct_steps(self) -> list[dict]:
+        """
+        获取简洁的步骤列表（不包含模型输入消息）
+        
+        返回:
+            list[dict]: 简化的步骤字典列表
+        """
         return [
             {key: value for key, value in step.dict().items() if key != "model_input_messages"} for step in self.steps
         ]
 
     def get_full_steps(self) -> list[dict]:
+        """
+        获取完整的步骤列表（包含所有信息）
+        
+        返回:
+            list[dict]: 完整的步骤字典列表
+        """
         return [step.dict() for step in self.steps]
 
     def replay(self, logger: AgentLogger, detailed: bool = False):
-        """Prints a pretty replay of the agent's steps.
+        """
+        回放代理的执行步骤
+        
+        在控制台中以格式化的方式显示代理的完整执行历史，
+        有助于调试和理解代理的决策过程。
 
-        Args:
-            logger (AgentLogger): The logger to print replay logs to.
-            detailed (bool, optional): If True, also displays the memory at each step. Defaults to False.
-                Careful: will increase log length exponentially. Use only for debugging.
+        参数:
+            logger (AgentLogger): 用于打印回放日志的日志记录器
+            detailed (bool, 可选): 如果为 True，还会显示每个步骤的详细记忆。
+                默认为 False。注意：会指数级增加日志长度，仅用于调试。
         """
         logger.console.log("Replaying the agent's steps:")
         logger.log_markdown(title="System prompt", content=self.system_prompt.system_prompt, level=LogLevel.ERROR)

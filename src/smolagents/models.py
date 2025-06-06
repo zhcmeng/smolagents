@@ -11,6 +11,33 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+"""
+模型模块 - smolagents 的多模型支持系统
+
+本模块提供了多种 LLM 模型的统一接口，支持：
+- 本地模型（Transformers、vLLM、MLX）
+- 云端 API 模型（OpenAI、HuggingFace、LiteLLM）
+- 工具调用和结构化输出
+- 流式生成和批量处理
+
+主要类：
+- Model: 模型的抽象基类
+- TransformersModel: 基于 Transformers 的本地模型
+- OpenAIServerModel: OpenAI 兼容的 API 模型
+- InferenceClientModel: HuggingFace Inference API 模型
+- VLLMModel: 基于 vLLM 的高性能模型
+
+支持的提供商：
+- OpenAI、Azure OpenAI
+- HuggingFace Hub
+- Amazon Bedrock
+- 自定义 OpenAI 兼容服务器
+
+作者: HuggingFace 团队
+版本: 1.0
+"""
+
 import json
 import logging
 import os
@@ -294,6 +321,26 @@ def supports_stop_parameter(model_id: str) -> bool:
 
 
 class Model:
+    """
+    模型抽象基类 - 为所有 LLM 模型提供统一接口
+    
+    该类定义了与 LLM 交互的标准接口，所有具体的模型实现都应继承此类。
+    
+    主要功能:
+    - 统一的消息处理和生成接口
+    - 工具调用支持
+    - 结构化输出格式
+    - 令牌使用统计
+    - 停止序列处理
+    
+    参数:
+        flatten_messages_as_text (bool, 默认 False): 是否将消息扁平化为纯文本
+        tool_name_key (str, 默认 "name"): 工具调用中工具名称的键名
+        tool_arguments_key (str, 默认 "arguments"): 工具调用中参数的键名
+        model_id (str, 可选): 模型标识符
+        **kwargs: 传递给具体模型实现的其他参数
+    """
+    
     def __init__(
         self,
         flatten_messages_as_text: bool = False,

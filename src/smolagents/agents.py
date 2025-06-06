@@ -14,6 +14,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+
+"""
+智能代理模块 - smolagents 的核心代理实现
+
+本模块包含了基于 ReAct 框架的多步骤智能代理实现，支持工具调用和代码执行两种模式。
+主要类：
+- MultiStepAgent: 多步骤代理的抽象基类
+- ToolCallingAgent: 基于工具调用的代理
+- CodeAgent: 基于代码执行的代理
+
+作者: HuggingFace 团队
+版本: 1.0
+"""
+
 import importlib
 import inspect
 import json
@@ -96,11 +110,33 @@ logger = getLogger(__name__)
 
 
 def get_variable_names(self, template: str) -> set[str]:
+    """
+    从模板字符串中提取变量名称
+    
+    参数:
+        template (str): Jinja2 模板字符串
+        
+    返回:
+        set[str]: 模板中使用的变量名称集合
+    """
     pattern = re.compile(r"\{\{([^{}]+)\}\}")
     return {match.group(1).strip() for match in pattern.finditer(template)}
 
 
 def populate_template(template: str, variables: dict[str, Any]) -> str:
+    """
+    使用提供的变量填充 Jinja2 模板
+    
+    参数:
+        template (str): Jinja2 模板字符串
+        variables (dict[str, Any]): 用于填充模板的变量字典
+        
+    返回:
+        str: 填充后的字符串
+        
+    异常:
+        Exception: 当模板渲染失败时抛出异常
+    """
     compiled_template = Template(template, undefined=StrictUndefined)
     try:
         return compiled_template.render(**variables)
@@ -110,6 +146,12 @@ def populate_template(template: str, variables: dict[str, Any]) -> str:
 
 @dataclass
 class FinalOutput:
+    """
+    代理执行的最终输出结果
+    
+    属性:
+        output (Any | None): 代理执行的最终输出，可以是任何类型或 None
+    """
     output: Any | None
 
 
@@ -204,30 +246,39 @@ class RunResult:
 
 class MultiStepAgent(ABC):
     """
-    Agent class that solves the given task step by step, using the ReAct framework:
-    While the objective is not reached, the agent will perform a cycle of action (given by the LLM) and observation (obtained from the environment).
-
-    Args:
-        tools (`list[Tool]`): [`Tool`]s that the agent can use.
-        model (`Callable[[list[dict[str, str]]], ChatMessage]`): Model that will generate the agent's actions.
-        prompt_templates ([`~agents.PromptTemplates`], *optional*): Prompt templates.
-        max_steps (`int`, default `20`): Maximum number of steps the agent can take to solve the task.
-        add_base_tools (`bool`, default `False`): Whether to add the base tools to the agent's tools.
-        verbosity_level (`LogLevel`, default `LogLevel.INFO`): Level of verbosity of the agent's logs.
-        grammar (`dict[str, str]`, *optional*): Grammar used to parse the LLM output.
-            <Deprecated version="1.17.0">
-            Parameter `grammar` is deprecated and will be removed in version 1.20.
-            </Deprecated>
-        managed_agents (`list`, *optional*): Managed agents that the agent can call.
-        step_callbacks (`list[Callable]`, *optional*): Callbacks that will be called at each step.
-        planning_interval (`int`, *optional*): Interval at which the agent will run a planning step.
-        name (`str`, *optional*): Necessary for a managed agent only - the name by which this agent can be called.
-        description (`str`, *optional*): Necessary for a managed agent only - the description of this agent.
-        provide_run_summary (`bool`, *optional*): Whether to provide a run summary when called as a managed agent.
-        final_answer_checks (`list[Callable]`, *optional*): List of validation functions to run before accepting a final answer.
-            Each function should:
-            - Take the final answer and the agent's memory as arguments.
-            - Return a boolean indicating whether the final answer is valid.
+    多步骤智能代理抽象基类 - 基于 ReAct 框架的任务解决器
+    
+    该类使用 ReAct（推理-行动）框架逐步解决给定任务：
+    在目标未达成时，代理将执行由 LLM 生成的行动和从环境获得的观察的循环。
+    
+    主要特性:
+    - 支持多种工具调用
+    - 支持子代理管理
+    - 支持步骤回调和规划间隔
+    - 支持最终答案验证
+    - 支持流式输出
+    
+    参数:
+        tools (`list[Tool]`): 代理可以使用的工具列表
+        model (`Callable[[list[dict[str, str]]], ChatMessage]`): 生成代理行动的模型
+        prompt_templates ([`~agents.PromptTemplates`], *可选*): 提示模板集合
+        max_steps (`int`, 默认 `20`): 代理解决任务的最大步数
+        add_base_tools (`bool`, 默认 `False`): 是否添加基础工具到代理的工具集
+        verbosity_level (`LogLevel`, 默认 `LogLevel.INFO`): 代理日志的详细程度
+        grammar (`dict[str, str]`, *可选*): 用于解析 LLM 输出的语法规则
+            <已弃用 版本="1.17.0">
+            参数 `grammar` 已弃用，将在版本 1.20 中移除。
+            </已弃用>
+        managed_agents (`list`, *可选*): 代理可以调用的子代理列表
+        step_callbacks (`list[Callable]`, *可选*): 每步执行时调用的回调函数列表
+        planning_interval (`int`, *可选*): 执行规划步骤的间隔
+        name (`str`, *可选*): 子代理必需 - 该代理被调用时的名称
+        description (`str`, *可选*): 子代理必需 - 该代理的描述
+        provide_run_summary (`bool`, *可选*): 作为子代理被调用时是否提供运行摘要
+        final_answer_checks (`list[Callable]`, *可选*): 接受最终答案前运行的验证函数列表
+            每个函数应该:
+            - 接受最终答案和代理的记忆作为参数
+            - 返回一个布尔值，指示最终答案是否有效
     """
 
     def __init__(
@@ -356,23 +407,33 @@ class MultiStepAgent(ABC):
         max_steps: int | None = None,
     ):
         """
-        Run the agent for the given task.
-
-        Args:
-            task (`str`): Task to perform.
-            stream (`bool`): Whether to run in streaming mode.
-                If `True`, returns a generator that yields each step as it is executed. You must iterate over this generator to process the individual steps (e.g., using a for loop or `next()`).
-                If `False`, executes all steps internally and returns only the final answer after completion.
-            reset (`bool`): Whether to reset the conversation or keep it going from previous run.
-            images (`list[PIL.Image.Image]`, *optional*): Image(s) objects.
-            additional_args (`dict`, *optional*): Any other variables that you want to pass to the agent run, for instance images or dataframes. Give them clear names!
-            max_steps (`int`, *optional*): Maximum number of steps the agent can take to solve the task. if not provided, will use the agent's default value.
-
-        Example:
-        ```py
+        为给定任务运行代理
+        
+        这是代理的主要执行方法，会启动完整的任务解决流程。
+        
+        参数:
+            task (`str`): 要执行的任务描述
+            stream (`bool`): 是否以流式模式运行
+                如果为 `True`，返回一个生成器，逐步产出每个执行步骤。
+                必须遍历此生成器来处理各个步骤（例如使用 for 循环或 `next()`）。
+                如果为 `False`，内部执行所有步骤，完成后仅返回最终答案。
+            reset (`bool`): 是否重置对话或从上次运行继续
+            images (`list[PIL.Image.Image]`, *可选*): 图像对象列表
+            additional_args (`dict`, *可选*): 要传递给代理运行的其他变量，
+                例如图像或数据框。请为它们提供清晰的名称！
+            max_steps (`int`, *可选*): 代理解决任务的最大步数。
+                如果未提供，将使用代理的默认值。
+        
+        返回:
+            如果 stream=False：返回最终答案
+            如果 stream=True：返回步骤生成器
+            如果 return_full_result=True：返回 RunResult 对象
+        
+        示例:
+        ```python
         from smolagents import CodeAgent
         agent = CodeAgent(tools=[])
-        agent.run("What is the result of 2 power 3.7384?")
+        result = agent.run("2 的 3.7384 次方是多少？")
         ```
         """
         max_steps = max_steps or self.max_steps
@@ -1145,15 +1206,25 @@ You have been provided with these additional arguments, that you can access usin
 
 class ToolCallingAgent(MultiStepAgent):
     """
-    This agent uses JSON-like tool calls, using method `model.get_tool_call` to leverage the LLM engine's tool calling capabilities.
-
-    Args:
-        tools (`list[Tool]`): [`Tool`]s that the agent can use.
-        model (`Model`): Model that will generate the agent's actions.
-        prompt_templates ([`~agents.PromptTemplates`], *optional*): Prompt templates.
-        planning_interval (`int`, *optional*): Interval at which the agent will run a planning step.
-        stream_outputs (`bool`, *optional*, default `False`): Whether to stream outputs during execution.
-        **kwargs: Additional keyword arguments.
+    工具调用代理 - 使用结构化工具调用的智能代理
+    
+    该代理使用类似 JSON 的工具调用格式，利用 `model.get_tool_call` 方法
+    来发挥 LLM 引擎的工具调用能力。相比 CodeAgent，该代理更加结构化，
+    适合需要明确工具调用界面的场景。
+    
+    主要特点:
+    - 使用结构化的 JSON 格式进行工具调用
+    - 支持流式输出
+    - 更好的工具调用错误处理
+    - 支持状态变量替换
+    
+    参数:
+        tools (`list[Tool]`): 代理可以使用的工具列表
+        model (`Model`): 生成代理行动的模型
+        prompt_templates ([`~agents.PromptTemplates`], *可选*): 提示模板集合
+        planning_interval (`int`, *可选*): 执行规划步骤的间隔
+        stream_outputs (`bool`, *可选*, 默认 `False`): 执行期间是否流式输出
+        **kwargs: 其他关键字参数
     """
 
     def __init__(
@@ -1402,26 +1473,36 @@ class ToolCallingAgent(MultiStepAgent):
 
 class CodeAgent(MultiStepAgent):
     """
-    In this agent, the tool calls will be formulated by the LLM in code format, then parsed and executed.
-
-    Args:
-        tools (`list[Tool]`): [`Tool`]s that the agent can use.
-        model (`Model`): Model that will generate the agent's actions.
-        prompt_templates ([`~agents.PromptTemplates`], *optional*): Prompt templates.
-        additional_authorized_imports (`list[str]`, *optional*): Additional authorized imports for the agent.
-        planning_interval (`int`, *optional*): Interval at which the agent will run a planning step.
-        executor_type (`str`, default `"local"`): Which executor type to use between `"local"`, `"e2b"`, or `"docker"`.
-        executor_kwargs (`dict`, *optional*): Additional arguments to pass to initialize the executor.
-        max_print_outputs_length (`int`, *optional*): Maximum length of the print outputs.
-        stream_outputs (`bool`, *optional*, default `False`): Whether to stream outputs during execution.
-        use_structured_outputs_internally (`bool`, default `False`): Whether to use structured generation at each action step: improves performance for many models.
-
-            <Added version="1.17.0"/>
-        grammar (`dict[str, str]`, *optional*): Grammar used to parse the LLM output.
-            <Deprecated version="1.17.0">
-            Parameter `grammar` is deprecated and will be removed in version 1.20.
-            </Deprecated>
-        **kwargs: Additional keyword arguments.
+    代码执行代理 - 通过生成和执行代码来解决任务的智能代理
+    
+    该代理中，工具调用将由 LLM 以代码格式制定，然后被解析和执行。
+    这是一个非常强大的代理类型，能够处理复杂的数据分析、计算和操作任务。
+    
+    主要特点:
+    - 支持 Python 代码生成和执行
+    - 支持多种执行环境（本地、Docker、E2B）
+    - 支持自定义导入模块
+    - 支持结构化输出生成
+    - 强大的错误处理和安全控制
+    
+    参数:
+        tools (`list[Tool]`): 代理可以使用的工具列表
+        model (`Model`): 生成代理行动的模型
+        prompt_templates ([`~agents.PromptTemplates`], *可选*): 提示模板集合
+        additional_authorized_imports (`list[str]`, *可选*): 代理的额外授权导入模块
+        planning_interval (`int`, *可选*): 执行规划步骤的间隔
+        executor_type (`str`, 默认 `"local"`): 使用的执行器类型，可选 `"local"`、`"e2b"` 或 `"docker"`
+        executor_kwargs (`dict`, *可选*): 初始化执行器时传递的额外参数
+        max_print_outputs_length (`int`, *可选*): 打印输出的最大长度
+        stream_outputs (`bool`, *可选*, 默认 `False`): 执行期间是否流式输出
+        use_structured_outputs_internally (`bool`, 默认 `False`): 是否在每个行动步骤使用结构化生成：
+            可以提高许多模型的性能
+            <新增 版本="1.17.0"/>
+        grammar (`dict[str, str]`, *可选*): 用于解析 LLM 输出的语法规则
+            <已弃用 版本="1.17.0">
+            参数 `grammar` 已弃用，将在版本 1.20 中移除。
+            </已弃用>
+        **kwargs: 其他关键字参数
     """
 
     def __init__(

@@ -229,16 +229,16 @@ def main():
         example_deepseek_reasoner()
         print("\n" + "="*50 + "\n")
         
-        example_litellm_model()
-        print("\n" + "="*50 + "\n")
+        # example_litellm_model()
+        # print("\n" + "="*50 + "\n")
         
-        example_inference_client_model()
-        print("\n" + "="*50 + "\n")
+        # example_inference_client_model()
+        # print("\n" + "="*50 + "\n")
         
-        example_custom_deepseek_class()
-        print("\n" + "="*50 + "\n")
+        # example_custom_deepseek_class()
+        # print("\n" + "="*50 + "\n")
         
-        example_cli_usage()
+        # example_cli_usage()
         
     except Exception as e:
         print(f"运行示例时出错: {e}")

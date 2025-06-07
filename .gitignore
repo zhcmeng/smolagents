@@ -154,4 +154,4 @@ tool_output/
 # Gradio runtime
 .gradio/
 
-.smolagents/
+smolagents/

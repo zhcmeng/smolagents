@@ -7,8 +7,9 @@ DeepSeek模型在smolagents中的使用示例
 """
 
 import os
-from smolagents import OpenAIServerModel, LiteLLMModel, InferenceClientModel, CodeAgent
+from smolagents import OpenAIServerModel, LiteLLMModel, InferenceClientModel, CodeAgent, ToolCallingAgent
 from smolagents.default_tools import PythonInterpreterTool, WebSearchTool
+import requests
 
 
 def example_openai_server_model():
@@ -29,13 +30,13 @@ def example_openai_server_model():
     
     # 创建智能体
     agent = CodeAgent(
-        tools=[PythonInterpreterTool(), WebSearchTool()],
+        tools=[PythonInterpreterTool(), WebSearchTool(engine="bing")],
         model=model,
         verbosity_level=1
     )
     
     # 测试运行
-    result = agent.run("请计算斐波那契数列的前10项")
+    result = agent.run("搜索tranfermer的信息，并保存在本地")
     print(f"结果: {result}")
     return agent
 
@@ -55,15 +56,24 @@ def example_deepseek_reasoner():
         max_tokens=8192,  # DeepSeek API最大支持8192 tokens，推理模型也需遵循此限制
     )
     
-    agent = CodeAgent(
-        tools=[PythonInterpreterTool()],
-        model=model,
-        verbosity_level=2
-    )
+    # agent = CodeAgent(
+    #     tools=[PythonInterpreterTool()],
+    #     model=model,
+    #     verbosity_level=2
+    # )
     
-    # 测试推理能力
-    result = agent.run("解决这个逻辑问题：三个朋友A、B、C，其中只有一个说真话。A说B是骗子，B说C是骗子，C说A和B都是骗子。谁说真话？")
-    print(f"推理结果: {result}")
+    # # 测试推理能力
+    # result = agent.run("解决这个逻辑问题：三个朋友A、B、C，其中只有一个说真话。A说B是骗子，B说C是骗子，C说A和B都是骗子。谁说真话？")
+    # print(f"推理结果: {result}")
+    # return agent
+
+    agent = ToolCallingAgent(
+        tools=[WebSearchTool(engine="bing")],
+        model=model
+    )
+
+    result = agent.run("搜索最新的关于tranfermer的论文")
+    print(f"结果: {result}")
     return agent
 
 
@@ -102,18 +112,21 @@ def example_inference_client_model():
     
     # 如果DeepSeek在together或其他提供商上可用
     try:
-        model = InferenceClientModel(
-            model_id="deepseek-ai/DeepSeek-R1",
-            provider="together",  # 或其他支持DeepSeek的提供商
-            token=os.getenv("HF_TOKEN"),
-        )
+        model = OpenAIServerModel(
+        model_id="deepseek-chat",  # 推理模型
+        api_base="https://api.deepseek.com",
+        api_key=os.getenv("DEEPSEEK_API_KEY"),
+        # 可以调整推理强度
+        reasoning_effort="medium",  # 选项: "low", "medium", "high", "none"
+        max_tokens=8192,  # DeepSeek API最大支持8192 tokens，推理模型也需遵循此限制
+    )
         
-        agent = CodeAgent(
-            tools=[WebSearchTool()],
+        agent = ToolCallingAgent(
+            tools=[WebSearchTool(engine="bing")],
             model=model
         )
         
-        result = agent.run("搜索最新的Python机器学习库")
+        result = agent.run("transformer是什么？")
         print(f"结果: {result}")
         return agent
     except Exception as e:
@@ -209,6 +222,19 @@ def example_cli_usage():
         print(cmd)
 
 
+def check_proxy(proxy_ip, proxy_port):
+    proxies = {
+        'http': f'http://{proxy_ip}:{proxy_port}',
+        'https': f'http://{proxy_ip}:{proxy_port}'
+    }
+    try:
+        response = requests.get('http://httpbin.org/ip', 
+                              proxies=proxies, timeout=10)
+        return response.status_code == 200
+    except:
+        return False
+
+
 def main():
     """
     主函数，演示所有集成方式
@@ -223,11 +249,11 @@ def main():
     
     try:
         # 演示各种集成方式
-        # example_openai_server_model()
+        example_openai_server_model()
         # print("\n" + "="*50 + "\n")
         
-        example_deepseek_reasoner()
-        print("\n" + "="*50 + "\n")
+        # example_deepseek_reasoner()
+        # print("\n" + "="*50 + "\n")
         
         # example_litellm_model()
         # print("\n" + "="*50 + "\n")

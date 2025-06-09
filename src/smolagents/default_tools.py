@@ -43,6 +43,7 @@
 
 from dataclasses import dataclass
 from typing import Any
+from urllib.parse import urlencode
 
 from .local_python_executor import (
     BASE_BUILTIN_MODULES,
@@ -348,6 +349,7 @@ class WebSearchTool(Tool):
             raise ValueError(f"Unsupported engine: {self.engine}")
 
     def parse_results(self, results: list) -> str:
+        print(results)
         return "## Search Results\n\n" + "\n\n".join(
             [f"[{result['title']}]({result['link']})\n{result['description']}" for result in results]
         )
@@ -416,10 +418,37 @@ class WebSearchTool(Tool):
 
         import requests
 
-        response = requests.get(
-            "https://www.bing.com/search",
-            params={"q": query, "format": "rss"},
-        )
+        url = "https://www.bing.com/search"
+        params = {"q": query, "format": "rss"}
+
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
+            'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+            'Accept-Language': 'zh-CN,zh;q=0.9,en;q=0.8',
+            'Accept-Encoding': 'gzip, deflate, br',
+            'Connection': 'keep-alive',
+            'Upgrade-Insecure-Requests': '1',
+        }
+
+        print(f"📋 请求信息:")
+        print(f"  URL: {url}")
+        print(f"  参数: {params}")
+        print(f"  完整URL: {url}?{urlencode(params)}")
+
+        response = requests.get(url, params=params, headers=headers, timeout=20)
+
+        print(f"\n📤 响应信息:")
+        print(f"  状态码: {response.status_code}")
+        print(f"  Content-Type: {response.headers.get('Content-Type', 'N/A')}")
+        print(f"  Content-Length: {response.headers.get('Content-Length', 'N/A')}")
+        print(f"  Server: {response.headers.get('Server', 'N/A')}")
+        print(f"  响应长度: {len(response.text)} 字符")
+
+        # 保存完整响应到文件以便分析
+        with open("bing_response_debug.xml", "w", encoding="utf-8") as f:
+            f.write(response.text)
+        print(f"  💾 完整响应已保存到: bing_response_debug.xml")
+        
         response.raise_for_status()
         root = ET.fromstring(response.text)
         items = root.findall(".//item")

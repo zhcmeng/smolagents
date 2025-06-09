@@ -91,7 +91,26 @@ CODEAGENT_RESPONSE_FORMAT = {
 
 
 def get_dict_from_nested_dataclasses(obj, ignore_key=None):
+    """
+    将嵌套的数据类对象转换为字典
+    
+    参数:
+        obj: 要转换的对象
+        ignore_key: 要忽略的键名
+        
+    返回:
+        dict: 转换后的字典
+    """
     def convert(obj):
+        """
+        递归转换函数
+        
+        参数:
+            obj: 要转换的对象
+            
+        返回:
+            转换后的对象或字典
+        """
         if hasattr(obj, "__dataclass_fields__"):
             return {k: convert(v) for k, v in asdict(obj).items() if k != ignore_key}
         return obj
@@ -101,6 +120,17 @@ def get_dict_from_nested_dataclasses(obj, ignore_key=None):
 
 @dataclass
 class ChatMessageToolCallDefinition:
+    """
+    聊天消息工具调用定义
+    
+    定义工具调用的具体参数和元数据，包含工具名称、参数和描述信息。
+    用于结构化地表示 LLM 调用工具时的参数信息。
+    
+    属性:
+        arguments (Any): 工具调用的参数，可以是字典、字符串或其他类型
+        name (str): 工具的名称标识符
+        description (str | None): 工具的描述信息，可选
+    """
     arguments: Any
     name: str
     description: str | None = None
@@ -108,16 +138,52 @@ class ChatMessageToolCallDefinition:
 
 @dataclass
 class ChatMessageToolCall:
+    """
+    聊天消息工具调用对象
+    
+    表示一个完整的工具调用实例，包含工具调用的所有必要信息：
+    函数定义、调用ID和调用类型。通常由 LLM 生成，用于执行特定的工具操作。
+    
+    属性:
+        function (ChatMessageToolCallDefinition): 工具调用的函数定义
+        id (str): 工具调用的唯一标识符
+        type (str): 工具调用的类型，通常为 "function"
+    """
     function: ChatMessageToolCallDefinition
     id: str
     type: str
 
     def __str__(self) -> str:
+        """
+        返回工具调用的字符串表示
+        
+        生成一个易读的字符串，显示工具调用的关键信息，
+        包括调用ID、工具名称和参数。用于调试和日志记录。
+        
+        返回:
+            str: 格式化的工具调用字符串，包含ID、工具名和参数
+        """
         return f"Call: {self.id}: Calling {str(self.function.name)} with arguments: {str(self.function.arguments)}"
 
 
 @dataclass
 class ChatMessage:
+    """
+    聊天消息数据类
+    
+    表示聊天对话中的一条消息，支持文本内容和工具调用。
+    这是 smolagents 系统中消息传递的核心数据结构，用于：
+    - 存储用户输入、系统提示和 LLM 响应
+    - 记录工具调用信息和执行结果
+    - 跟踪令牌使用情况和原始API响应
+    
+    属性:
+        role (str): 消息角色，如 "user"、"assistant"、"system"
+        content (str | None): 消息的文本内容，可为空（如纯工具调用）
+        tool_calls (list[ChatMessageToolCall] | None): 工具调用列表，可选
+        raw (Any | None): 存储API的原始响应数据，用于调试和扩展
+        token_usage (TokenUsage | None): 令牌使用统计信息，可选
+    """
     role: str
     content: str | None = None
     tool_calls: list[ChatMessageToolCall] | None = None
@@ -125,10 +191,33 @@ class ChatMessage:
     token_usage: TokenUsage | None = None
 
     def model_dump_json(self):
+        """
+        将聊天消息对象转换为JSON字符串
+        
+        序列化消息对象为JSON格式，自动排除敏感的raw字段。
+        适用于消息存储、传输和日志记录等场景。
+        
+        返回:
+            str: 序列化后的JSON字符串（排除raw字段以减少数据量）
+        """
         return json.dumps(get_dict_from_nested_dataclasses(self, ignore_key="raw"))
 
     @classmethod
     def from_dict(cls, data: dict, raw: Any | None = None, token_usage: TokenUsage | None = None) -> "ChatMessage":
+        """
+        从字典创建ChatMessage对象
+        
+        反序列化字典数据为ChatMessage对象，自动处理嵌套的工具调用结构。
+        常用于从JSON数据、API响应或存储中恢复消息对象。
+        
+        参数:
+            data (dict): 包含消息数据的字典，必须包含 "role" 字段
+            raw (Any, 可选): 原始API响应数据，用于保留完整的响应信息
+            token_usage (TokenUsage, 可选): 令牌使用统计信息
+            
+        返回:
+            ChatMessage: 根据字典数据创建的聊天消息对象
+        """
         if data.get("tool_calls"):
             tool_calls = [
                 ChatMessageToolCall(
@@ -146,10 +235,28 @@ class ChatMessage:
         )
 
     def dict(self):
+        """
+        将ChatMessage对象转换为字典
+        
+        将消息对象序列化为字典格式，保留所有字段信息。
+        适用于数据传输、存储和与外部系统的集成。
+        
+        返回:
+            dict: 包含所有消息字段的字典表示（排除raw字段）
+        """
         return get_dict_from_nested_dataclasses(self)
 
 
 def parse_json_if_needed(arguments: str | dict) -> str | dict:
+    """
+    如果需要，将字符串参数解析为JSON对象
+    
+    参数:
+        arguments (str | dict): 要解析的参数，可能是字符串或已经是字典
+        
+    返回:
+        str | dict: 如果是有效JSON则返回解析后的字典，否则返回原始参数
+    """
     if isinstance(arguments, dict):
         return arguments
     else:
@@ -161,6 +268,23 @@ def parse_json_if_needed(arguments: str | dict) -> str | dict:
 
 @dataclass
 class ChatMessageStreamDelta:
+    """
+    聊天消息流式增量数据
+    
+    表示流式生成过程中的一个增量更新，用于实时传输 LLM 生成的内容。
+    支持渐进式内容更新和工具调用信息的流式传输。
+    
+    流式生成的优势:
+    - 降低用户感知延迟
+    - 提供实时反馈
+    - 支持长文本的渐进式显示
+    - 改善用户体验
+    
+    属性:
+        content (str | None): 本次增量的文本内容，可为空
+        tool_calls (list[ChatMessageToolCall] | None): 本次增量的工具调用信息，可选
+        token_usage (TokenUsage | None): 令牌使用统计（通常在流式结束时提供）
+    """
     content: str | None = None
     tool_calls: list[ChatMessageToolCall] | None = None
     token_usage: TokenUsage | None = None
@@ -168,7 +292,23 @@ class ChatMessageStreamDelta:
 
 @dataclass
 class ToolCallStreamDelta:
-    """Represents a streaming delta for tool calls during generation."""
+    """
+    工具调用流式增量数据
+    
+    表示在流式生成过程中工具调用的增量更新。
+    由于工具调用信息可能分多次传输，此类用于累积构建完整的工具调用。
+    
+    流式工具调用的特点:
+    - 工具名称可能先于参数到达
+    - 参数可能分段传输
+    - 需要根据索引正确组装多个工具调用
+    
+    属性:
+        index (int | None): 工具调用在列表中的索引位置
+        id (str | None): 工具调用的唯一标识符
+        type (str | None): 工具调用类型，通常为 "function"
+        function (dict[str, Any] | None): 函数调用信息，包含名称和参数增量
+    """
 
     index: int | None = None
     id: str | None = None
@@ -177,6 +317,25 @@ class ToolCallStreamDelta:
 
 
 class MessageRole(str, Enum):
+    """
+    消息角色枚举
+    
+    定义聊天对话中可能出现的所有消息角色类型。
+    这些角色用于区分消息的来源和性质，帮助 LLM 理解对话上下文。
+    
+    角色说明:
+    - USER: 用户输入的消息，包含任务、问题或指令
+    - ASSISTANT: LLM 助手的响应消息，包含分析、回答或工具调用
+    - SYSTEM: 系统提示消息，定义助手的身份和行为规范
+    - TOOL_CALL: 工具调用消息，表示执行特定功能的请求
+    - TOOL_RESPONSE: 工具响应消息，包含工具执行的结果
+    
+    用途:
+    - 消息分类和路由
+    - 上下文理解和维护
+    - 权限控制和安全检查
+    - 对话流程管理
+    """
     USER = "user"
     ASSISTANT = "assistant"
     SYSTEM = "system"
@@ -185,6 +344,15 @@ class MessageRole(str, Enum):
 
     @classmethod
     def roles(cls):
+        """
+        获取所有可用的消息角色
+        
+        返回系统支持的所有消息角色的字符串值列表。
+        常用于验证角色有效性和生成角色选择列表。
+        
+        返回:
+            list[str]: 所有角色的字符串值列表，按定义顺序排列
+        """
         return [r.value for r in cls]
 
 
@@ -195,6 +363,26 @@ tool_role_conversions = {
 
 
 def get_tool_json_schema(tool: Tool) -> dict:
+    """
+    将Tool对象转换为OpenAI兼容的JSON Schema格式
+    
+    此函数将smolagents的Tool对象转换为符合OpenAI工具调用API标准的JSON模式。
+    转换过程包括类型映射、必需字段识别和结构重组。
+    
+    转换规则:
+    - "any" 类型映射为 "string" 类型
+    - 非nullable字段自动标记为required
+    - 保持原始的参数描述和约束
+    - 生成符合OpenAI函数调用格式的嵌套结构
+    
+    参数:
+        tool (Tool): smolagents工具对象，包含名称、描述和输入规范
+        
+    返回:
+        dict: 符合OpenAI函数调用格式的工具模式字典，包含：
+            - type: 固定为 "function"
+            - function: 包含name、description和parameters的函数定义
+    """
     properties = deepcopy(tool.inputs)
     required = []
     for key, value in properties.items():
@@ -217,6 +405,16 @@ def get_tool_json_schema(tool: Tool) -> dict:
 
 
 def remove_stop_sequences(content: str, stop_sequences: list[str]) -> str:
+    """
+    从内容末尾移除停止序列
+    
+    参数:
+        content (str): 要处理的文本内容
+        stop_sequences (list[str]): 停止序列列表
+        
+    返回:
+        str: 移除停止序列后的内容
+    """
     for stop_seq in stop_sequences:
         if content[-len(stop_seq) :] == stop_seq:
             content = content[: -len(stop_seq)]
@@ -230,14 +428,35 @@ def get_clean_message_list(
     flatten_messages_as_text: bool = False,
 ) -> list[dict[str, str | list[dict]]]:
     """
-    Subsequent messages with the same role will be concatenated to a single message.
-    output_message_list is a list of messages that will be used to generate the final message that is chat template compatible with transformers LLM chat template.
-
-    Args:
-        message_list (`list[dict[str, str]]`): List of chat messages.
-        role_conversions (`dict[MessageRole, MessageRole]`, *optional* ): Mapping to convert roles.
-        convert_images_to_image_urls (`bool`, default `False`): Whether to convert images to image URLs.
-        flatten_messages_as_text (`bool`, default `False`): Whether to flatten messages as text.
+    清理和标准化消息列表
+    
+    对原始消息列表进行预处理，确保与不同LLM的聊天模板兼容。
+    主要处理包括角色转换、消息合并、图像编码和格式标准化。
+    
+    处理功能:
+    1. 角色转换：将特殊角色映射为标准角色
+    2. 消息合并：合并相同角色的连续消息
+    3. 图像处理：编码图像为base64或转换为URL格式
+    4. 文本扁平化：将复杂消息结构简化为纯文本
+    5. 格式验证：确保所有消息角色有效
+    
+    用途:
+    - 适配不同LLM提供商的API格式
+    - 减少消息数量以节省token
+    - 标准化图像处理流程
+    - 兼容各种聊天模板
+    
+    参数:
+        message_list (list[dict]): 原始聊天消息列表
+        role_conversions (dict, 可选): 角色转换映射，如 {"tool-call": "assistant"}
+        convert_images_to_image_urls (bool, 默认False): 是否将图像转换为image_url格式
+        flatten_messages_as_text (bool, 默认False): 是否将消息内容扁平化为纯文本
+        
+    返回:
+        list[dict]: 清理和标准化后的消息列表，兼容transformers聊天模板
+        
+    异常:
+        ValueError: 当消息包含无效角色时抛出
     """
     output_message_list: list[dict[str, str | list[dict]]] = []
     message_list = deepcopy(message_list)  # Avoid modifying the original list
@@ -285,6 +504,35 @@ def get_clean_message_list(
 
 
 def get_tool_call_from_text(text: str, tool_name_key: str, tool_arguments_key: str) -> ChatMessageToolCall:
+    """
+    从文本中解析工具调用信息
+    
+    解析LLM生成的文本，提取其中的工具调用信息并构造标准的工具调用对象。
+    此函数处理不支持原生工具调用的LLM，通过文本解析实现工具调用功能。
+    
+    解析流程:
+    1. 从文本中提取JSON格式的工具调用信息
+    2. 根据指定键名提取工具名称和参数
+    3. 处理参数的类型转换（字符串转JSON等）
+    4. 生成唯一的调用ID
+    5. 构造完整的工具调用对象
+    
+    适用场景:
+    - 不支持原生工具调用的LLM模型
+    - 需要从自由文本中提取结构化工具调用
+    - 自定义工具调用格式的解析
+    
+    参数:
+        text (str): 包含工具调用JSON信息的文本
+        tool_name_key (str): JSON中工具名称字段的键名，如 "name"
+        tool_arguments_key (str): JSON中工具参数字段的键名，如 "arguments"
+        
+    返回:
+        ChatMessageToolCall: 解析并构造的工具调用对象，包含随机生成的ID
+        
+    异常:
+        ValueError: 当找不到指定的工具名称键或JSON解析失败时抛出
+    """
     tool_call_dictionary, _ = parse_json_blob(text)
     try:
         tool_name = tool_call_dictionary[tool_name_key]
@@ -304,15 +552,33 @@ def get_tool_call_from_text(text: str, tool_name_key: str, tool_arguments_key: s
 
 def supports_stop_parameter(model_id: str) -> bool:
     """
-    Check if the model supports the `stop` parameter.
-
-    Not supported with reasoning models openai/o3 and openai/o4-mini (and their versioned variants).
-
-    Args:
-        model_id (`str`): Model identifier (e.g. "openai/o3", "o4-mini-2025-04-16")
-
-    Returns:
-        bool: True if the model supports the stop parameter, False otherwise
+    检查模型是否支持stop参数
+    
+    某些OpenAI推理模型（如o3和o4-mini系列）不支持stop参数。
+    此函数通过模型名称模式匹配来判断是否支持stop功能。
+    
+    不支持stop的模型:
+    - o3 系列：o3, o3-2025-04-16 等版本变体
+    - o4-mini 系列：o4-mini, o4-mini-2025-04-16 等版本变体
+    
+    用途:
+    - API调用前的兼容性检查
+    - 动态调整生成参数
+    - 避免不支持的参数导致的API错误
+    
+    参数:
+        model_id (str): 完整的模型标识符，如 "openai/o3", "o4-mini-2025-04-16"
+        
+    返回:
+        bool: 如果模型支持stop参数则返回True，否则返回False
+        
+    示例:
+        >>> supports_stop_parameter("openai/gpt-4")
+        True
+        >>> supports_stop_parameter("openai/o3")
+        False
+        >>> supports_stop_parameter("o4-mini-2025-04-16")
+        False
     """
     model_name = model_id.split("/")[-1]
     # o3 and o4-mini (including versioned variants, o3-2025-04-16) don't support stop parameter
@@ -387,36 +653,59 @@ class Model:
         **kwargs,
     ) -> dict[str, Any]:
         """
-        Prepare parameters required for model invocation, handling parameter priorities.
-
-        Parameter priority from high to low:
-        1. Explicitly passed kwargs
-        2. Specific parameters (stop_sequences, response_format, etc.)
-        3. Default values in self.kwargs
+        准备模型调用所需的参数，处理参数优先级和格式转换
+        
+        这是所有模型子类的核心参数准备方法，负责：
+        1. 消息格式标准化和清理
+        2. 参数优先级处理和合并
+        3. 工具调用配置生成
+        4. 特殊参数的条件处理
+        5. 兼容性检查和调整
+        
+        参数优先级（从高到低）：
+        1. 显式传递的 kwargs 参数（最高优先级）
+        2. 方法特定参数（stop_sequences、response_format等）
+        3. self.kwargs 中的默认值（最低优先级）
+        
+        参数:
+            messages (list[dict]): 原始消息列表，将被清理和标准化
+            stop_sequences (list[str], 可选): 停止序列，某些模型可能不支持
+            response_format (dict, 可选): 结构化输出格式定义
+            tools_to_call_from (list[Tool], 可选): 可用工具列表，将转换为JSON模式
+            custom_role_conversions (dict, 可选): 自定义角色转换映射
+            convert_images_to_image_urls (bool): 是否转换图像为URL格式
+            tool_choice (str | dict | None): 工具选择策略，默认为"required"
+            **kwargs: 其他模型特定参数，具有最高优先级
+            
+        返回:
+            dict[str, Any]: 准备好的完整参数字典，可直接用于模型调用
         """
-        # Clean and standardize the message list
+        # 从kwargs中提取flatten_messages_as_text设置
         flatten_messages_as_text = kwargs.pop("flatten_messages_as_text", self.flatten_messages_as_text)
+
+        # 清理和标准化消息列表
         messages = get_clean_message_list(
             messages,
             role_conversions=custom_role_conversions or tool_role_conversions,
             convert_images_to_image_urls=convert_images_to_image_urls,
             flatten_messages_as_text=flatten_messages_as_text,
         )
-        # Use self.kwargs as the base configuration
+
+        # 使用 self.kwargs 作为基础配置
         completion_kwargs = {
             **self.kwargs,
             "messages": messages,
         }
 
-        # Handle specific parameters
+        # 处理特定参数
         if stop_sequences is not None:
-            # Some models do not support stop parameter
+            # 某些模型不支持stop参数
             if supports_stop_parameter(self.model_id or ""):
                 completion_kwargs["stop"] = stop_sequences
         if response_format is not None:
             completion_kwargs["response_format"] = response_format
 
-        # Handle tools parameter
+        # 处理工具参数
         if tools_to_call_from:
             tools_config = {
                 "tools": [get_tool_json_schema(tool) for tool in tools_to_call_from],
@@ -425,7 +714,7 @@ class Model:
                 tools_config["tool_choice"] = tool_choice
             completion_kwargs.update(tools_config)
 
-        # Finally, use the passed-in kwargs to override all settings
+        # 最后，用传入的kwargs覆盖所有设置
         completion_kwargs.update(kwargs)
 
         return completion_kwargs
@@ -438,30 +727,64 @@ class Model:
         tools_to_call_from: list[Tool] | None = None,
         **kwargs,
     ) -> ChatMessage:
-        """Process the input messages and return the model's response.
-
-        Parameters:
-            messages (`list[dict[str, str | list[dict]]] | list[ChatMessage]`):
-                A list of message dictionaries to be processed. Each dictionary should have the structure `{"role": "user/system", "content": "message content"}`.
-            stop_sequences (`List[str]`, *optional*):
-                A list of strings that will stop the generation if encountered in the model's output.
-            response_format (`dict[str, str]`, *optional*):
-                The response format to use in the model's response.
-            tools_to_call_from (`List[Tool]`, *optional*):
-                A list of tools that the model can use to generate responses.
-            **kwargs:
-                Additional keyword arguments to be passed to the underlying model.
-
-        Returns:
-            `ChatMessage`: A chat message object containing the model's response.
+        """
+        处理输入消息并返回模型响应
+        
+        参数:
+            messages (list[dict] | list[ChatMessage]): 要处理的消息列表。
+                每个字典应该有结构 {"role": "user/system", "content": "消息内容"}
+            stop_sequences (list[str], 可选): 停止序列列表，
+                如果在模型输出中遇到这些字符串将停止生成
+            response_format (dict[str, str], 可选): 模型响应中使用的响应格式
+            tools_to_call_from (list[Tool], 可选): 模型可以用来生成响应的工具列表
+            **kwargs: 传递给底层模型的其他关键字参数
+            
+        返回:
+            ChatMessage: 包含模型响应的聊天消息对象
         """
         raise NotImplementedError("This method must be implemented in child classes")
 
     def __call__(self, *args, **kwargs):
+        """
+        使模型对象可调用，直接调用generate方法
+        
+        参数:
+            *args: 位置参数，传递给generate方法
+            **kwargs: 关键字参数，传递给generate方法
+            
+        返回:
+            ChatMessage: generate方法的返回值
+        """
         return self.generate(*args, **kwargs)
 
     def parse_tool_calls(self, message: ChatMessage) -> ChatMessage:
-        """Sometimes APIs do not return the tool call as a specific object, so we need to parse it."""
+        """
+        解析消息中的工具调用
+        
+        某些API或模型不会将工具调用作为结构化对象返回，而是包含在文本内容中。
+        此方法负责从消息内容中提取和解析工具调用信息，并将其标准化。
+        
+        解析过程:
+        1. 确保消息角色设置为 ASSISTANT
+        2. 检查是否已存在工具调用对象
+        3. 如果没有，从消息内容中解析工具调用
+        4. 标准化参数格式（JSON字符串转对象等）
+        5. 验证解析结果的完整性
+        
+        适用场景:
+        - 不支持原生工具调用的模型
+        - 文本格式的工具调用响应
+        - 需要后处理的工具调用信息
+        
+        参数:
+            message (ChatMessage): 包含工具调用信息的聊天消息
+            
+        返回:
+            ChatMessage: 解析后包含标准化工具调用对象的消息
+            
+        异常:
+            AssertionError: 当消息既无内容又无工具调用，或解析失败时抛出
+        """
         message.role = MessageRole.ASSISTANT  # Overwrite role if needed
         if not message.tool_calls:
             assert message.content is not None, "Message contains no content and no tool calls"
@@ -475,7 +798,31 @@ class Model:
 
     def to_dict(self) -> dict:
         """
-        Converts the model into a JSON-compatible dictionary.
+        将模型转换为JSON兼容的字典
+        
+        序列化模型配置为字典格式，用于保存、传输和恢复模型配置。
+        自动排除敏感信息（如API密钥）以确保安全性。
+        
+        序列化内容:
+        - 基础配置：model_id、temperature、max_tokens等
+        - 网络配置：api_base、timeout、provider等
+        - 硬件配置：device_map、torch_dtype等
+        - 服务配置：organization、project、azure_endpoint等
+        - 自定义配置：kwargs中的其他参数
+        
+        安全特性:
+        - 自动排除敏感属性（token、api_key）
+        - 提供安全警告提示用户手动处理
+        - 确保序列化结果可安全共享
+        
+        用途:
+        - 模型配置的持久化存储
+        - 配置的版本控制和备份
+        - 模型配置的跨环境迁移
+        - 配置的可视化和调试
+        
+        返回:
+            dict: 包含模型配置的字典，已排除敏感信息，可安全序列化
         """
         model_dictionary = {
             **self.kwargs,
@@ -507,18 +854,69 @@ class Model:
 
     @classmethod
     def from_dict(cls, model_dictionary: dict[str, Any]) -> "Model":
+        """
+        从字典创建模型实例
+        
+        反序列化模型配置字典，恢复完整的模型实例。
+        这是 to_dict 方法的逆操作，用于从序列化的配置中重建模型。
+        
+        恢复过程:
+        1. 解析配置字典中的所有参数
+        2. 将参数传递给类构造函数
+        3. 自动处理类型转换和验证
+        4. 返回完全配置的模型实例
+        
+        注意事项:
+        - 敏感信息（如API密钥）需要单独设置
+        - 某些运行时状态不会被恢复
+        - 依赖的库和环境需要预先准备
+        
+        适用场景:
+        - 从配置文件加载模型
+        - 模型配置的热重载
+        - 分布式环境中的模型同步
+        - 测试和调试中的模型重建
+        
+        参数:
+            model_dictionary (dict): 包含完整模型配置的字典
+            
+        返回:
+            Model: 根据配置创建的模型实例，可直接使用
+        """
         return cls(**{k: v for k, v in model_dictionary.items()})
 
 
 class VLLMModel(Model):
-    """Model to use [vLLM](https://docs.vllm.ai/) for fast LLM inference and serving.
-
-    Parameters:
-        model_id (`str`):
-            The Hugging Face model ID to be used for inference.
-            This can be a path or model identifier from the Hugging Face model hub.
-        model_kwargs (`dict[str, Any]`, *optional*):
-            Additional keyword arguments to pass to the vLLM model (like revision, max_model_len, etc.).
+    """
+    vLLM 高性能推理模型
+    
+    使用 [vLLM](https://docs.vllm.ai/) 框架进行快速 LLM 推理和服务。
+    vLLM 是一个高性能的大语言模型推理引擎，专为生产环境优化。
+    
+    主要特性:
+    - 高吞吐量：支持大批量并发推理
+    - 低延迟：优化的内存管理和调度
+    - 动态批处理：自动批量处理请求
+    - 高效内存使用：PagedAttention 技术
+    - 多种模型支持：兼容 HuggingFace 模型
+    
+    性能优势:
+    - 比标准 Transformers 快 2-24 倍
+    - 更高的 GPU 利用率
+    - 更好的并发处理能力
+    - 生产级的稳定性和可靠性
+    
+    适用场景:
+    - 高并发推理服务
+    - 生产环境部署
+    - 批量文本处理
+    - 性能敏感的应用
+    
+    参数:
+        model_id (str): 用于推理的 Hugging Face 模型 ID，
+            可以是模型路径或 HuggingFace 模型库的标识符
+        model_kwargs (dict[str, Any], 可选): 传递给 vLLM 模型的额外参数，
+            如 revision、max_model_len 等
     """
 
     def __init__(
@@ -542,6 +940,12 @@ class VLLMModel(Model):
         self._is_vlm = False  # VLLMModel does not support vision models yet.
 
     def cleanup(self):
+        """
+        清理vLLM模型资源
+        
+        释放GPU内存，销毁分布式环境，清理模型相关资源。
+        在不再使用模型时调用此方法可以释放系统资源。
+        """
         import gc
 
         import torch
@@ -845,18 +1249,47 @@ class TransformersModel(Model):
         super().__init__(flatten_messages_as_text=not self._is_vlm, model_id=model_id, **kwargs)
 
     def make_stopping_criteria(self, stop_sequences: list[str], tokenizer) -> "StoppingCriteriaList":
+        """
+        创建停止条件列表
+        
+        参数:
+            stop_sequences (list[str]): 停止序列列表
+            tokenizer: 分词器对象
+            
+        返回:
+            StoppingCriteriaList: 停止条件列表
+        """
         from transformers import StoppingCriteria, StoppingCriteriaList
 
         class StopOnStrings(StoppingCriteria):
             def __init__(self, stop_strings: list[str], tokenizer):
+                """
+                初始化字符串停止条件
+                
+                参数:
+                    stop_strings (list[str]): 停止字符串列表
+                    tokenizer: 分词器对象
+                """
                 self.stop_strings = stop_strings
                 self.tokenizer = tokenizer
                 self.stream = ""
 
             def reset(self):
+                """重置流状态"""
                 self.stream = ""
 
             def __call__(self, input_ids, scores, **kwargs):
+                """
+                检查是否应该停止生成
+                
+                参数:
+                    input_ids: 输入token ID
+                    scores: 分数
+                    **kwargs: 其他参数
+                    
+                返回:
+                    bool: 如果应该停止则返回True
+                """
                 generated = self.tokenizer.decode(input_ids[0][-1], skip_special_tokens=True)
                 self.stream += generated
                 if any([self.stream.endswith(stop_string) for stop_string in self.stop_strings]):
@@ -872,6 +1305,18 @@ class TransformersModel(Model):
         tools_to_call_from: list[Tool] | None = None,
         **kwargs,
     ) -> dict[str, Any]:
+        """
+        为Transformers模型准备生成参数
+        
+        参数:
+            messages (list[dict]): 消息列表
+            stop_sequences (list[str], 可选): 停止序列
+            tools_to_call_from (list[Tool], 可选): 可调用的工具列表
+            **kwargs: 其他关键字参数
+            
+        返回:
+            dict: 准备好的生成参数
+        """
         completion_kwargs = self._prepare_completion_kwargs(
             messages=messages,
             stop_sequences=stop_sequences,
@@ -992,20 +1437,41 @@ class TransformersModel(Model):
 
 class ApiModel(Model):
     """
-    Base class for API-based language models.
-
-    This class serves as a foundation for implementing models that interact with
-    external APIs. It handles the common functionality for managing model IDs,
-    custom role mappings, and API client connections.
-
-    Parameters:
-        model_id (`str`):
-            The identifier for the model to be used with the API.
-        custom_role_conversions (`dict[str, str`], **optional**):
-            Mapping to convert  between internal role names and API-specific role names. Defaults to None.
-        client (`Any`, **optional**):
-            Pre-configured API client instance. If not provided, a default client will be created. Defaults to None.
-        **kwargs: Additional keyword arguments to pass to the parent class.
+    API 模型基类
+    
+    为基于外部 API 的语言模型提供通用基础框架。
+    该类处理与远程 API 服务交互的通用功能，包括客户端管理、
+    角色映射和连接配置等。
+    
+    核心功能:
+    - 统一的 API 客户端管理
+    - 自定义角色转换支持
+    - 连接配置和认证处理
+    - 错误处理和重试机制
+    - 标准化的请求/响应处理
+    
+    设计模式:
+    - 模板方法模式：定义通用流程，子类实现具体细节
+    - 工厂模式：create_client 方法由子类实现
+    - 策略模式：支持不同的角色转换策略
+    
+    子类实现要求:
+    - 必须实现 create_client() 方法
+    - 可以重写角色转换逻辑
+    - 可以自定义请求参数处理
+    
+    支持的 API 类型:
+    - REST API（如 OpenAI、HuggingFace）
+    - 自定义 HTTP 服务
+    - 云服务提供商 API
+    
+    参数:
+        model_id (str): API 中使用的模型标识符
+        custom_role_conversions (dict[str, str], 可选): 
+            内部角色名称与 API 特定角色名称之间的转换映射
+        client (Any, 可选): 预配置的 API 客户端实例，
+            如果未提供将创建默认客户端
+        **kwargs: 传递给父类的其他关键字参数
     """
 
     def __init__(
@@ -1016,7 +1482,30 @@ class ApiModel(Model):
         self.client = client or self.create_client()
 
     def create_client(self):
-        """Create the API client for the specific service."""
+        """
+        为特定服务创建 API 客户端 - 抽象方法
+        
+        这是一个抽象工厂方法，子类必须实现此方法来创建对应服务的 API 客户端。
+        不同的子类将创建不同类型的客户端，如 OpenAI 客户端、HuggingFace 客户端等。
+        
+        实现要求:
+        - 使用 self.client_kwargs 中的配置参数
+        - 处理认证和连接配置
+        - 返回可用的客户端实例
+        - 确保客户端线程安全
+        
+        常见客户端类型:
+        - openai.OpenAI: OpenAI API 客户端
+        - InferenceClient: HuggingFace 推理客户端
+        - boto3.client: AWS Bedrock 客户端
+        - litellm: LiteLLM 统一客户端
+        
+        异常:
+            NotImplementedError: 子类必须实现此方法
+            
+        返回:
+            Any: 配置好的 API 客户端实例，具体类型由子类决定
+        """
         raise NotImplementedError("Subclasses must implement this method to create a client")
 
 
@@ -1071,7 +1560,15 @@ class LiteLLMModel(ApiModel):
         )
 
     def create_client(self):
-        """Create the LiteLLM client."""
+        """
+        创建LiteLLM客户端
+        
+        返回:
+            litellm: LiteLLM模块对象
+            
+        异常:
+            ModuleNotFoundError: 当litellm模块未安装时抛出
+        """
         try:
             import litellm
         except ModuleNotFoundError as e:
@@ -1239,6 +1736,15 @@ class LiteLLMRouterModel(LiteLLMModel):
         )
 
     def create_client(self):
+        """
+        创建LiteLLM路由器客户端
+        
+        返回:
+            Router: 配置好的LiteLLM路由器实例
+            
+        异常:
+            ModuleNotFoundError: 当litellm模块未安装时抛出
+        """
         try:
             from litellm import Router
         except ModuleNotFoundError as e:
@@ -1340,7 +1846,12 @@ class InferenceClientModel(ApiModel):
         super().__init__(model_id=model_id, custom_role_conversions=custom_role_conversions, **kwargs)
 
     def create_client(self):
-        """Create the Hugging Face client."""
+        """
+        创建Hugging Face推理客户端
+        
+        返回:
+            InferenceClient: 配置好的Hugging Face推理客户端实例
+        """
         from huggingface_hub import InferenceClient
 
         return InferenceClient(**self.client_kwargs)
@@ -1472,6 +1983,19 @@ class InferenceClientModel(ApiModel):
 
 class HfApiModel(InferenceClientModel):
     def __new__(cls, *args, **kwargs):
+        """
+        创建HfApiModel实例（已弃用）
+        
+        HfApiModel已在版本1.14.0中重命名为InferenceClientModel，
+        将在版本1.17.0中移除。
+        
+        参数:
+            *args: 位置参数
+            **kwargs: 关键字参数
+            
+        返回:
+            InferenceClientModel实例
+        """
         warnings.warn(
             "HfApiModel was renamed to InferenceClientModel in version 1.14.0 and will be removed in 1.17.0.",
             FutureWarning,
@@ -1480,28 +2004,45 @@ class HfApiModel(InferenceClientModel):
 
 
 class OpenAIServerModel(ApiModel):
-    """This model connects to an OpenAI-compatible API server.
-
-    Parameters:
-        model_id (`str`):
-            The model identifier to use on the server (e.g. "gpt-3.5-turbo").
-        api_base (`str`, *optional*):
-            The base URL of the OpenAI-compatible API server.
-        api_key (`str`, *optional*):
-            The API key to use for authentication.
-        organization (`str`, *optional*):
-            The organization to use for the API request.
-        project (`str`, *optional*):
-            The project to use for the API request.
-        client_kwargs (`dict[str, Any]`, *optional*):
-            Additional keyword arguments to pass to the OpenAI client (like organization, project, max_retries etc.).
-        custom_role_conversions (`dict[str, str]`, *optional*):
-            Custom role conversion mapping to convert message roles in others.
-            Useful for specific models that do not support specific message roles like "system".
-        flatten_messages_as_text (`bool`, default `False`):
-            Whether to flatten messages as text.
-        **kwargs:
-            Additional keyword arguments to pass to the OpenAI API.
+    """
+    OpenAI 兼容服务器模型
+    
+    连接到 OpenAI 兼容的 API 服务器，支持原生 OpenAI API 和各种兼容服务。
+    这包括官方 OpenAI API、自建的兼容服务器、以及第三方 OpenAI 兼容服务。
+    
+    支持的服务类型:
+    - OpenAI 官方 API (api.openai.com)
+    - Azure OpenAI 服务
+    - 本地部署的兼容服务器
+    - 第三方 OpenAI 兼容 API
+    - 自建的模型服务
+    
+    主要特性:
+    - 完整的 OpenAI API 兼容性
+    - 支持聊天完成和工具调用
+    - 流式响应和批量处理
+    - 自定义角色转换
+    - 组织和项目管理
+    - 错误处理和重试机制
+    
+    使用场景:
+    - 连接 OpenAI 官方服务
+    - 使用企业内部的模型服务
+    - 测试和开发环境
+    - 多模型服务切换
+    
+    参数:
+        model_id (str): 服务器上使用的模型标识符，如 "gpt-3.5-turbo"
+        api_base (str, 可选): OpenAI 兼容 API 服务器的基础 URL
+        api_key (str, 可选): 用于身份验证的 API 密钥
+        organization (str, 可选): API 请求使用的组织标识
+        project (str, 可选): API 请求使用的项目标识
+        client_kwargs (dict[str, Any], 可选): 传递给 OpenAI 客户端的额外参数，
+            如 organization、project、max_retries 等
+        custom_role_conversions (dict[str, str], 可选): 自定义角色转换映射，
+            用于转换消息角色，适用于不支持特定角色（如 "system"）的模型
+        flatten_messages_as_text (bool, 默认 False): 是否将消息扁平化为文本
+        **kwargs: 传递给 OpenAI API 的其他关键字参数
     """
 
     def __init__(
@@ -1531,6 +2072,15 @@ class OpenAIServerModel(ApiModel):
         )
 
     def create_client(self):
+        """
+        创建OpenAI客户端
+        
+        返回:
+            openai.OpenAI: 配置好的OpenAI客户端实例
+            
+        异常:
+            ModuleNotFoundError: 当openai模块未安装时抛出
+        """
         try:
             import openai
         except ModuleNotFoundError as e:
@@ -1708,6 +2258,15 @@ class AzureOpenAIServerModel(OpenAIServerModel):
         )
 
     def create_client(self):
+        """
+        创建Azure OpenAI客户端
+        
+        返回:
+            openai.AzureOpenAI: 配置好的Azure OpenAI客户端实例
+            
+        异常:
+            ModuleNotFoundError: 当openai模块未安装时抛出
+        """
         try:
             import openai
         except ModuleNotFoundError as e:
@@ -1817,11 +2376,21 @@ class AmazonBedrockServerModel(ApiModel):
         **kwargs,
     ) -> dict:
         """
-        Overrides the base method to handle Bedrock-specific configurations.
-
-        This implementation adapts the completion keyword arguments to align with
-        Bedrock's requirements, ensuring compatibility with its unique setup and
-        constraints.
+        重写基础方法以处理Bedrock特定配置
+        
+        此实现调整完成关键字参数以符合Bedrock的要求，
+        确保与其独特设置和约束的兼容性。
+        
+        参数:
+            messages (list[dict]): 消息列表
+            stop_sequences (list[str], 可选): 停止序列
+            tools_to_call_from (list[Tool], 可选): 可调用的工具列表
+            custom_role_conversions (dict, 可选): 自定义角色转换
+            convert_images_to_image_urls (bool): 是否转换图像为URL
+            **kwargs: 其他关键字参数
+            
+        返回:
+            dict: 适配Bedrock格式的参数字典
         """
         completion_kwargs = super()._prepare_completion_kwargs(
             messages=messages,
@@ -1849,6 +2418,15 @@ class AmazonBedrockServerModel(ApiModel):
         }
 
     def create_client(self):
+        """
+        创建Amazon Bedrock客户端
+        
+        返回:
+            boto3.client: 配置好的Bedrock运行时客户端实例
+            
+        异常:
+            ModuleNotFoundError: 当boto3模块未安装时抛出
+        """
         try:
             import boto3  # type: ignore
         except ModuleNotFoundError as e:

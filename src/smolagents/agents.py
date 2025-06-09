@@ -300,14 +300,54 @@ class MultiStepAgent(ABC):
         return_full_result: bool = False,
         logger: AgentLogger | None = None,
     ):
-        self.agent_name = self.__class__.__name__
-        self.model = model
+        """
+        初始化多步骤智能代理
+        
+        该构造函数负责初始化代理的所有核心组件，包括工具、模型、提示模板、
+        管理代理、回调函数等。同时进行必要的验证和配置检查。
+        
+        初始化流程:
+        1. 设置基本属性（模型、提示模板、最大步数等）
+        2. 验证并设置提示模板
+        3. 配置管理代理和工具
+        4. 验证配置的一致性
+        5. 初始化内存和日志系统
+        6. 设置监控和回调机制
+        
+        参数:
+            tools (list[Tool]): 代理可以使用的工具列表
+            model (Model): 用于生成代理响应的语言模型
+            prompt_templates (PromptTemplates | None): 提示模板配置
+            max_steps (int): 解决任务的最大步数限制
+            add_base_tools (bool): 是否添加基础工具集
+            verbosity_level (LogLevel): 日志详细程度级别
+            grammar (dict[str, str] | None): 已弃用的语法规则配置
+            managed_agents (list | None): 子代理列表
+            step_callbacks (list[Callable] | None): 步骤执行回调函数列表
+            planning_interval (int | None): 规划步骤执行间隔
+            name (str | None): 代理名称（子代理必需）
+            description (str | None): 代理描述（子代理必需）
+            provide_run_summary (bool): 是否提供运行摘要
+            final_answer_checks (list[Callable] | None): 最终答案验证函数列表
+            return_full_result (bool): 是否返回完整结果对象
+            logger (AgentLogger | None): 自定义日志记录器
+        """
+        # 设置基本代理属性
+        self.agent_name = self.__class__.__name__  # 代理类名称
+        self.model = model  # 语言模型实例
+        
+        # 配置提示模板，使用默认模板或用户提供的模板
         self.prompt_templates = prompt_templates or EMPTY_PROMPT_TEMPLATES
+        
+        # 验证用户提供的提示模板完整性
         if prompt_templates is not None:
+            # 检查是否缺少必需的顶级键
             missing_keys = set(EMPTY_PROMPT_TEMPLATES.keys()) - set(prompt_templates.keys())
             assert not missing_keys, (
                 f"Some prompt templates are missing from your custom `prompt_templates`: {missing_keys}"
             )
+            
+            # 验证嵌套字典结构的完整性
             for key, value in EMPTY_PROMPT_TEMPLATES.items():
                 if isinstance(value, dict):
                     for subkey in value.keys():
@@ -315,82 +355,187 @@ class MultiStepAgent(ABC):
                             f"Some prompt templates are missing from your custom `prompt_templates`: {subkey} under {key}"
                         )
 
-        self.max_steps = max_steps
-        self.step_number = 0
+        # 设置执行控制参数
+        self.max_steps = max_steps  # 最大执行步数
+        self.step_number = 0  # 当前步数计数器
+        
+        # 处理已弃用的语法参数
         if grammar is not None:
             warnings.warn(
                 "Parameter 'grammar' is deprecated and will be removed in version 1.20.",
                 FutureWarning,
             )
-        self.grammar = grammar
-        self.planning_interval = planning_interval
-        self.state: dict[str, Any] = {}
-        self.name = self._validate_name(name)
-        self.description = description
-        self.provide_run_summary = provide_run_summary
-        self.final_answer_checks = final_answer_checks
-        self.return_full_result = return_full_result
+        self.grammar = grammar  # 语法规则（已弃用）
+        
+        # 设置规划和状态管理
+        self.planning_interval = planning_interval  # 规划执行间隔
+        self.state: dict[str, Any] = {}  # 代理状态字典，存储执行过程中的变量
+        
+        # 设置代理身份信息
+        self.name = self._validate_name(name)  # 验证并设置代理名称
+        self.description = description  # 代理描述
+        self.provide_run_summary = provide_run_summary  # 是否提供运行摘要
+        self.final_answer_checks = final_answer_checks  # 最终答案验证函数列表
+        self.return_full_result = return_full_result  # 是否返回详细结果
 
-        self._setup_managed_agents(managed_agents)
-        self._setup_tools(tools, add_base_tools)
-        self._validate_tools_and_managed_agents(tools, managed_agents)
+        # 初始化管理代理和工具
+        self._setup_managed_agents(managed_agents)  # 设置子代理
+        self._setup_tools(tools, add_base_tools)  # 设置工具集
+        self._validate_tools_and_managed_agents(tools, managed_agents)  # 验证配置一致性
 
-        self.task: str | None = None
-        self.memory = AgentMemory(self.system_prompt)
+        # 初始化任务和内存系统
+        self.task: str | None = None  # 当前执行的任务
+        self.memory = AgentMemory(self.system_prompt)  # 代理记忆系统
 
+        # 设置日志记录器
         if logger is None:
+            # 使用默认日志记录器
             self.logger = AgentLogger(level=verbosity_level)
         else:
+            # 使用用户提供的日志记录器
             self.logger = logger
 
-        self.monitor = Monitor(self.model, self.logger)
-        self.step_callbacks = step_callbacks if step_callbacks is not None else []
-        self.step_callbacks.append(self.monitor.update_metrics)
-        self.stream_outputs = False
+        # 初始化监控和回调系统
+        self.monitor = Monitor(self.model, self.logger)  # 性能监控器
+        self.step_callbacks = step_callbacks if step_callbacks is not None else []  # 步骤回调函数列表
+        self.step_callbacks.append(self.monitor.update_metrics)  # 添加监控更新回调
+        self.stream_outputs = False  # 流式输出标志
 
     @property
     def system_prompt(self) -> str:
+        """
+        获取系统提示词
+        
+        该属性通过调用子类实现的 initialize_system_prompt 方法来生成
+        完整的系统提示词。系统提示词定义了代理的身份、能力和行为规范。
+        
+        返回:
+            str: 格式化后的系统提示词字符串
+        """
         return self.initialize_system_prompt()
 
     @system_prompt.setter
     def system_prompt(self, value: str):
+        """
+        系统提示词设置器 - 只读属性
+        
+        系统提示词是只读属性，不能直接设置。如需修改系统提示词，
+        应该修改 self.prompt_templates["system_prompt"] 的内容。
+        
+        参数:
+            value (str): 尝试设置的值
+            
+        异常:
+            AttributeError: 总是抛出，因为该属性是只读的
+        """
         raise AttributeError(
             """The 'system_prompt' property is read-only. Use 'self.prompt_templates["system_prompt"]' instead."""
         )
 
     def _validate_name(self, name: str | None) -> str | None:
+        """
+        验证代理名称的有效性
+        
+        检查代理名称是否符合 Python 标识符规范且不是保留关键字。
+        这对于子代理特别重要，因为它们的名称会用作函数调用的标识符。
+        
+        参数:
+            name (str | None): 待验证的代理名称
+            
+        返回:
+            str | None: 验证通过的名称或 None
+            
+        异常:
+            ValueError: 当名称不符合 Python 标识符规范时抛出
+        """
         if name is not None and not is_valid_name(name):
             raise ValueError(f"Agent name '{name}' must be a valid Python identifier and not a reserved keyword.")
         return name
 
     def _setup_managed_agents(self, managed_agents: list | None = None) -> None:
-        """Setup managed agents with proper logging."""
+        """
+        设置管理的子代理
+        
+        将子代理列表转换为字典形式以便快速查找，并验证每个子代理
+        都具有必需的名称和描述信息。子代理可以作为工具被主代理调用。
+        
+        参数:
+            managed_agents (list | None): 子代理列表
+            
+        异常:
+            AssertionError: 当子代理缺少名称或描述时抛出
+        """
+        # 初始化空的管理代理字典
         self.managed_agents = {}
+        
         if managed_agents:
+            # 验证所有子代理都有名称和描述
             assert all(agent.name and agent.description for agent in managed_agents), (
                 "All managed agents need both a name and a description!"
             )
+            # 将子代理列表转换为以名称为键的字典
             self.managed_agents = {agent.name: agent for agent in managed_agents}
 
     def _setup_tools(self, tools, add_base_tools):
+        """
+        设置代理可用的工具集
+        
+        将工具列表转换为字典形式，可选择性添加基础工具集，
+        并确保始终包含最终答案工具。
+        
+        参数:
+            tools (list[Tool]): 用户提供的工具列表
+            add_base_tools (bool): 是否添加基础工具集
+            
+        异常:
+            AssertionError: 当工具列表中包含非 Tool 实例时抛出
+        """
+        # 验证所有元素都是 Tool 实例
         assert all(isinstance(tool, Tool) for tool in tools), "All elements must be instance of Tool (or a subclass)"
+        
+        # 将工具列表转换为以名称为键的字典
         self.tools = {tool.name: tool for tool in tools}
+        
+        # 根据需要添加基础工具集
         if add_base_tools:
             self.tools.update(
                 {
                     name: cls()
                     for name, cls in TOOL_MAPPING.items()
+                    # python_interpreter 只在 ToolCallingAgent 中添加
                     if name != "python_interpreter" or self.__class__.__name__ == "ToolCallingAgent"
                 }
             )
+        
+        # 确保始终包含最终答案工具
         self.tools.setdefault("final_answer", FinalAnswerTool())
 
     def _validate_tools_and_managed_agents(self, tools, managed_agents):
+        """
+        验证工具和管理代理名称的唯一性
+        
+        确保所有工具、管理代理和当前代理的名称都是唯一的，
+        避免在调用时产生歧义。
+        
+        参数:
+            tools (list[Tool]): 工具列表
+            managed_agents (list | None): 管理代理列表
+            
+        异常:
+            ValueError: 当发现重复名称时抛出
+        """
+        # 收集所有工具名称
         tool_and_managed_agent_names = [tool.name for tool in tools]
+        
+        # 添加管理代理名称
         if managed_agents is not None:
             tool_and_managed_agent_names += [agent.name for agent in managed_agents]
+        
+        # 添加当前代理名称（如果存在）
         if self.name:
             tool_and_managed_agent_names.append(self.name)
+        
+        # 检查名称唯一性
         if len(tool_and_managed_agent_names) != len(set(tool_and_managed_agent_names)):
             raise ValueError(
                 "Each tool or managed_agent should have a unique name! You passed these duplicate names: "
@@ -509,24 +654,71 @@ You have been provided with these additional arguments, that you can access usin
     def _run_stream(
         self, task: str, max_steps: int, images: list["PIL.Image.Image"] | None = None
     ) -> Generator[ActionStep | PlanningStep | FinalAnswerStep | ChatMessageStreamDelta]:
-        final_answer = None
-        self.step_number = 1
+        """
+        以流式方式运行代理的核心执行循环
+        
+        该方法实现了 ReAct 框架的完整执行流程，逐步生成并产出每个执行步骤。
+        代理将持续执行思考-行动-观察的循环，直到获得最终答案或达到最大步数。
+        
+        执行流程:
+        1. 初始化执行状态和步数计数器
+        2. 主执行循环：
+           - 检查中断信号
+           - 根据规划间隔执行规划步骤
+           - 执行行动步骤（思考、行动、观察）
+           - 处理异常情况
+           - 更新内存和步数
+        3. 处理达到最大步数的情况
+        4. 产出最终答案
+        
+        参数:
+            task (str): 要执行的任务描述
+            max_steps (int): 允许的最大执行步数
+            images (list["PIL.Image.Image"] | None): 可选的图像输入列表
+            
+        产出:
+            Generator: 逐步产出以下类型的对象：
+                - ActionStep: 行动步骤，包含模型输出、工具调用、观察结果等
+                - PlanningStep: 规划步骤，包含代理的规划思路和策略
+                - FinalAnswerStep: 最终答案步骤，包含任务的最终结果
+                - ChatMessageStreamDelta: 流式消息增量（如果启用流式输出）
+        
+        异常处理:
+            - AgentGenerationError: 代理生成错误，通常由实现问题引起，直接抛出
+            - AgentError: 其他代理错误，通常由模型引起，记录后继续执行
+            - 其他异常: 在 finally 块中进行清理
+        """
+        # 初始化执行状态
+        final_answer = None  # 最终答案，初始为 None
+        self.step_number = 1  # 当前步数，从 1 开始
+        
+        # 主执行循环：持续执行直到获得最终答案或达到最大步数
         while final_answer is None and self.step_number <= max_steps:
+            # 检查中断信号：如果用户请求中断，则立即停止执行
             if self.interrupt_switch:
                 raise AgentError("Agent interrupted.", self.logger)
 
-            # Run a planning step if scheduled
+            # 规划步骤执行逻辑：根据设定的规划间隔执行规划
+            # 规划步骤在第一步或每隔 planning_interval 步执行一次
             if self.planning_interval is not None and (
                 self.step_number == 1 or (self.step_number - 1) % self.planning_interval == 0
             ):
+                # 记录规划步骤的开始时间
                 planning_start_time = time.time()
                 planning_step = None
+                
+                # 生成并产出规划步骤的流式输出
+                # _generate_planning_step 会产出流式消息和最终的规划步骤
                 for element in self._generate_planning_step(
                     task, is_first_step=(self.step_number == 1), step=self.step_number
                 ):
-                    yield element
-                    planning_step = element
+                    yield element  # 向外产出流式元素（如 ChatMessageStreamDelta）
+                    planning_step = element  # 保存最后一个元素（应该是 PlanningStep）
+                
+                # 确保最后产出的元素确实是规划步骤
                 assert isinstance(planning_step, PlanningStep)  # Last yielded element should be a PlanningStep
+                
+                # 将规划步骤添加到记忆中并记录执行时间
                 self.memory.steps.append(planning_step)
                 planning_end_time = time.time()
                 planning_step.timing = Timing(
@@ -534,73 +726,172 @@ You have been provided with these additional arguments, that you can access usin
                     end_time=planning_end_time,
                 )
 
-            # Start action step!
+            # 开始执行行动步骤
             action_step_start_time = time.time()
+            
+            # 创建行动步骤对象，包含步数、时间和观察图像
             action_step = ActionStep(
                 step_number=self.step_number,
                 timing=Timing(start_time=action_step_start_time),
                 observations_images=images,
             )
+            
+            # 执行行动步骤的主要逻辑，包含异常处理
             try:
+                # 执行单个行动步骤，可能产出流式消息和最终结果
                 for el in self._execute_step(action_step):
-                    yield el
-                final_answer = el
+                    yield el  # 向外产出流式元素
+                final_answer = el  # 保存最后一个元素，可能是最终答案
+                
             except AgentGenerationError as e:
-                # Agent generation errors are not caused by a Model error but an implementation error: so we should raise them and exit.
+                # 代理生成错误：这类错误通常由实现问题引起，不是模型错误
+                # 需要直接抛出并退出，因为这表示程序逻辑有问题
                 raise e
+                
             except AgentError as e:
-                # Other AgentError types are caused by the Model, so we should log them and iterate.
+                # 其他代理错误：这类错误通常由模型引起（如解析错误、工具调用错误等）
+                # 将错误记录到行动步骤中，但继续执行循环尝试恢复
                 action_step.error = e
+                
             finally:
+                # 无论是否发生异常，都要执行清理工作
+                # 完成行动步骤的收尾工作（设置结束时间、执行回调等）
                 self._finalize_step(action_step)
+                # 将行动步骤添加到记忆中
                 self.memory.steps.append(action_step)
+                # 向外产出完整的行动步骤对象
                 yield action_step
+                # 递增步数计数器，为下一轮循环做准备
                 self.step_number += 1
 
+        # 处理达到最大步数但仍未获得最终答案的情况
         if final_answer is None and self.step_number == max_steps + 1:
+            # 强制生成最终答案
             final_answer = self._handle_max_steps_reached(task, images)
             yield action_step
+            
+        # 产出最终答案步骤
+        # handle_agent_output_types 处理不同类型的输出（如图像、音频等）
         yield FinalAnswerStep(handle_agent_output_types(final_answer))
 
     def _execute_step(self, memory_step: ActionStep) -> Generator[ChatMessageStreamDelta | FinalOutput]:
+        """
+        执行单个行动步骤
+        
+        该方法负责执行代理的一个完整行动步骤，包括记录步骤信息、
+        调用子类的步骤实现、处理流式输出和验证最终答案。
+        
+        执行流程:
+        1. 记录步骤开始信息
+        2. 调用子类的 _step_stream 方法执行具体逻辑
+        3. 处理流式输出和最终答案
+        4. 验证最终答案（如果存在验证函数）
+        
+        参数:
+            memory_step (ActionStep): 当前执行的行动步骤对象
+
+        产出:
+            Generator[ChatMessageStreamDelta | FinalOutput]: 流式消息或最终输出
+        """
+        # 记录步骤开始
         self.logger.log_rule(f"Step {self.step_number}", level=LogLevel.INFO)
+        
+        # 执行步骤并处理输出
         for el in self._step_stream(memory_step):
             final_answer = el
             if isinstance(el, ChatMessageStreamDelta):
+                # 流式消息直接向外传递
                 yield el
             elif isinstance(el, FinalOutput):
+                # 处理最终输出
                 final_answer = el.output
+                # 如果配置了最终答案验证函数，则进行验证
                 if self.final_answer_checks:
                     self._validate_final_answer(final_answer)
                 yield final_answer
 
     def _validate_final_answer(self, final_answer: Any):
+        """
+        验证最终答案的有效性
+        
+        依次调用所有配置的验证函数来检查最终答案是否符合要求。
+        验证函数应该接受最终答案和代理内存作为参数，返回布尔值。
+        
+        参数:
+            final_answer (Any): 待验证的最终答案
+            
+        异常:
+            AgentError: 当任何验证函数失败时抛出
+        """
         for check_function in self.final_answer_checks:
             try:
+                # 调用验证函数，传入最终答案和代理内存
                 assert check_function(final_answer, self.memory)
             except Exception as e:
                 raise AgentError(f"Check {check_function.__name__} failed with error: {e}", self.logger)
 
     def _finalize_step(self, memory_step: ActionStep):
+        """
+        完成步骤的收尾工作
+        
+        设置步骤结束时间并执行所有配置的回调函数。
+        回调函数用于监控、日志记录、指标更新等用途。
+        
+        参数:
+            memory_step (ActionStep): 要完成的行动步骤对象
+        """
+        # 设置步骤结束时间
         memory_step.timing.end_time = time.time()
+        
+        # 执行所有步骤回调函数
         for callback in self.step_callbacks:
-            # For compatibility with old callbacks that don't take the agent as an argument
+            # 兼容旧版本回调函数（只接受一个参数）和新版本（接受两个参数）
             callback(memory_step) if len(inspect.signature(callback).parameters) == 1 else callback(
                 memory_step, agent=self
             )
 
     def _handle_max_steps_reached(self, task: str, images: list["PIL.Image.Image"]) -> Any:
+        """
+        处理达到最大步数的情况
+        
+        当代理达到最大步数限制但仍未获得最终答案时，强制生成
+        一个最终答案。这确保代理总是能提供某种形式的回应。
+        
+        处理流程:
+        1. 记录开始时间
+        2. 调用 provide_final_answer 强制生成最终答案
+        3. 创建带有错误标记的行动步骤
+        4. 完成步骤并添加到内存
+        5. 返回最终答案内容
+        
+        参数:
+            task (str): 原始任务描述
+            images (list["PIL.Image.Image"]): 任务相关的图像
+            
+        返回:
+            Any: 强制生成的最终答案内容
+        """
+        # 记录最终答案生成的开始时间
         action_step_start_time = time.time()
+        
+        # 强制生成最终答案
         final_answer = self.provide_final_answer(task, images)
+        
+        # 创建标记为达到最大步数错误的行动步骤
         final_memory_step = ActionStep(
             step_number=self.step_number,
             error=AgentMaxStepsError("Reached max steps.", self.logger),
             timing=Timing(start_time=action_step_start_time, end_time=time.time()),
             token_usage=final_answer.token_usage,
         )
+        
+        # 设置行动输出为最终答案内容
         final_memory_step.action_output = final_answer.content
+        
+        # 完成步骤收尾工作并添加到内存
         self._finalize_step(final_memory_step)
         self.memory.steps.append(final_memory_step)
+        
         return final_answer.content
 
     def _generate_planning_step(
@@ -715,6 +1006,17 @@ You have been provided with these additional arguments, that you can access usin
 
     @property
     def logs(self):
+        """
+        获取代理日志 - 已弃用属性
+        
+        该属性用于获取代理的执行日志，包括系统提示和所有执行步骤。
+        
+        弃用说明:
+            该属性已弃用，建议使用 self.memory.steps 替代。
+            
+        返回:
+            list: 包含系统提示和所有执行步骤的列表
+        """
         logger.warning(
             "The 'logs' attribute is deprecated and will soon be removed. Please use 'self.memory.steps' instead."
         )
@@ -722,11 +1024,32 @@ You have been provided with these additional arguments, that you can access usin
 
     @abstractmethod
     def initialize_system_prompt(self) -> str:
-        """To be implemented in child classes"""
+        """
+        初始化系统提示词 - 抽象方法
+        
+        该方法必须在子类中实现，用于生成代理的系统提示词。
+        系统提示词定义了代理的身份、能力和行为规范。
+        
+        返回:
+            str: 格式化后的系统提示词字符串
+            
+        注意:
+            这是一个抽象方法，子类必须实现此方法
+        """
         ...
 
     def interrupt(self):
-        """Interrupts the agent execution."""
+        """
+        中断代理执行
+        
+        设置中断标志，使正在执行的代理在下一次循环检查时停止执行。
+        这提供了一种优雅地停止长时间运行任务的方法。
+        
+        使用场景:
+        - 用户主动取消任务
+        - 超时控制
+        - 错误恢复
+        """
         self.interrupt_switch = True
 
     def write_memory_to_messages(
@@ -734,62 +1057,150 @@ You have been provided with these additional arguments, that you can access usin
         summary_mode: bool | None = False,
     ) -> list[Message]:
         """
-        Reads past llm_outputs, actions, and observations or errors from the memory into a series of messages
-        that can be used as input to the LLM. Adds a number of keywords (such as PLAN, error, etc) to help
-        the LLM.
+        将内存转换为消息列表
+        
+        从代理内存中读取过往的 LLM 输出、行动和观察或错误信息，
+        转换为可用作 LLM 输入的消息序列。会添加关键词（如 PLAN、error 等）
+        来帮助 LLM 更好地理解上下文。
+        
+        该方法是代理与 LLM 通信的关键桥梁，将结构化的内存数据
+        转换为 LLM 可以理解的对话格式。
+        
+        参数:
+            summary_mode (bool | None): 是否使用摘要模式
+                - True: 生成简化的消息，去除部分详细信息
+                - False: 生成完整的消息包含所有细节
+                
+        返回:
+            list[Message]: 格式化的消息列表，可直接用作 LLM 输入
         """
+        # 从系统提示开始构建消息列表
         messages = self.memory.system_prompt.to_messages(summary_mode=summary_mode)
+        
+        # 依次添加每个内存步骤的消息
         for memory_step in self.memory.steps:
             messages.extend(memory_step.to_messages(summary_mode=summary_mode))
+        
         return messages
 
     def _step_stream(self, memory_step: ActionStep) -> Generator[ChatMessageStreamDelta | FinalOutput]:
         """
-        Perform one step in the ReAct framework: the agent thinks, acts, and observes the result.
-        Yields ChatMessageStreamDelta during the run if streaming is enabled.
-        At the end, yields either None if the step is not final, or the final answer.
+        执行单步 ReAct 框架流程 - 抽象方法
+        
+        该方法实现 ReAct 框架的单步执行：代理思考、行动并观察结果。
+        如果启用流式输出，会在运行过程中产出 ChatMessageStreamDelta。
+        
+        ReAct 框架步骤:
+        1. Reasoning（推理）：分析当前情况和已有信息
+        2. Acting（行动）：选择并执行适当的工具或行动
+        3. Observing（观察）：获取行动结果并更新理解
+        
+        参数:
+            memory_step (ActionStep): 当前执行的行动步骤对象
+            
+        产出:
+            Generator[ChatMessageStreamDelta | FinalOutput]: 
+                - ChatMessageStreamDelta: 流式消息增量（如果启用流式输出）
+                - FinalOutput: 最终输出（如果是最后一步，否则为 None）
+                
+        注意:
+            这是一个抽象方法，子类必须实现此方法
         """
         raise NotImplementedError("This method should be implemented in child classes")
 
     def step(self, memory_step: ActionStep) -> Any:
         """
-        Perform one step in the ReAct framework: the agent thinks, acts, and observes the result.
-        Returns either None if the step is not final, or the final answer.
+        执行单步 ReAct 框架流程 - 同步版本
+        
+        这是 _step_stream 的同步版本，执行单步 ReAct 框架流程：
+        代理思考、行动并观察结果。返回最终结果而不是流式输出。
+        
+        该方法内部调用 _step_stream 并收集所有输出，返回最后一个元素
+        （即最终答案或 None）。适合不需要流式输出的场景。
+        
+        参数:
+            memory_step (ActionStep): 当前执行的行动步骤对象
+            
+        返回:
+            Any: 如果是最后一步则返回最终答案，否则返回 None
         """
         return list(self._step_stream(memory_step))[-1]
 
     def extract_action(self, model_output: str, split_token: str) -> tuple[str, str]:
         """
-        Parse action from the LLM output
-
-        Args:
-            model_output (`str`): Output of the LLM
-            split_token (`str`): Separator for the action. Should match the example in the system prompt.
+        从 LLM 输出中解析行动
+        
+        解析 LLM 生成的文本，提取推理过程和具体行动。使用分隔符将
+        模型输出分成推理部分和行动部分。
+        
+        解析策略:
+        - 使用指定的分隔符分割文本
+        - 从末尾开始索引，处理输出中可能包含多个分隔符的情况
+        - 返回推理和行动两部分，并去除首尾空白
+        
+        参数:
+            model_output (str): LLM 的原始输出文本
+            split_token (str): 用于分割的标记，应与系统提示中的示例匹配
+            
+        返回:
+            tuple[str, str]: (推理过程, 行动内容) 的元组
+            
+        异常:
+            AgentParsingError: 当无法找到分隔符或解析失败时抛出
+            
+        示例:
+            >>> output = "我需要搜索信息。Action: search('Python教程')"
+            >>> rationale, action = extract_action(output, "Action:")
+            >>> print(rationale)  # "我需要搜索信息。"
+            >>> print(action)     # "search('Python教程')"
         """
         try:
+            # 使用分隔符分割模型输出
             split = model_output.split(split_token)
+            
+            # 从末尾开始索引，处理输出中可能包含多个分隔符的情况
+            # 倒数第二个部分是推理，最后一个部分是行动
             rationale, action = (
                 split[-2],
                 split[-1],
-            )  # NOTE: using indexes starting from the end solves for when you have more than one split_token in the output
+            )
         except Exception:
+            # 解析失败时抛出详细的错误信息
             raise AgentParsingError(
                 f"No '{split_token}' token provided in your output.\nYour output:\n{model_output}\n. Be sure to include an action, prefaced with '{split_token}'!",
                 self.logger,
             )
+        
+        # 去除首尾空白并返回
         return rationale.strip(), action.strip()
 
     def provide_final_answer(self, task: str, images: list["PIL.Image.Image"] | None = None) -> ChatMessage:
         """
-        Provide the final answer to the task, based on the logs of the agent's interactions.
-
-        Args:
-            task (`str`): Task to perform.
-            images (`list[PIL.Image.Image]`, *optional*): Image(s) objects.
-
-        Returns:
-            `str`: Final answer to the task.
+        基于代理交互日志提供任务的最终答案
+        
+        当代理达到最大步数或需要强制结束时，使用该方法生成最终答案。
+        该方法会构造特殊的消息序列，包含最终答案提示模板和完整的执行历史。
+        
+        消息构造流程:
+        1. 添加最终答案前置系统提示
+        2. 如果有图像，添加图像内容
+        3. 添加完整的代理执行历史（除了系统提示）
+        4. 添加最终答案后置用户提示
+        5. 调用模型生成最终答案
+        
+        参数:
+            task (str): 要执行的任务描述
+            images (list["PIL.Image.Image"] | None): 可选的图像对象列表
+            
+        返回:
+            ChatMessage: 包含最终答案的聊天消息对象
+            如果生成失败，返回包含错误信息的字符串
+            
+        注意:
+            该方法主要用于异常情况下的最终答案生成，
+            正常情况下代理应该通过 final_answer 工具提供答案
         """
+        # 构建最终答案消息序列
         messages = [
             {
                 "role": MessageRole.SYSTEM,
@@ -801,9 +1212,15 @@ You have been provided with these additional arguments, that you can access usin
                 ],
             }
         ]
+        
+        # 如果提供了图像，添加图像内容
         if images:
             messages[0]["content"].append({"type": "image"})
+        
+        # 添加代理的执行历史（跳过系统提示，从索引1开始）
         messages += self.write_memory_to_messages()[1:]
+        
+        # 添加最终答案后置提示
         messages += [
             {
                 "role": MessageRole.USER,
@@ -817,47 +1234,121 @@ You have been provided with these additional arguments, that you can access usin
                 ],
             }
         ]
+        
         try:
+            # 调用模型生成最终答案
             chat_message: ChatMessage = self.model.generate(messages)
             return chat_message
         except Exception as e:
+            # 生成失败时返回错误信息
             return f"Error in generating final LLM output:\n{e}"
 
     def visualize(self):
-        """Creates a rich tree visualization of the agent's structure."""
+        """
+        创建代理结构的富文本树形可视化
+        
+        生成一个树状图显示代理的结构，包括：
+        - 代理的基本信息（名称、类型等）
+        - 可用工具列表
+        - 管理的子代理
+        - 配置信息
+        
+        该方法有助于理解复杂代理系统的层次结构和组件关系。
+        可视化结果会通过日志记录器输出到控制台。
+        
+        使用场景:
+        - 调试代理配置
+        - 了解代理能力
+        - 文档生成
+        - 系统架构展示
+        """
         self.logger.visualize_agent_tree(self)
 
     def replay(self, detailed: bool = False):
-        """Prints a pretty replay of the agent's steps.
-
-        Args:
-            detailed (bool, optional): If True, also displays the memory at each step. Defaults to False.
-                Careful: will increase log length exponentially. Use only for debugging.
+        """
+        重放代理执行步骤的美观展示
+        
+        按时间顺序重新显示代理的所有执行步骤，包括：
+        - 系统提示信息
+        - 每个步骤的输入和输出
+        - 工具调用和结果
+        - 错误信息（如果有）
+        - 最终答案
+        
+        重放功能有助于：
+        - 理解代理的决策过程
+        - 调试执行问题
+        - 分析性能瓶颈
+        - 验证执行逻辑
+        
+        参数:
+            detailed (bool): 是否显示详细信息
+                - False: 只显示关键步骤和结果
+                - True: 显示每步的完整内存状态
+                
+        警告:
+            启用详细模式会显著增加输出长度，建议仅在调试时使用
         """
         self.memory.replay(self.logger, detailed=detailed)
 
     def __call__(self, task: str, **kwargs):
-        """Adds additional prompting for the managed agent, runs it, and wraps the output.
-        This method is called only by a managed agent.
         """
+        作为子代理被调用时的处理方法
+        
+        当该代理作为另一个代理的子代理被调用时，此方法会被执行。
+        它为子代理添加额外的提示信息，运行任务，并包装输出结果。
+        
+        处理流程:
+        1. 使用管理代理模板构造完整任务描述
+        2. 运行代理执行任务
+        3. 提取执行结果
+        4. 使用报告模板格式化输出
+        5. 可选地添加详细执行摘要
+        
+        参数:
+            task (str): 分配给子代理的任务描述
+            **kwargs: 传递给 run 方法的额外参数
+            
+        返回:
+            str: 格式化后的执行报告，包含：
+                - 任务执行结果
+                - 代理身份信息
+                - 可选的详细执行摘要
+                
+        注意:
+            该方法只会在代理作为子代理被其他代理调用时使用，
+            不应直接在用户代码中调用
+        """
+        # 使用管理代理任务模板构造完整任务
         full_task = populate_template(
             self.prompt_templates["managed_agent"]["task"],
             variables=dict(name=self.name, task=task),
         )
+        
+        # 运行代理执行任务
         result = self.run(full_task, **kwargs)
+        
+        # 提取执行结果
         if isinstance(result, RunResult):
             report = result.output
         else:
             report = result
+            
+        # 使用报告模板格式化输出
         answer = populate_template(
-            self.prompt_templates["managed_agent"]["report"], variables=dict(name=self.name, final_answer=report)
+            self.prompt_templates["managed_agent"]["report"], 
+            variables=dict(name=self.name, final_answer=report)
         )
+        
+        # 如果配置了提供运行摘要，添加详细信息
         if self.provide_run_summary:
             answer += "\n\nFor more detail, find below a summary of this agent's work:\n<summary_of_work>\n"
+            # 添加执行历史摘要
             for message in self.write_memory_to_messages(summary_mode=True):
                 content = message["content"]
                 answer += "\n" + truncate_content(str(content)) + "\n---"
             answer += "\n</summary_of_work>"
+            
         return answer
 
     def save(self, output_dir: str | Path, relative_path: str | None = None):
@@ -980,43 +1471,72 @@ You have been provided with these additional arguments, that you can access usin
             f.write(app_text + "\n")  # Append newline at the end
 
     def to_dict(self) -> dict[str, Any]:
-        """Convert the agent to a dictionary representation.
-
-        Returns:
-            `dict`: Dictionary representation of the agent.
         """
-        # TODO: handle serializing step_callbacks and final_answer_checks
+        将代理转换为字典表示形式
+        
+        该方法将代理的所有配置和组件序列化为字典格式，便于：
+        - 保存代理配置到文件
+        - 网络传输代理定义
+        - 版本控制和备份
+        - 跨平台部署
+        
+        序列化内容包括:
+        - 代理类名和基本配置
+        - 工具列表和依赖项
+        - 模型配置
+        - 子代理配置
+        - 提示模板
+        - 执行参数
+        
+        返回:
+            dict[str, Any]: 代理的字典表示，包含所有必要的配置信息
+            
+        注意:
+            - step_callbacks 和 final_answer_checks 无法序列化，会被忽略
+            - 返回的字典可用于 from_dict 方法重新创建代理
+        """
+        # 警告用户无法序列化的属性
         for attr in ["final_answer_checks", "step_callbacks"]:
             if getattr(self, attr, None):
                 self.logger.log(f"This agent has {attr}: they will be ignored by this method.", LogLevel.INFO)
 
+        # 序列化所有工具
         tool_dicts = [tool.to_dict() for tool in self.tools.values()]
+        
+        # 收集工具的依赖项
         tool_requirements = {req for tool in self.tools.values() for req in tool.to_dict()["requirements"]}
+        
+        # 收集管理代理的依赖项
         managed_agents_requirements = {
             req for managed_agent in self.managed_agents.values() for req in managed_agent.to_dict()["requirements"]
         }
+        
+        # 合并所有依赖项
         requirements = tool_requirements | managed_agents_requirements
+        
+        # 添加授权导入的依赖项（如果存在）
         if hasattr(self, "authorized_imports"):
             requirements.update(
                 {package.split(".")[0] for package in self.authorized_imports if package not in BASE_BUILTIN_MODULES}
             )
 
+        # 构建完整的代理字典
         agent_dict = {
-            "class": self.__class__.__name__,
-            "tools": tool_dicts,
-            "model": {
+            "class": self.__class__.__name__,  # 代理类名
+            "tools": tool_dicts,  # 工具配置列表
+            "model": {  # 模型配置
                 "class": self.model.__class__.__name__,
                 "data": self.model.to_dict(),
             },
-            "managed_agents": [managed_agent.to_dict() for managed_agent in self.managed_agents.values()],
-            "prompt_templates": self.prompt_templates,
-            "max_steps": self.max_steps,
-            "verbosity_level": int(self.logger.level),
-            "grammar": self.grammar,
-            "planning_interval": self.planning_interval,
-            "name": self.name,
-            "description": self.description,
-            "requirements": sorted(requirements),
+            "managed_agents": [managed_agent.to_dict() for managed_agent in self.managed_agents.values()],  # 子代理配置
+            "prompt_templates": self.prompt_templates,  # 提示模板
+            "max_steps": self.max_steps,  # 最大步数
+            "verbosity_level": int(self.logger.level),  # 日志级别
+            "grammar": self.grammar,  # 语法规则（已弃用）
+            "planning_interval": self.planning_interval,  # 规划间隔
+            "name": self.name,  # 代理名称
+            "description": self.description,  # 代理描述
+            "requirements": sorted(requirements),  # 依赖项列表
         }
         return agent_dict
 
